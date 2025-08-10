@@ -194,6 +194,13 @@ public class ThreadUtils {
     }
 
     /**
+     * 获取通用线程池
+     */
+    public ThreadPoolTaskExecutor getCommonThreadPool() {
+        return commonThreadPool;
+    }
+
+    /**
      * 包装Runnable，添加异常处理
      */
     private Runnable wrapRunnable(Runnable runnable) {

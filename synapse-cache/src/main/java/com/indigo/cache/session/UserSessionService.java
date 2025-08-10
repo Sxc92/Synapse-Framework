@@ -1,6 +1,5 @@
 package com.indigo.cache.session;
 
-import com.indigo.cache.session.impl.DefaultStatisticsManager;
 import com.indigo.core.context.UserContext;
 import lombok.extern.slf4j.Slf4j;
 
@@ -9,8 +8,21 @@ import java.util.Map;
 
 /**
  * 用户会话管理服务
- * 外观模式，统一对外提供用户会话管理功能
+ * 门面模式，统一对外提供用户会话管理功能
  * 只依赖接口，不依赖具体实现
+ * 
+ * 功能范围：
+ * - 用户会话管理（基于token的会话存储和获取）
+ * - 权限和角色管理（与会话关联的权限信息）
+ * - 统计和监控（在线用户、会话统计等）
+ * - Token管理（基础token操作：存储、验证、刷新、删除）
+ * - 会话数据管理（用户自定义会话数据存储）
+ * 
+ * 设计原则：
+ * - 统一入口：所有用户会话和token相关操作的唯一入口
+ * - 门面模式：只做协调，不直接操作基础设施
+ * - 接口隔离：只依赖抽象接口，不依赖具体实现
+ * - 事务协调：处理跨管理器的组合操作
  *
  * @author 史偕成
  * @date 2024/12/19
@@ -64,17 +76,18 @@ public class UserSessionService {
     }
 
     /**
-     * 删除用户会话
+     * 删除用户会话（跨管理器事务操作）
      *
      * @param token 访问令牌
      */
     public void removeUserSession(String token) {
         sessionManager.removeUserSession(token);
         permissionManager.removeUserPermissions(token);
+        log.info("Removed complete user session and permissions for token: {}", token);
     }
 
     /**
-     * 延长用户会话过期时间
+     * 延长用户会话过期时间（跨管理器事务操作）
      *
      * @param token      访问令牌
      * @param expiration 新的过期时间（秒）
@@ -82,6 +95,7 @@ public class UserSessionService {
     public void extendUserSession(String token, long expiration) {
         sessionManager.extendUserSession(token, expiration);
         permissionManager.extendUserPermissions(token, expiration);
+        log.info("Extended complete user session and permissions for token: {}", token);
     }
 
     /**
@@ -107,6 +121,102 @@ public class UserSessionService {
             permissionManager.extendUserPermissions(token, duration);
         }
         return sessionRenewed;
+    }
+
+    // ========== Token管理相关方法 ==========
+
+    /**
+     * 存储token
+     * 
+     * @param token 令牌
+     * @param userId 用户ID
+     * @param expireSeconds 过期时间（秒）
+     */
+    public void storeToken(String token, String userId, long expireSeconds) {
+        sessionManager.storeToken(token, userId, expireSeconds);
+    }
+    
+    /**
+     * 验证token并获取用户ID
+     * 
+     * @param token 令牌
+     * @return 用户ID，token无效时返回null
+     */
+    public String validateToken(String token) {
+        return sessionManager.validateToken(token);
+    }
+    
+    /**
+     * 刷新token过期时间
+     * 
+     * @param token 令牌
+     * @param expireSeconds 新的过期时间（秒）
+     * @return 是否刷新成功
+     */
+    public boolean refreshToken(String token, long expireSeconds) {
+        return sessionManager.refreshToken(token, expireSeconds);
+    }
+    
+    /**
+     * 删除token
+     * 
+     * @param token 令牌
+     */
+    public void removeToken(String token) {
+        sessionManager.removeToken(token);
+    }
+    
+    /**
+     * 检查token是否存在
+     * 
+     * @param token 令牌
+     * @return 是否存在
+     */
+    public boolean tokenExists(String token) {
+        return sessionManager.tokenExists(token);
+    }
+    
+    /**
+     * 获取token剩余过期时间
+     * 
+     * @param token 令牌
+     * @return 剩余过期时间（秒），-1表示永不过期，-2表示不存在
+     */
+    public long getTokenTtl(String token) {
+        return sessionManager.getTokenTtl(token);
+    }
+
+    // ========== 会话数据管理相关方法 ==========
+    
+    /**
+     * 存储用户会话数据
+     * 
+     * @param userId 用户ID
+     * @param sessionData 会话数据
+     * @param expireSeconds 过期时间（秒）
+     */
+    public void storeUserSessionData(String userId, Object sessionData, long expireSeconds) {
+        sessionManager.storeUserSessionData(userId, sessionData, expireSeconds);
+    }
+    
+    /**
+     * 获取用户会话数据
+     * 
+     * @param userId 用户ID
+     * @param clazz 数据类型
+     * @return 会话数据
+     */
+    public <T> T getUserSessionData(String userId, Class<T> clazz) {
+        return sessionManager.getUserSessionData(userId, clazz);
+    }
+    
+    /**
+     * 删除用户会话数据
+     * 
+     * @param userId 用户ID
+     */
+    public void removeUserSessionData(String userId) {
+        sessionManager.removeUserSessionData(userId);
     }
 
     // ========== 权限管理相关方法 ==========
@@ -300,41 +410,5 @@ public class UserSessionService {
      */
     public Map<String, Long> getAllUsersOnlineDuration() {
         return statisticsManager.getAllUsersOnlineDuration();
-    }
-
-    // ========== 缓存操作相关方法（为了兼容性） ==========
-
-    /**
-     * 设置缓存对象
-     *
-     * @param key        缓存键
-     * @param value      缓存值
-     * @param expiration 过期时间（秒）
-     */
-    public void setCacheObject(String key, Object value, long expiration) {
-        // 委托给统计管理器中的缓存服务
-        // 注意：这是一个临时的兼容性方法，建议使用专门的缓存服务
-        if (statisticsManager instanceof DefaultStatisticsManager) {
-            ((DefaultStatisticsManager) statisticsManager)
-                    .getCacheService().setObject(key, value, expiration);
-        }
-    }
-
-    /**
-     * 获取缓存对象
-     *
-     * @param key   缓存键
-     * @param clazz 对象类型
-     * @param <T>   泛型类型
-     * @return 缓存对象
-     */
-    public <T> T getCacheObject(String key, Class<T> clazz) {
-        // 委托给统计管理器中的缓存服务
-        // 注意：这是一个临时的兼容性方法，建议使用专门的缓存服务
-        if (statisticsManager instanceof com.indigo.cache.session.impl.DefaultStatisticsManager) {
-            return ((com.indigo.cache.session.impl.DefaultStatisticsManager) statisticsManager)
-                    .getCacheService().getObject(key, clazz);
-        }
-        return null;
     }
 } 

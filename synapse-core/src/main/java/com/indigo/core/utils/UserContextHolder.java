@@ -228,7 +228,7 @@ public class UserContextHolder {
             ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
             return attributes != null ? attributes.getRequest() : null;
         } catch (Exception e) {
-            log.debug("获取当前请求失败", e);
+            log.info("获取当前请求失败", e);
             return null;
         }
     }

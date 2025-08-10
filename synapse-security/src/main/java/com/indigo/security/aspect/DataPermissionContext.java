@@ -21,7 +21,7 @@ public class DataPermissionContext {
      */
     public static void setDataScope(String dataScope) {
         DATA_SCOPE.set(dataScope);
-        log.debug("设置数据范围: {}", dataScope);
+        log.info("设置数据范围: {}", dataScope);
     }
 
     /**
@@ -31,7 +31,7 @@ public class DataPermissionContext {
      */
     public static String getDataScope() {
         String dataScope = DATA_SCOPE.get();
-        log.debug("获取数据范围: {}", dataScope);
+        log.info("获取数据范围: {}", dataScope);
         return dataScope;
     }
 
@@ -40,6 +40,6 @@ public class DataPermissionContext {
      */
     public static void clear() {
         DATA_SCOPE.remove();
-        log.debug("清除数据范围");
+        log.info("清除数据范围");
     }
 } 

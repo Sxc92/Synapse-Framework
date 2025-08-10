@@ -103,7 +103,7 @@ public class UnifiedRocketMQEventPublisher implements EventPublisher {
             // 4. 记录消息发送
             recordMessageSent(event);
             
-            log.debug("Event published successfully: eventId={}, msgId={}, transactionId={}", 
+            log.info("Event published successfully: eventId={}, msgId={}, transactionId={}", 
                     event.getEventId(), sendResult.getMsgId(), event.getTransactionId());
             
             return PublishResult.success(event.getEventId(), event.getTransactionId(), sendResult.getMsgId());
@@ -135,7 +135,7 @@ public class UnifiedRocketMQEventPublisher implements EventPublisher {
                 @Override
                 public void onSuccess(SendResult sendResult) {
                     recordMessageSent(event);
-                    log.debug("Async event published successfully: eventId={}, msgId={}", 
+                    log.info("Async event published successfully: eventId={}, msgId={}", 
                             event.getEventId(), sendResult.getMsgId());
                     future.complete(PublishResult.success(event.getEventId(), event.getTransactionId(), sendResult.getMsgId()));
                 }
@@ -245,7 +245,7 @@ public class UnifiedRocketMQEventPublisher implements EventPublisher {
             // 记录消息发送
             recordMessageSent(event);
             
-            log.debug("Delayed message sent successfully: msgId={}, transactionId={}, delayLevel={}", 
+            log.info("Delayed message sent successfully: msgId={}, transactionId={}, delayLevel={}", 
                     sendResult.getMsgId(), event.getTransactionId(), delayLevel);
             
             return PublishResult.success(event.getEventId(), event.getTransactionId(), sendResult.getMsgId());
@@ -288,7 +288,7 @@ public class UnifiedRocketMQEventPublisher implements EventPublisher {
             // 记录消息发送
             recordMessageSent(event);
             
-            log.debug("Orderly message sent successfully: msgId={}, transactionId={}, orderKey={}", 
+            log.info("Orderly message sent successfully: msgId={}, transactionId={}, orderKey={}", 
                     sendResult.getMsgId(), event.getTransactionId(), orderKey);
             
             return PublishResult.success(event.getEventId(), event.getTransactionId(), sendResult.getMsgId());
@@ -429,7 +429,7 @@ public class UnifiedRocketMQEventPublisher implements EventPublisher {
             (currentTime - entry.getValue()) > expireTime
         );
         
-        log.debug("Cleaned up local cache, current size: {}", localDuplicateCache.size());
+        log.info("Cleaned up local cache, current size: {}", localDuplicateCache.size());
     }
     
     // ==================== 辅助方法 ====================

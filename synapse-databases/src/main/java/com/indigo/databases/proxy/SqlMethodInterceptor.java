@@ -280,8 +280,8 @@ public class SqlMethodInterceptor implements InvocationHandler {
      * 处理BaseRepository的方法
      */
     private Object handleBaseRepositoryMethod(Object proxy, Method method, Object[] args) throws Exception {
-        log.debug("Handling BaseRepository method: {}", method.getName());
-        log.debug("Method isDefault: {}, declaringClass: {}", method.isDefault(), method.getDeclaringClass().getName());
+        log.info("Handling BaseRepository method: {}", method.getName());
+        log.info("Method isDefault: {}, declaringClass: {}", method.isDefault(), method.getDeclaringClass().getName());
         
         // 特殊处理getBaseMapper方法
         if ("getBaseMapper".equals(method.getName())) {

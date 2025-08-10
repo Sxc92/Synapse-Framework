@@ -1,7 +1,7 @@
 package com.indigo.events.core.impl;
 
 import com.indigo.cache.core.CacheService;
-import com.indigo.cache.extension.DistributedLockService;
+import com.indigo.cache.extension.lock.LockManager;
 import com.indigo.events.config.EventsProperties;
 import com.indigo.events.core.*;
 import com.indigo.events.utils.MessageSerializer;
@@ -41,7 +41,7 @@ public class ReliableRocketMQEventConsumer implements EventConsumer {
     private final MessageSerializer messageSerializer;
     private final EventHandlerRegistry eventHandlerRegistry;
     private final CacheService cacheService;
-    private final DistributedLockService lockService;
+    private final LockManager lockManager;
     
     @Value("${spring.application.name:unknown-service}")
     private String applicationName;
@@ -70,12 +70,12 @@ public class ReliableRocketMQEventConsumer implements EventConsumer {
                                         MessageSerializer messageSerializer,
                                         EventHandlerRegistry eventHandlerRegistry,
                                         CacheService cacheService,
-                                        DistributedLockService lockService) {
+                                        LockManager lockManager) {
         this.properties = properties;
         this.messageSerializer = messageSerializer;
         this.eventHandlerRegistry = eventHandlerRegistry;
         this.cacheService = cacheService;
-        this.lockService = lockService;
+        this.lockManager = lockManager;
     }
     
     @PostConstruct
@@ -133,13 +133,13 @@ public class ReliableRocketMQEventConsumer implements EventConsumer {
             
             // 分布式去重检查
             if (isDuplicateEvent(event)) {
-                log.debug("Duplicate event skipped: {}", event.getEventId());
+                log.info("Duplicate event skipped: {}", event.getEventId());
                 return EventResult.success(event.getEventId(), event.getTransactionId());
             }
             
             // 获取分布式锁，确保同一事件不会被多个消费者同时处理
             String lockKey = CONSUMER_LOCK_KEY_PREFIX + event.getEventId();
-            String lockValue = lockService.tryLock("event-consumer", event.getEventId(), 30); // 30秒锁超时
+            String lockValue = lockManager.tryLock("event-consumer", event.getEventId(), 30); // 30秒锁超时
             
             if (lockValue == null) {
                 log.warn("Failed to acquire lock for event: {}, skipping", event.getEventId());
@@ -149,7 +149,7 @@ public class ReliableRocketMQEventConsumer implements EventConsumer {
             try {
                 // 再次检查去重（双重检查）
                 if (isDuplicateEvent(event)) {
-                    log.debug("Duplicate event detected after lock acquisition: {}", event.getEventId());
+                    log.info("Duplicate event detected after lock acquisition: {}", event.getEventId());
                     return EventResult.success(event.getEventId(), event.getTransactionId());
                 }
                 
@@ -183,7 +183,7 @@ public class ReliableRocketMQEventConsumer implements EventConsumer {
                 
             } finally {
                 // 释放分布式锁
-                lockService.unlock("event-consumer", event.getEventId(), lockValue);
+                lockManager.unlock("event-consumer", event.getEventId(), lockValue, LockManager.LockType.REENTRANT);
             }
             
         } catch (Exception e) {

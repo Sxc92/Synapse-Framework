@@ -89,7 +89,7 @@ public class TokenManager {
      */
     public void revokeToken(String token) {
         if (token == null || token.trim().isEmpty()) {
-            log.debug("撤销Token失败: token为空");
+            log.info("撤销Token失败: token为空");
             return;
         }
 
@@ -125,7 +125,7 @@ public class TokenManager {
             Object loginId = StpUtil.stpLogic.getLoginIdByToken(token);
             return loginId != null ? loginId.toString() : null;
         } catch (Exception e) {
-            log.debug("获取用户ID异常: token={}", token, e);
+            log.info("获取用户ID异常: token={}", token, e);
             return null;
         }
     }
@@ -140,7 +140,77 @@ public class TokenManager {
         try {
             return StpUtil.getTokenValue();
         } catch (Exception e) {
-            log.debug("获取当前Token异常", e);
+            log.info("获取当前Token异常", e);
+            return null;
+        }
+    }
+
+    /**
+     * 验证Token是否有效
+     * 委托给Sa-Token处理
+     *
+     * @param token Token值
+     * @return 是否有效
+     */
+    public boolean isTokenValid(String token) {
+        if (token == null || token.trim().isEmpty()) {
+            return false;
+        }
+
+        try {
+            Object loginId = StpUtil.stpLogic.getLoginIdByToken(token);
+            return loginId != null;
+        } catch (Exception e) {
+            log.info("验证Token异常: token={}", token, e);
+            return false;
+        }
+    }
+
+    /**
+     * 续期Token
+     * 延长Token的过期时间
+     *
+     * @param token Token值
+     * @param duration 续期时间（秒）
+     * @return 是否续期成功
+     */
+    public boolean renewToken(String token, long duration) {
+        if (token == null || token.trim().isEmpty()) {
+            return false;
+        }
+
+        try {
+            // 验证token是否有效
+            if (!isTokenValid(token)) {
+                return false;
+            }
+
+            // 延长Redis中的会话过期时间
+            userSessionService.extendUserSession(token, duration);
+            log.info("Token续期成功: token={}, duration={}", token, duration);
+            return true;
+        } catch (Exception e) {
+            log.error("Token续期失败: token={}, duration={}", token, duration, e);
+            return false;
+        }
+    }
+
+    /**
+     * 获取Token对应的用户上下文
+     * 从Redis中获取用户会话信息
+     *
+     * @param token Token值
+     * @return 用户上下文
+     */
+    public UserContext getUserContext(String token) {
+        if (token == null || token.trim().isEmpty()) {
+            return null;
+        }
+
+        try {
+            return userSessionService.getUserSession(token);
+        } catch (Exception e) {
+            log.error("获取用户上下文失败: token={}", token, e);
             return null;
         }
     }

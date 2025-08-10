@@ -8,7 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * 默认会话管理器实现
- * 基于缓存服务的会话管理
+ * 基于缓存服务的会话管理，包括会话、Token和会话数据管理
  *
  * @author 史偕成
  * @date 2024/12/19
@@ -24,11 +24,13 @@ public class DefaultSessionManager implements SessionManager {
         this.keyGenerator = keyGenerator;
     }
 
+    // ========== 用户会话管理 ==========
+
     @Override
     public void storeUserSession(String token, UserContext userContext, long expiration) {
         String sessionKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "session", token);
         cacheService.setObject(sessionKey, userContext, expiration);
-        log.debug("Stored user session for token: {}", token);
+        log.info("Stored user session for token: {}", token);
     }
 
     @Override
@@ -53,14 +55,14 @@ public class DefaultSessionManager implements SessionManager {
     public void removeUserSession(String token) {
         String sessionKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "session", token);
         cacheService.delete(sessionKey);
-        log.debug("Removed user session for token: {}", token);
+        log.info("Removed user session for token: {}", token);
     }
 
     @Override
     public void extendUserSession(String token, long expiration) {
         String sessionKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "session", token);
         cacheService.resetExpiry(sessionKey, expiration);
-        log.debug("Extended user session for token: {}", token);
+        log.info("Extended user session for token: {}", token);
     }
 
     @Override
@@ -76,7 +78,7 @@ public class DefaultSessionManager implements SessionManager {
             UserContext userContext = cacheService.getObject(sessionKey, UserContext.class);
             if (userContext != null) {
                 cacheService.setObject(sessionKey, userContext, duration);
-                log.debug("Renewed token: {}", token);
+                log.info("Renewed token: {}", token);
                 return true;
             }
             return false;
@@ -84,6 +86,72 @@ public class DefaultSessionManager implements SessionManager {
             log.error("Failed to renew token: {}", token, e);
             return false;
         }
+    }
+
+    // ========== Token基础管理 ==========
+    
+    @Override
+    public void storeToken(String token, String userId, long expireSeconds) {
+        String tokenKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "token", token);
+        cacheService.getRedisService().set(tokenKey, userId, expireSeconds);
+        log.info("Stored token: {} for user: {}", token, userId);
+    }
+    
+    @Override
+    public String validateToken(String token) {
+        String tokenKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "token", token);
+        Object result = cacheService.getRedisService().get(tokenKey);
+        return result != null ? result.toString() : null;
+    }
+    
+    @Override
+    public boolean refreshToken(String token, long expireSeconds) {
+        String tokenKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "token", token);
+        Boolean result = cacheService.getRedisService().expire(tokenKey, expireSeconds);
+        return Boolean.TRUE.equals(result);
+    }
+    
+    @Override
+    public void removeToken(String token) {
+        String tokenKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "token", token);
+        cacheService.getRedisService().delete(tokenKey);
+        log.info("Removed token: {}", token);
+    }
+    
+    @Override
+    public boolean tokenExists(String token) {
+        String tokenKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "token", token);
+        Boolean result = cacheService.getRedisService().hasKey(tokenKey);
+        return Boolean.TRUE.equals(result);
+    }
+    
+    @Override
+    public long getTokenTtl(String token) {
+        String tokenKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "token", token);
+        Long result = cacheService.getRedisService().getExpire(tokenKey);
+        return result != null ? result : -2;
+    }
+
+    // ========== 会话数据管理 ==========
+    
+    @Override
+    public void storeUserSessionData(String userId, Object sessionData, long expireSeconds) {
+        String dataKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "data", userId);
+        cacheService.getRedisService().setObject(dataKey, sessionData, expireSeconds);
+        log.info("Stored session data for user: {}", userId);
+    }
+    
+    @Override
+    public <T> T getUserSessionData(String userId, Class<T> clazz) {
+        String dataKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "data", userId);
+        return cacheService.getRedisService().getObject(dataKey, clazz);
+    }
+    
+    @Override
+    public void removeUserSessionData(String userId) {
+        String dataKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "data", userId);
+        cacheService.getRedisService().delete(dataKey);
+        log.info("Removed session data for user: {}", userId);
     }
 
     /**

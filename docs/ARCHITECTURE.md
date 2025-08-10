@@ -318,6 +318,43 @@ Data Access Request
     └─────────────────┘
 ```
 
+### 4. 会话管理流程
+
+```
+User Authentication
+    │
+    ▼
+┌─────────────────┐
+│ UserSessionService│ ← 会话管理门面
+└─────────────────┘
+    │
+    ▼
+┌─────────────────┐
+│ SessionManager  │ ← 会话管理接口
+└─────────────────┘
+    │
+    ▼
+┌─────────────────┐
+│DefaultSession   │ ← 会话管理实现
+│   Manager      │
+└─────────────────┘
+    │
+    ▼
+┌─────────────────┐
+│  CacheService   │ ← 缓存服务
+└─────────────────┘
+    │
+    ▼
+┌─────────────────┐
+│  RedisService   │ ← Redis操作
+└─────────────────┘
+    │
+    ▼
+┌─────────────────┐
+│     Redis       │ ← 数据存储
+└─────────────────┘
+```
+
 ## 扩展点设计
 
 ### 1. 自定义查询构建器
@@ -373,6 +410,27 @@ public class CustomEventHandler {
 }
 ```
 
+### 4. 自定义会话管理器
+
+```java
+// 自定义会话管理器
+@Component
+public class CustomSessionManager implements SessionManager {
+    
+    @Override
+    public void createSession(String userId, long expireSeconds) {
+        // 自定义会话创建逻辑
+    }
+    
+    @Override
+    public void storeToken(String token, String userId, long expireSeconds) {
+        // 自定义token存储逻辑
+    }
+    
+    // 实现其他接口方法...
+}
+```
+
 ## 性能优化策略
 
 ### 1. 数据库优化
@@ -388,6 +446,8 @@ public class CustomEventHandler {
 - **缓存预热**：系统启动时预加载热点数据
 - **缓存更新**：及时更新缓存数据
 - **缓存穿透**：防止缓存穿透攻击
+- **会话缓存**：用户会话和token的智能缓存管理
+- **分布式会话**：支持集群环境下的会话共享
 
 ### 3. 并发优化
 
@@ -402,6 +462,8 @@ public class CustomEventHandler {
 
 - **Token 管理**：安全的 Token 生成和验证
 - **会话管理**：安全的会话存储和清理
+- **会话超时**：智能的会话超时和续期机制
+- **并发会话控制**：防止同一用户多设备同时登录
 - **密码安全**：密码加密和验证
 - **多因素认证**：支持多因素认证
 

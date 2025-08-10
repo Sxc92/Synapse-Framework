@@ -1,7 +1,7 @@
 package com.indigo.cache.aspect;
 
 import com.indigo.cache.annotation.RateLimit;
-import com.indigo.cache.extension.RateLimitService;
+import com.indigo.cache.extension.ratelimit.RateLimitService;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -13,6 +13,9 @@ import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;
+import org.springframework.core.DefaultParameterNameDiscoverer;
+import org.aspectj.lang.reflect.MethodSignature;
+import java.lang.reflect.Method;
 
 /**
  * 限流切面抽象基类
@@ -91,12 +94,26 @@ public abstract class AbstractRateLimitAspect {
     protected abstract String getDefaultKey(ProceedingJoinPoint joinPoint);
 
     /**
-     * 获取参数名（简化实现）
+     * 获取参数名（使用Spring的参数名发现器）
      */
     protected String[] getParameterNames(ProceedingJoinPoint joinPoint) {
-        // 这里可以使用反射或其他方式获取参数名
-        // 简化实现，返回 null
-        return null;
+        try {
+            MethodSignature methodSignature = (MethodSignature) joinPoint.getSignature();
+            Method method = methodSignature.getMethod();
+            
+            // 使用Spring的参数名发现器
+            DefaultParameterNameDiscoverer discoverer = new DefaultParameterNameDiscoverer();
+            return discoverer.getParameterNames(method);
+        } catch (Exception e) {
+            log.warn("无法获取方法参数名: {}", e.getMessage());
+            // 如果无法获取参数名，生成默认的参数名
+            Object[] args = joinPoint.getArgs();
+            String[] paramNames = new String[args.length];
+            for (int i = 0; i < args.length; i++) {
+                paramNames[i] = "arg" + i;
+            }
+            return paramNames;
+        }
     }
 
     /**
@@ -106,16 +123,29 @@ public abstract class AbstractRateLimitAspect {
         return switch (rateLimit.strategy()) {
             case "REJECT" -> throw new RuntimeException(rateLimit.message());
             case "WAIT" -> {
-                // 等待一段时间后重试（简化实现）
-                Thread.sleep(1000);
-                throw new RuntimeException(rateLimit.message());
+                // 等待策略：固定延迟1秒后重试
+                long waitTime = 1000; // 固定等待1秒
+                log.info("限流等待策略，延迟 {}ms 后重试", waitTime);
+                Thread.sleep(waitTime);
+                yield null; // 返回null表示继续执行原方法
             }
             case "FALLBACK" -> {
-                // 返回默认值或执行降级逻辑
-                log.warn("执行降级逻辑: {}", rateLimit.message());
-                yield null;
+                // 降级策略：返回默认值或执行降级逻辑
+                log.info("限流降级策略，返回默认值");
+                yield getFallbackResult(rateLimit);
             }
-            default -> throw new RuntimeException(rateLimit.message());
+            default -> {
+                log.warn("未知的限流策略: {}", rateLimit.strategy());
+                throw new RuntimeException(rateLimit.message());
+            }
         };
+    }
+
+    /**
+     * 获取降级结果
+     */
+    protected Object getFallbackResult(RateLimit rateLimit) {
+        // 子类可以重写此方法提供特定的降级逻辑
+        return null;
     }
 } 

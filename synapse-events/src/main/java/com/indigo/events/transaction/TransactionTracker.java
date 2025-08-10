@@ -47,7 +47,7 @@ public class TransactionTracker {
         scheduler.submit(() -> {
             try {
                 transactionRepository.saveTransaction(status);
-                log.debug("Transaction started: {}", transactionId);
+                log.info("Transaction started: {}", transactionId);
             } catch (Exception e) {
                 log.error("Failed to save transaction: {}", transactionId, e);
             }
@@ -167,7 +167,7 @@ public class TransactionTracker {
      */
     public void cleanupTransaction(String transactionId) {
         transactionCache.remove(transactionId);
-        log.debug("Cleaned up transaction cache: {}", transactionId);
+        log.info("Cleaned up transaction cache: {}", transactionId);
     }
     
     /**

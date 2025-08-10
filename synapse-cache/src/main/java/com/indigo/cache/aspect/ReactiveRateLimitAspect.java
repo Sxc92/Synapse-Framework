@@ -1,7 +1,7 @@
 package com.indigo.cache.aspect;
 
 import com.indigo.cache.annotation.RateLimit;
-import com.indigo.cache.extension.RateLimitService;
+import com.indigo.cache.extension.ratelimit.RateLimitService;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;

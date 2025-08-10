@@ -1,4 +1,4 @@
-package com.indigo.cache.extension;
+package com.indigo.cache.extension.ratelimit;
 
 import com.indigo.cache.infrastructure.RedisService;
 import com.indigo.cache.manager.CacheKeyGenerator;
@@ -212,7 +212,7 @@ public class RateLimitService {
         String rateLimitKey = keyGenerator.generate(CacheKeyGenerator.Module.RATE_LIMIT, 
             algorithm.toLowerCase(), key);
         redisService.delete(rateLimitKey);
-        log.debug("重置限流计数器: {}", rateLimitKey);
+                    log.info("重置限流计数器: {}", rateLimitKey);
     }
 
     /**

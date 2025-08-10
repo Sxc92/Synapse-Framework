@@ -1,7 +1,7 @@
 package com.indigo.events.config;
 
 import com.indigo.cache.core.CacheService;
-import com.indigo.cache.extension.DistributedLockService;
+import com.indigo.cache.extension.lock.LockManager;
 import com.indigo.core.utils.JsonUtils;
 import com.indigo.events.core.EventConsumer;
 import com.indigo.events.core.EventPublisher;
@@ -50,8 +50,8 @@ public class EventsAutoConfiguration {
                                       MessageSerializer messageSerializer,
                                       EventHandlerRegistry eventHandlerRegistry,
                                       CacheService cacheService,
-                                      DistributedLockService lockService) {
+                                      LockManager lockManager) {
         log.info("Initializing ReliableRocketMQEventConsumer with properties: {}", properties);
-        return new ReliableRocketMQEventConsumer(properties, messageSerializer, eventHandlerRegistry, cacheService, lockService);
+        return new ReliableRocketMQEventConsumer(properties, messageSerializer, eventHandlerRegistry, cacheService, lockManager);
     }
 } 

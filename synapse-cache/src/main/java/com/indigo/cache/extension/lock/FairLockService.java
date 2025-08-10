@@ -1,4 +1,4 @@
-package com.indigo.cache.extension;
+package com.indigo.cache.extension.lock;
 
 import com.indigo.cache.infrastructure.RedisService;
 import com.indigo.cache.manager.CacheKeyGenerator;
@@ -121,14 +121,14 @@ public class FairLockService {
         Integer count = reentrantCount.get(reentrantKey);
         if (count != null && count > 0) {
             reentrantCount.put(reentrantKey, count + 1);
-            log.debug("[FairLock] 重入锁: {} threadId={} count={}", lockKey, threadId, count + 1);
+            log.info("[FairLock] 重入锁: {} threadId={} count={}", lockKey, threadId, count + 1);
             return nodeId + ":" + threadId + ":" + uuid;
         }
 
         try {
             // 将请求加入队列
             Long queueSize = redisService.executeScript(ENQUEUE_SCRIPT, lockKey, sequence);
-            log.debug("[FairLock] 加入队列: {} sequence={} queueSize={}", lockKey, sequence, queueSize);
+            log.info("[FairLock] 加入队列: {} sequence={} queueSize={}", lockKey, sequence, queueSize);
 
             // 尝试获取锁
             Long result = redisService.executeScript(FAIR_LOCK_SCRIPT, 
@@ -138,10 +138,10 @@ public class FairLockService {
             if (acquired) {
                 String lockValue = nodeId + ":" + threadId + ":" + uuid;
                 reentrantCount.put(reentrantKey, 1);
-                log.debug("[FairLock] 获取公平锁成功: {} threadId={} sequence={}", lockKey, threadId, sequence);
+                log.info("[FairLock] 获取公平锁成功: {} threadId={} sequence={}", lockKey, threadId, sequence);
                 return lockValue;
             } else {
-                log.debug("[FairLock] 获取公平锁失败: {} threadId={} sequence={}", lockKey, threadId, sequence);
+                log.info("[FairLock] 获取公平锁失败: {} threadId={} sequence={}", lockKey, threadId, sequence);
                 return null;
             }
         } catch (Exception e) {
@@ -196,7 +196,7 @@ public class FairLockService {
         Integer count = reentrantCount.get(reentrantKey);
         if (count != null && count > 1) {
             reentrantCount.put(reentrantKey, count - 1);
-            log.debug("[FairLock] 重入解锁: {} threadId={} count={}", lockKey, threadId, count - 1);
+            log.info("[FairLock] 重入解锁: {} threadId={} count={}", lockKey, threadId, count - 1);
             return true;
         }
 
@@ -206,9 +206,9 @@ public class FairLockService {
             
             if (released) {
                 reentrantCount.remove(reentrantKey);
-                log.debug("[FairLock] 释放公平锁成功: {} threadId={}", lockKey, threadId);
+                log.info("[FairLock] 释放公平锁成功: {} threadId={}", lockKey, threadId);
             } else {
-                log.debug("[FairLock] 释放公平锁失败: {} threadId={}", lockKey, threadId);
+                log.info("[FairLock] 释放公平锁失败: {} threadId={}", lockKey, threadId);
             }
             
             return released;

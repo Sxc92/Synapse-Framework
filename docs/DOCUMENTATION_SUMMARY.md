@@ -12,26 +12,31 @@ Synapse Framework 的文档体系已经完整建立，包含以下文档：
 - **[README.md](README.md)** - 框架概述，模块详解
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - 架构设计，设计模式
 - **[USAGE_GUIDE.md](USAGE_GUIDE.md)** - 使用指南，代码示例
+- **[SESSION_MANAGEMENT_REFACTOR.md](SESSION_MANAGEMENT_REFACTOR.md)** - 会话管理重构文档
 
 ## 📊 文档统计
 
 | 文档 | 大小 | 行数 | 内容 |
 |------|------|------|------|
-| **INDEX.md** | 7.3KB | 222行 | 文档索引和快速导航 |
+| **INDEX.md** | 7.8KB | 230行 | 文档索引和快速导航 |
 | **README.md** | 12KB | 468行 | 框架概述和模块详解 |
-| **ARCHITECTURE.md** | 16KB | 455行 | 架构设计和设计模式 |
+| **ARCHITECTURE.md** | 18KB | 517行 | 架构设计和设计模式 |
 | **USAGE_GUIDE.md** | 23KB | 934行 | 详细使用指南和代码示例 |
-| **总计** | **58.3KB** | **2079行** | **完整的文档体系** |
+| **DEVELOPMENT_NOTES.md** | 7.5KB | 201行 | 开发笔记和重构记录 |
+| **OPTIMIZATION_TODO.md** | 14KB | 519行 | 优化计划和进度跟踪 |
+| **总计** | **82.3KB** | **2869行** | **完整的文档体系** |
 
 ## 🎯 文档特色
 
 ### 1. 层次化结构
 ```
 📁 docs/
-├── 📄 INDEX.md          # 文档索引 (快速导航)
-├── 📄 README.md         # 框架概述 (模块详解)
-├── 📄 ARCHITECTURE.md   # 架构设计 (设计模式)
-└── 📄 USAGE_GUIDE.md    # 使用指南 (代码示例)
+├── 📄 INDEX.md                    # 文档索引 (快速导航)
+├── 📄 README.md                   # 框架概述 (模块详解)
+├── 📄 ARCHITECTURE.md             # 架构设计 (设计模式)
+├── 📄 USAGE_GUIDE.md              # 使用指南 (代码示例)
+├── 📄 DEVELOPMENT_NOTES.md        # 开发笔记 (重构记录)
+└── 📄 OPTIMIZATION_TODO.md        # 优化计划 (进度跟踪)
 ```
 
 ### 2. 内容覆盖
@@ -81,6 +86,13 @@ Synapse Framework 的文档体系已经完整建立，包含以下文档：
 - **使用场景**：小型、中型、大型项目的模块推荐
 - **问题解决**：常见问题、性能优化、安全防护
 - **代码示例**：基础CRUD、权限控制、缓存使用
+
+### 5. 开发笔记 (DEVELOPMENT_NOTES.md)
+- **会话管理重构**：会话管理模块重构的背景、方案和实现
+- **分布式锁增强**：分布式锁模块的功能增强和架构优化
+- **缓存翻译注解**：缓存属性翻译注解的设计方案和实现
+- **日志优化**：日志级别调整和内容优化
+- **架构优化总结**：设计原则、架构模式和最佳实践
 
 ## 🚀 使用建议
 

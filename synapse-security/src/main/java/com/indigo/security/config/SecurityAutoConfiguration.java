@@ -62,9 +62,9 @@ public class SecurityAutoConfiguration {
     @Bean
     @Primary
     @ConditionalOnMissingBean(StpInterface.class)
-    public PermissionManager permissionManager(UserSessionService userSessionService) {
+    public PermissionManager permissionManager(TokenManager tokenManager) {
         log.info("初始化权限管理服务");
-        return new PermissionManager(userSessionService);
+        return new PermissionManager(tokenManager);
     }
 
     /**

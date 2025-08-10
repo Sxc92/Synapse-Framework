@@ -58,7 +58,7 @@ public class DataSourceHealthChecker {
                 JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
                 jdbcTemplate.queryForObject("SELECT 1", Integer.class);
                 dataSourceHealth.put(name, true);
-                log.debug("DataSource [{}] is healthy", name);
+                log.info("DataSource [{}] is healthy", name);
             } catch (Exception e) {
                 dataSourceHealth.put(name, false);
                 log.error("DataSource [{}] is unhealthy: {}", name, e.getMessage());

@@ -1,4 +1,4 @@
-package com.indigo.cache.extension;
+package com.indigo.cache.extension.lock;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -53,7 +53,7 @@ public class LockPerformanceMonitor {
         stats.attempts.increment();
         stats.lastAttemptTime = System.currentTimeMillis();
         
-        log.debug("[LockMonitor] 记录锁获取尝试: {}:{}", lockName, key);
+        log.info("[LockMonitor] 记录锁获取尝试: {}:{}", lockName, key);
     }
 
     /**
@@ -81,7 +81,7 @@ public class LockPerformanceMonitor {
             log.warn("[LockMonitor] 检测到慢锁: {}:{} 耗时: {}ms", lockName, key, duration);
         }
         
-        log.debug("[LockMonitor] 记录锁获取成功: {}:{} 耗时: {}ms", lockName, key, duration);
+        log.info("[LockMonitor] 记录锁获取成功: {}:{} 耗时: {}ms", lockName, key, duration);
     }
 
     /**
@@ -101,7 +101,7 @@ public class LockPerformanceMonitor {
         stats.totalWaitTime.add(duration);
         stats.lastFailureTime = System.currentTimeMillis();
         
-        log.debug("[LockMonitor] 记录锁获取失败: {}:{} 原因: {} 耗时: {}ms", lockName, key, reason, duration);
+        log.info("[LockMonitor] 记录锁获取失败: {}:{} 原因: {} 耗时: {}ms", lockName, key, reason, duration);
     }
 
     /**
@@ -120,7 +120,7 @@ public class LockPerformanceMonitor {
         stats.minHoldTime.updateAndGet(current -> current == 0 ? holdTime : Math.min(current, holdTime));
         stats.lastReleaseTime = System.currentTimeMillis();
         
-        log.debug("[LockMonitor] 记录锁释放: {}:{} 持有时间: {}ms", lockName, key, holdTime);
+        log.info("[LockMonitor] 记录锁释放: {}:{} 持有时间: {}ms", lockName, key, holdTime);
     }
 
     /**
@@ -155,7 +155,7 @@ public class LockPerformanceMonitor {
             log.warn("[LockMonitor] 检测到锁竞争: {}:{} 等待线程数: {}", lockName, key, waitingThreads);
         }
         
-        log.debug("[LockMonitor] 记录锁竞争: {}:{} 等待线程数: {}", lockName, key, waitingThreads);
+        log.info("[LockMonitor] 记录锁竞争: {}:{} 等待线程数: {}", lockName, key, waitingThreads);
     }
 
     /**

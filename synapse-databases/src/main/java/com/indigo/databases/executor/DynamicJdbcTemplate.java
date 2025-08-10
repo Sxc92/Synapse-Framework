@@ -38,7 +38,7 @@ public class DynamicJdbcTemplate {
      */
     private JdbcTemplate getJdbcTemplate() {
         String currentDataSource = DynamicDataSourceContextHolder.getDataSource();
-        log.debug("Using dataSource: {}", currentDataSource);
+        log.info("Using dataSource: {}", currentDataSource);
         
         // 由于使用了动态数据源，JdbcTemplate会自动路由到正确的数据源
         return new JdbcTemplate(dataSource);
@@ -51,7 +51,7 @@ public class DynamicJdbcTemplate {
         // 使用负载均衡器获取从库数据源
         String slaveDataSource = dataSourceLoadBalancer.getDataSource(DataSourceType.SLAVE);
         if (slaveDataSource != null) {
-            log.debug("Using slave dataSource: {}", slaveDataSource);
+            log.info("Using slave dataSource: {}", slaveDataSource);
             // 设置数据源上下文
             DynamicDataSourceContextHolder.setDataSource(slaveDataSource);
         }
@@ -65,7 +65,7 @@ public class DynamicJdbcTemplate {
         // 使用负载均衡器获取主库数据源
         String masterDataSource = dataSourceLoadBalancer.getDataSource(DataSourceType.MASTER);
         if (masterDataSource != null) {
-            log.debug("Using master dataSource: {}", masterDataSource);
+            log.info("Using master dataSource: {}", masterDataSource);
             // 设置数据源上下文
             DynamicDataSourceContextHolder.setDataSource(masterDataSource);
         }

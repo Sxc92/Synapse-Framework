@@ -1,4 +1,4 @@
-package com.indigo.cache.extension;
+package com.indigo.cache.extension.lock;
 
 import com.indigo.cache.infrastructure.RedisService;
 import com.indigo.cache.manager.CacheKeyGenerator;
@@ -75,9 +75,9 @@ public class DeadlockDetector {
     public void recordLockAcquired(String threadId, String lockKey) {
         threadLocks.computeIfAbsent(threadId, k -> ConcurrentHashMap.newKeySet()).add(lockKey);
         lockHolders.put(lockKey, threadId);
-        threadTimeouts.put(threadId, System.currentTimeMillis() + (LOCK_TIMEOUT * 1000L));
+        threadTimeouts.put(threadId, System.currentTimeMillis() + LOCK_TIMEOUT * 1000L);
         
-        log.debug("[DeadlockDetector] 记录锁获取: threadId={} lockKey={}", threadId, lockKey);
+        log.info("[DeadlockDetector] 记录锁获取: threadId={} lockKey={}", threadId, lockKey);
     }
 
     /**
@@ -97,20 +97,20 @@ public class DeadlockDetector {
         }
         lockHolders.remove(lockKey);
         
-        log.debug("[DeadlockDetector] 记录锁释放: threadId={} lockKey={}", threadId, lockKey);
+        log.info("[DeadlockDetector] 记录锁释放: threadId={} lockKey={}", threadId, lockKey);
     }
 
     /**
-     * 记录锁等待
+     * 记录锁等待开始
      * 
      * @param threadId 线程ID
      * @param lockKey 锁键
      */
-    public void recordLockWait(String threadId, String lockKey) {
+    public void recordLockWaitStart(String threadId, String lockKey) {
         threadWaits.computeIfAbsent(threadId, k -> ConcurrentHashMap.newKeySet()).add(lockKey);
         lockWaiters.computeIfAbsent(lockKey, k -> ConcurrentHashMap.newKeySet()).add(threadId);
         
-        log.debug("[DeadlockDetector] 记录锁等待: threadId={} lockKey={}", threadId, lockKey);
+        log.info("[DeadlockDetector] 记录锁等待: threadId={} lockKey={}", threadId, lockKey);
     }
 
     /**
@@ -136,7 +136,7 @@ public class DeadlockDetector {
             }
         }
         
-        log.debug("[DeadlockDetector] 记录锁等待结束: threadId={} lockKey={}", threadId, lockKey);
+        log.info("[DeadlockDetector] 记录锁等待结束: threadId={} lockKey={}", threadId, lockKey);
     }
 
     /**
@@ -189,9 +189,14 @@ public class DeadlockDetector {
             }
         }
         
-        for (String threadId : timeoutThreads) {
-            log.warn("[DeadlockDetector] 线程超时，强制释放锁: threadId={}", threadId);
-            forceReleaseThreadLocks(threadId);
+        // 只在有超时线程时记录警告
+        if (!timeoutThreads.isEmpty()) {
+            log.warn("[DeadlockDetector] 检测到 {} 个超时线程，强制释放锁", timeoutThreads.size());
+            
+            for (String threadId : timeoutThreads) {
+                log.info("[DeadlockDetector] 线程超时，强制释放锁: threadId={}", threadId);
+                forceReleaseThreadLocks(threadId);
+            }
         }
     }
 

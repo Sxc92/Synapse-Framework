@@ -27,6 +27,12 @@
 - **代码示例**：完整的代码示例和最佳实践
 - **常见问题**：常见问题的解决方案
 
+### 4. [DEVELOPMENT_NOTES.md](DEVELOPMENT_NOTES.md) - 开发笔记
+- **会话管理重构**：会话管理模块重构的背景、方案和实现
+- **分布式锁增强**：分布式锁模块的功能增强和架构优化
+- **缓存翻译注解**：缓存属性翻译注解的设计方案和实现
+- **架构优化总结**：设计原则、架构模式和最佳实践
+
 ## 🔧 模块文档
 
 ### 核心模块 (synapse-core)
@@ -34,6 +40,7 @@
 - **异常处理**：全局异常处理机制
 - **用户上下文**：`UserContext` 的管理
 - **工具类库**：常用工具类的使用
+- **详细文档**：[模块文档索引](MODULES_INDEX.md#4-synapse-core-模块)
 
 ### 数据库模块 (synapse-databases)
 - **实体定义**：实体类的创建和配置
@@ -41,24 +48,33 @@
 - **查询构建**：注解驱动的查询构建
 - **分页查询**：分页功能的实现
 - **动态数据源**：多数据源配置和使用
+- **详细文档**：[模块文档索引](MODULES_INDEX.md#3-synapse-databases-模块)
 
 ### 安全模块 (synapse-security)
 - **认证配置**：Sa-Token 的配置和使用
 - **权限控制**：注解权限控制的实现
 - **用户会话**：会话管理机制
 - **Token 管理**：Token 的生成和验证
+- **详细文档**：[模块文档索引](MODULES_INDEX.md#1-synapse-security-模块)
+  - [使用示例](modules/synapse-security/USAGE_EXAMPLES.md)
+  - [重构总结](modules/synapse-security/REFACTORING_SUMMARY.md)
+  - [Sa-Token 使用指南](modules/synapse-security/SA_TOKEN_USAGE.md)
 
 ### 缓存模块 (synapse-cache)
 - **Redis 配置**：Redis 连接和配置
 - **缓存注解**：声明式缓存的使用
-- **分布式锁**：分布式锁的实现
-- **会话存储**：用户会话的缓存存储
+- **分布式锁**：分布式锁的实现和增强
+- **会话管理**：用户会话和token的统一管理
+- **架构优化**：会话管理模块的架构重构
+- **详细文档**：[模块文档索引](MODULES_INDEX.md#2-synapse-cache-模块)
+  - [缓存注解使用指南](modules/synapse-cache/CACHE_ANNOTATIONS_USAGE.md)
 
 ### 事件模块 (synapse-events)
 - **事件定义**：自定义事件的创建
 - **事件发布**：事件的发布机制
 - **事件监听**：事件监听器的实现
 - **事务事件**：事务相关的事件处理
+- **详细文档**：[模块文档索引](MODULES_INDEX.md#5-synapse-events-模块)
 
 ## 📋 快速导航
 
@@ -66,6 +82,7 @@
 1. [README.md](README.md) - 了解框架概览
 2. [USAGE_GUIDE.md](USAGE_GUIDE.md) - 快速开始指南
 3. [ARCHITECTURE.md](ARCHITECTURE.md) - 深入理解架构
+4. [模块文档索引](MODULES_INDEX.md) - 查看各模块详细文档
 
 ### 🔧 开发指南
 1. **环境搭建** → [USAGE_GUIDE.md#环境准备](USAGE_GUIDE.md#环境准备)
@@ -85,6 +102,7 @@
 2. **事件驱动** → [USAGE_GUIDE.md#事件功能使用](USAGE_GUIDE.md#事件功能使用)
 3. **动态数据源** → [USAGE_GUIDE.md#动态数据源](USAGE_GUIDE.md#动态数据源)
 4. **批量操作** → [USAGE_GUIDE.md#批量操作](USAGE_GUIDE.md#批量操作)
+5. **会话管理** → [DEVELOPMENT_NOTES.md#-会话管理模块重构-2024年](DEVELOPMENT_NOTES.md#-会话管理模块重构-2024年)
 
 ## 🎯 使用场景
 

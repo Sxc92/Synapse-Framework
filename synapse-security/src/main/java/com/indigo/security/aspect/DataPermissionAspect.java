@@ -53,7 +53,7 @@ public class DataPermissionAspect {
             String resourceType = dataPermission.resourceType();
             DataPermissionRule.PermissionType permissionType = dataPermission.permissionType();
 
-            log.debug("检查数据权限: user={}, resource={}, permission={}, method={}.{}",
+            log.info("检查数据权限: user={}, resource={}, permission={}, method={}.{}",
                 user.getUsername(), resourceType, permissionType, className, methodName);
 
             boolean hasPermission = dataPermissionService.hasPermission(user, resourceType, permissionType);
@@ -66,7 +66,7 @@ public class DataPermissionAspect {
             // 将数据范围条件设置到ThreadLocal中，供后续SQL拦截器使用
             DataPermissionContext.setDataScope(dataScope);
 
-            log.debug("数据权限检查通过: user={}, resource={}, dataScope={}",
+            log.info("数据权限检查通过: user={}, resource={}, dataScope={}",
                 user.getUsername(), resourceType, dataScope);
 
         } catch (SecurityException e) {

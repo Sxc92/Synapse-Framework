@@ -184,7 +184,7 @@ public class ReliableConsumerExample implements CommandLineRunner {
             
             Event perfEvent = Event.create(EventUtils.generateTransactionId(), "performance.test", "perf-service", eventData);
             CompletableFuture<PublishResult> future = eventPublisher.publishAsync(perfEvent);
-            future.thenAccept(result -> log.debug("异步发布完成: {}", result.getTransactionId()));
+            future.thenAccept(result -> log.info("异步发布完成: {}", result.getTransactionId()));
         }
         
         // 等待处理完成

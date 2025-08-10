@@ -46,12 +46,96 @@
 - ✅ 实现 `@Caching` 组合注解
 - ✅ 添加缓存条件表达式支持 (SpEL 表达式)
 
-#### 1.4 缓存功能增强 🔧 **需要完善**
+#### 1.4 会话管理架构重构 ✅ **已完成**
+- ✅ 重构 `RedisService`，移除业务逻辑，专注基础设施服务
+- ✅ 重构 `UserSessionService`，实现门面模式，只依赖管理器接口
+- ✅ 扩展 `SessionManager` 接口，新增token管理和session数据管理方法
+- ✅ 重构 `DefaultSessionManager`，实现所有会话管理逻辑
+- ✅ 解决跨层调用问题，遵循分层架构原则
+- ✅ 实现职责分离，每个类都有明确的单一职责
+
+**详细文档**: 参考 [开发笔记 - 会话管理模块重构](./DEVELOPMENT_NOTES.md#-会话管理模块重构-2024年)
+
+#### 1.5 缓存属性翻译注解 🔧 **新增功能**
+- [ ] 扩展现有 `@CachePut` 注解，添加翻译相关属性
+  - 添加 `translationData` 属性，标识是否为翻译数据缓存
+  - 添加 `translationSource` 属性，标识翻译数据源类型
+  - 添加 `translationFields` 属性，指定可翻译的字段
+  - 支持字段级别的翻译数据缓存标记
+- [ ] 新增 `@CacheTranslate` 字段注解
+  - 支持在DTO/POJO/VO字段上标记需要翻译的属性
+  - 支持SpEL表达式的翻译键值
+  - 支持自定义翻译字段映射
+  - 支持翻译失败时的默认值
+- [ ] 扩展 `@Caching` 注解，添加翻译操作支持
+  - 添加 `translate` 属性，支持翻译操作数组
+  - 实现翻译操作的组合执行
+- [ ] 实现翻译处理器 (`CacheTranslationProcessor`)
+  - 自动扫描并处理翻译标记
+  - 实现翻译逻辑的自动执行
+  - 支持批量翻译优化
+  - 实现翻译缓存的管理
+- [ ] 实现翻译缓存管理器 (`TranslationCacheManager`)
+  - 管理翻译数据的缓存存储
+  - 实现翻译缓存的预热机制
+  - 支持翻译缓存的失效和更新
+  - 添加翻译缓存监控和统计
+- [ ] 实现翻译AOP切面 (`CacheTranslationAspect`)
+  - 自动拦截带有翻译注解的方法
+  - 实现翻译逻辑的自动执行
+  - 支持翻译结果的自动设置
+- [ ] 添加翻译配置支持
+  - 支持翻译策略配置
+  - 实现翻译缓存配置
+  - 添加翻译超时和重试配置
+  - 支持翻译数据源配置
+
+**使用示例**:
+```java
+// 方案1：扩展现有注解
+@CachePut(module = "user", key = "#user.id", translationData = true, 
+          translationSource = "user", translationFields = {"username", "nickname"})
+public User saveUser(User user) {
+    return userRepository.save(user);
+}
+
+// 方案2：字段级翻译标记
+public class OrderDTO {
+    private Long id;
+    private Long userId;
+    
+    @CacheTranslate(source = "user", key = "#userId", field = "username")
+    private String username;
+    
+    @CacheTranslate(source = "user", key = "#userId", field = "nickname")
+    private String nickname;
+}
+
+// 方案3：组合注解
+@Caching(
+    put = {
+        @CachePut(module = "user", key = "#user.id", translationData = true, 
+                  translationSource = "user", translationFields = {"username", "nickname"})
+    },
+    translate = {
+        @CacheTranslate(source = "user", key = "#userId", field = "username"),
+        @CacheTranslate(source = "user", key = "#userId", field = "nickname")
+    }
+)
+public OrderDTO createOrder(Order order) {
+    return orderService.create(order);
+}
+```
+
+**预计工作量**: 3-4 天
+**依赖**: 无
+
+#### 1.5 缓存功能增强 🔧 **需要完善**
 - [ ] 添加缓存预热配置
 - [ ] 实现缓存穿透防护配置
-- [ ] 添加缓存统计面板
-- [ ] 实现缓存监控告警
 - [ ] 完善缓存异常处理
+- [ ] 优化缓存配置管理
+- [ ] 添加缓存健康检查
 
 **预计工作量**: 1-2 天
 **依赖**: 无
@@ -249,7 +333,7 @@
 3. ✅ **synapse-cache 分布式锁增强** - 已完成
 
 ### 第二阶段（1-2周）
-1. **synapse-cache 功能增强** - 完善缓存监控和统计
+1. **synapse-cache 功能增强** - 完善缓存基础功能
 2. **synapse-core 模块完善** - 完善基础功能
 3. **synapse-databases 模块增强** - 完善数据层
 
@@ -340,8 +424,9 @@
 - **缓存功能增强**: 待开始
 
 ### 待开始功能 ⏳
-- **缓存监控和统计**: 需要完善
-- **其他模块优化**: 按计划进行
+- **缓存属性翻译注解**: 新增功能，支持通过注解实现属性翻译
+- **基础框架模块优化**: 按计划进行
+- **独立监控服务**: 后续开发
 
 ## 🎯 成功标准
 
@@ -373,14 +458,28 @@
 - [ ] 实现监控数据收集和存储
 - [ ] 添加监控端点
 
-#### 1.2 告警通知
+#### 1.2 缓存监控功能
+- [ ] 实现缓存统计面板
+- [ ] 添加缓存性能监控
+- [ ] 实现缓存告警机制
+- [ ] 添加缓存热点分析
+- [ ] 实现缓存容量监控
+
+#### 1.3 锁监控功能
+- [ ] 实现分布式锁监控
+- [ ] 添加锁性能统计
+- [ ] 实现死锁检测监控
+- [ ] 添加锁竞争分析
+- [ ] 实现锁告警机制
+
+#### 1.4 告警通知
 - [ ] 实现告警规则配置
 - [ ] 添加邮件告警通知
 - [ ] 添加钉钉/企业微信告警
 - [ ] 实现告警级别和分组
 - [ ] 添加告警抑制和恢复
 
-#### 1.3 监控面板
+#### 1.5 监控面板
 - [ ] 实现监控数据可视化
 - [ ] 添加实时监控面板
 - [ ] 实现历史数据查询

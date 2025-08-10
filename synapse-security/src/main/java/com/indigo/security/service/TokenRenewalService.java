@@ -44,21 +44,21 @@ public class TokenRenewalService {
         try {
             // 如果没有UserSessionService，返回有效状态
             if (userSessionService == null) {
-                log.debug("UserSessionService不可用，跳过token续期检查");
+                log.info("UserSessionService不可用，跳过token续期检查");
                 return TokenRenewalInfo.valid(token, renewalDurationSeconds);
             }
 
             // 获取用户会话信息
             UserContext userContext = userSessionService.getUserSession(token);
             if (userContext == null) {
-                log.debug("用户会话不存在，token无效: {}", token);
+                log.info("用户会话不存在，token无效: {}", token);
                 return TokenRenewalInfo.invalid();
             }
 
             // 检查token剩余时间
             long remainingSeconds = getTokenRemainingTime(token);
             if (remainingSeconds <= 0) {
-                log.debug("Token已过期: {}", token);
+                log.info("Token已过期: {}", token);
                 return TokenRenewalInfo.expired();
             }
 

@@ -4,8 +4,11 @@ import com.indigo.security.model.TokenInfo;
 import com.indigo.security.model.UserPrincipal;
 
 /**
- * 令牌管理服务接口
- * 负责令牌的生成、验证、刷新和撤销
+ * 高级Token管理服务接口
+ * 负责Token的高级操作，如刷新、撤销、黑名单管理等
+ * 与TokenManager形成分层架构：
+ * - TokenManager: 基础Token操作（登录、验证、续期）
+ * - TokenService: 高级Token操作（刷新、撤销、黑名单）
  *
  * @author 史偕成
  * @date 2024/12/19
@@ -13,25 +16,8 @@ import com.indigo.security.model.UserPrincipal;
 public interface TokenService {
 
     /**
-     * 生成访问令牌
-     *
-     * @param userPrincipal 用户主体信息
-     * @param clientId 客户端ID（可选）
-     * @param scope 授权范围（可选）
-     * @return 令牌信息
-     */
-    TokenInfo generateToken(UserPrincipal userPrincipal, String clientId, String scope);
-
-    /**
-     * 验证令牌有效性
-     *
-     * @param token 访问令牌
-     * @return 令牌信息，如果无效返回null
-     */
-    TokenInfo validateToken(String token);
-
-    /**
-     * 刷新令牌
+     * 刷新访问令牌
+     * 使用刷新令牌生成新的访问令牌
      *
      * @param refreshToken 刷新令牌
      * @return 新的令牌信息
@@ -39,7 +25,8 @@ public interface TokenService {
     TokenInfo refreshToken(String refreshToken);
 
     /**
-     * 撤销令牌
+     * 撤销访问令牌
+     * 将令牌加入黑名单，使其失效
      *
      * @param token 访问令牌
      * @return 是否成功撤销
@@ -48,6 +35,7 @@ public interface TokenService {
 
     /**
      * 撤销用户的所有令牌
+     * 用户登出或账号被禁用时使用
      *
      * @param userId 用户ID
      * @return 撤销的令牌数量
@@ -55,18 +43,27 @@ public interface TokenService {
     int revokeAllUserTokens(Long userId);
 
     /**
-     * 从令牌中解析用户ID
-     *
-     * @param token 访问令牌
-     * @return 用户ID，如果解析失败返回null
-     */
-    Long parseUserId(String token);
-
-    /**
-     * 检查令牌是否存在于黑名单
+     * 检查令牌是否在黑名单中
      *
      * @param token 访问令牌
      * @return 是否在黑名单中
      */
     boolean isTokenBlacklisted(String token);
+
+    /**
+     * 获取令牌详细信息
+     * 包含令牌的元数据信息
+     *
+     * @param token 访问令牌
+     * @return 令牌信息
+     */
+    TokenInfo getTokenInfo(String token);
+
+    /**
+     * 清理过期的黑名单令牌
+     * 定期清理任务调用
+     *
+     * @return 清理的令牌数量
+     */
+    int cleanupExpiredBlacklistedTokens();
 } 

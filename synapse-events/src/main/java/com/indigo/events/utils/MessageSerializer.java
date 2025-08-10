@@ -57,7 +57,7 @@ public class MessageSerializer {
             // 设置消息键（用于消息去重）
             message.setKeys(event.getEventId());
             
-            log.debug("Serialized event to message: eventId={}, topic={}", event.getEventId(), topic);
+            log.info("Serialized event to message: eventId={}, topic={}", event.getEventId(), topic);
             return message;
             
         } catch (Exception e) {
@@ -80,7 +80,7 @@ public class MessageSerializer {
             // 反序列化为事件对象
             Event event = jsonUtils.fromJsonToObject(eventJson, Event.class);
             
-            log.debug("Deserialized message to event: eventId={}, topic={}", 
+            log.info("Deserialized message to event: eventId={}, topic={}", 
                      event.getEventId(), message.getTopic());
             return event;
             
@@ -116,7 +116,7 @@ public class MessageSerializer {
                 message.setKeys(keys);
             }
             
-            log.debug("Serialized map to message: topic={}, tags={}, keys={}", topic, tags, keys);
+            log.info("Serialized map to message: topic={}, tags={}, keys={}", topic, tags, keys);
             return message;
             
         } catch (Exception e) {
@@ -139,7 +139,7 @@ public class MessageSerializer {
             // 反序列化为 Map
             Map<String, Object> data = jsonUtils.fromJsonToObject(json, Map.class);
             
-            log.debug("Deserialized message to map: topic={}", 
+            log.info("Deserialized message to map: topic={}", 
                      message.getTopic());
             return data;
             

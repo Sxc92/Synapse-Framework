@@ -1,1 +1,2 @@
 com.indigo.cache.config.CacheAutoConfiguration
+com.indigo.cache.config.LockAutoConfiguration

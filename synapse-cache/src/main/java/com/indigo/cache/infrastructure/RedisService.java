@@ -18,10 +18,22 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 
 /**
- * Redis服务类，提供常用的Redis操作方法
+ * Redis服务类，提供基础的Redis操作方法
  * 注意：该类不使用@Service注解，而是通过CacheAutoConfiguration创建bean
  * 这样可以确保RedisTemplate等依赖已经正确初始化
- *  TODO 1、增加常用封装方法（用于 token 校验场景） 未做
+ * 
+ * 功能特性：
+ * - 基础Redis操作（字符串、对象、集合、哈希、列表、有序集合等）
+ * - 位图操作
+ * - Lua脚本执行
+ * - 键扫描和模式匹配
+ * - 简单限流功能（基于计数器）
+ * 
+ * 设计原则：
+ * - 专注于Redis基础操作，不包含业务逻辑
+ * - Token和会话管理由UserSessionService负责
+ * - 保持接口简洁，易于使用和测试
+ * 
  * @author 史偕成
  * @date 2025/05/16 08:50
  */
@@ -544,5 +556,80 @@ public class RedisService {
             log.error("扫描键失败: pattern={}, count={}, error={}", pattern, count, e.getMessage(), e);
         }
         return keys;
+    }
+
+    /**
+     * 获取位图中的位值
+     *
+     * @param key    键
+     * @param offset 偏移量
+     * @return 位值
+     */
+    public Boolean getBit(String key, long offset) {
+        try {
+            return redisTemplate.opsForValue().getBit(key, offset);
+        } catch (Exception e) {
+            log.error("获取位图位值失败: key={}, offset={}, error={}", key, offset, e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * 设置位图中的位值
+     *
+     * @param key    键
+     * @param offset 偏移量
+     * @param value  位值
+     * @return 之前的位值
+     */
+    public Boolean setBit(String key, long offset, boolean value) {
+        try {
+            return redisTemplate.opsForValue().setBit(key, offset, value);
+        } catch (Exception e) {
+            log.error("设置位图位值失败: key={}, offset={}, value={}, error={}", key, offset, value, e.getMessage(), e);
+            return false;
+        }
+    }
+
+    // ==================== 限流相关方法 ====================
+    
+    /**
+     * 基于用户的简单限流
+     * 
+     * @param userId 用户ID
+     * @param limit 限制次数
+     * @param windowSeconds 时间窗口（秒）
+     * @return 是否允许访问
+     */
+    public boolean isUserAllowed(String userId, int limit, int windowSeconds) {
+        String key = "rate_limit:user:" + userId;
+        Long current = redisTemplate.opsForValue().increment(key);
+        
+        if (current == 1) {
+            // 第一次访问，设置过期时间
+            expire(key, windowSeconds);
+        }
+        
+        return current <= limit;
+    }
+    
+    /**
+     * 基于IP的简单限流
+     * 
+     * @param ip IP地址
+     * @param limit 限制次数
+     * @param windowSeconds 时间窗口（秒）
+     * @return 是否允许访问
+     */
+    public boolean isIpAllowed(String ip, int limit, int windowSeconds) {
+        String key = "rate_limit:ip:" + ip;
+        Long current = redisTemplate.opsForValue().increment(key);
+        
+        if (current == 1) {
+            // 第一次访问，设置过期时间
+            expire(key, windowSeconds);
+        }
+        
+        return current <= limit;
     }
 } 

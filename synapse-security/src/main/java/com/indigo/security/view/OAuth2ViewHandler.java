@@ -21,7 +21,7 @@ public class OAuth2ViewHandler {
      * @return 未登录响应
      */
     public Result<String> getNotLoginView() {
-        log.debug("用户未登录，返回登录提示");
+        log.info("用户未登录，返回登录提示");
         return Result.error("请先登录", "NOT_LOGIN");
     }
 
@@ -31,7 +31,7 @@ public class OAuth2ViewHandler {
      * @return 授权确认响应
      */
     public Result<String> getConfirmView() {
-        log.debug("返回授权确认视图");
+        log.info("返回授权确认视图");
         return Result.success("请确认授权");
     }
 
@@ -41,7 +41,7 @@ public class OAuth2ViewHandler {
      * @return 错误响应
      */
     public Result<String> getErrorView() {
-        log.debug("返回错误视图");
+        log.info("返回错误视图");
         return Result.error("授权过程中发生错误");
     }
 
@@ -51,7 +51,7 @@ public class OAuth2ViewHandler {
      * @return 服务器错误响应
      */
     public Result<String> getServerErrorView() {
-        log.debug("返回服务器错误视图");
+        log.info("返回服务器错误视图");
         return Result.error("服务器内部错误");
     }
 } 

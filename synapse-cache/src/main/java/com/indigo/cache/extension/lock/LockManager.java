@@ -1,4 +1,4 @@
-package com.indigo.cache.extension;
+package com.indigo.cache.extension.lock;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -8,17 +8,58 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * 统一分布式锁管理器
- * 整合可重入锁、读写锁、公平锁等功能，提供统一的API
  * 
- * 特性：
- * 1. 统一API：提供一致的锁操作接口
+ * 作为分布式锁系统的唯一对外入口，整合所有锁类型和功能：
+ * 
+ * 📋 架构层次：
+ * ┌─────────────────────────────────────────┐
+ * │              LockManager                │  ← 统一入口（对外暴露）
+ * │        (extension.LockManager)          │
+ * ├─────────────────────────────────────────┤
+ * │  DistributedLockService (可重入锁)       │
+ * │  ReadWriteLockService   (读写锁)        │  ← 底层实现（内部Bean）
+ * │  FairLockService       (公平锁)        │
+ * │  DeadlockDetector      (死锁检测)       │
+ * │  LockPerformanceMonitor(性能监控)       │
+ * └─────────────────────────────────────────┘
+ * 
+ * 🔧 核心特性：
+ * 1. 统一API：提供一致的锁操作接口，屏蔽底层复杂性
  * 2. 多种锁类型：支持可重入锁、读写锁、公平锁
- * 3. 性能监控：集成锁性能监控
- * 4. 死锁检测：集成死锁检测和预防
- * 5. 自动管理：自动选择合适的锁类型
+ * 3. 性能监控：集成锁性能监控和统计
+ * 4. 死锁检测：集成死锁检测和预防机制
+ * 5. 自动管理：自动选择合适的锁类型和超时策略
+ * 6. 异常处理：统一的异常处理和日志记录
+ * 
+ * 🚀 使用示例：
+ * ```java
+ * // 注入统一管理器
+ * @Autowired
+ * private LockManager lockManager;
+ * 
+ * // 简单加锁
+ * String lockValue = lockManager.tryLock("order", "123", 10);
+ * 
+ * // 便捷执行
+ * Result result = lockManager.executeWithLock("order", "123", () -> {
+ *     // 业务逻辑
+ *     return processOrder();
+ * });
+ * 
+ * // 读写锁
+ * lockManager.executeWithReadLock("data", "key", () -> {
+ *     return readData();
+ * });
+ * ```
+ * 
+ * ⚠️ 重要说明：
+ * - 这是分布式锁的唯一对外入口，请勿直接使用底层服务
+ * - 底层服务(DistributedLockService等)为内部Bean，不对外暴露
+ * - 所有锁操作都应通过此管理器进行，确保统一监控和管理
  *
  * @author 史偕成
  * @date 2025/01/08
+ * @version 2.0 (重构为统一入口架构)
  */
 @Slf4j
 @Component
@@ -104,10 +145,10 @@ public class LockManager {
             if (lockValue != null) {
                 performanceMonitor.recordLockSuccess(lockName, key, startTime, lockValue);
                 deadlockDetector.recordLockAcquired(threadId, generateLockKey(lockName, key));
-                log.debug("[LockManager] 获取锁成功: {}:{} 类型: {}", lockName, key, lockType);
+                log.info("[LockManager] 获取锁成功: {}:{} 类型: {}", lockName, key, lockType);
             } else {
                 performanceMonitor.recordLockFailure(lockName, key, startTime, "获取失败");
-                log.debug("[LockManager] 获取锁失败: {}:{} 类型: {}", lockName, key, lockType);
+                log.info("[LockManager] 获取锁失败: {}:{} 类型: {}", lockName, key, lockType);
             }
             
             return lockValue;
@@ -138,10 +179,10 @@ public class LockManager {
             if (lockValue != null) {
                 performanceMonitor.recordLockSuccess(lockName, key, startTime, lockValue);
                 deadlockDetector.recordLockAcquired(threadId, generateLockKey(lockName, key));
-                log.debug("[LockManager] 获取读锁成功: {}:{}", lockName, key);
+                log.info("[LockManager] 获取读锁成功: {}:{}", lockName, key);
             } else {
                 performanceMonitor.recordLockFailure(lockName, key, startTime, "获取读锁失败");
-                log.debug("[LockManager] 获取读锁失败: {}:{}", lockName, key);
+                log.info("[LockManager] 获取读锁失败: {}:{}", lockName, key);
             }
             
             return lockValue;
@@ -172,10 +213,10 @@ public class LockManager {
             if (lockValue != null) {
                 performanceMonitor.recordLockSuccess(lockName, key, startTime, lockValue);
                 deadlockDetector.recordLockAcquired(threadId, generateLockKey(lockName, key));
-                log.debug("[LockManager] 获取写锁成功: {}:{}", lockName, key);
+                log.info("[LockManager] 获取写锁成功: {}:{}", lockName, key);
             } else {
                 performanceMonitor.recordLockFailure(lockName, key, startTime, "获取写锁失败");
-                log.debug("[LockManager] 获取写锁失败: {}:{}", lockName, key);
+                log.info("[LockManager] 获取写锁失败: {}:{}", lockName, key);
             }
             
             return lockValue;
@@ -202,7 +243,7 @@ public class LockManager {
         
         try {
             performanceMonitor.recordLockAttempt(lockName, key, startTime);
-            deadlockDetector.recordLockWait(threadId, generateLockKey(lockName, key));
+            deadlockDetector.recordLockWaitStart(threadId, generateLockKey(lockName, key));
             
             String lockValue = null;
             switch (lockType) {
@@ -220,11 +261,11 @@ public class LockManager {
             if (lockValue != null) {
                 performanceMonitor.recordLockSuccess(lockName, key, startTime, lockValue);
                 deadlockDetector.recordLockWaitEnd(threadId, generateLockKey(lockName, key));
-                log.debug("[LockManager] 等待获取锁成功: {}:{} 类型: {}", lockName, key, lockType);
+                log.info("[LockManager] 等待获取锁成功: {}:{} 类型: {}", lockName, key, lockType);
             } else {
                 performanceMonitor.recordLockFailure(lockName, key, startTime, "等待超时");
                 deadlockDetector.recordLockWaitEnd(threadId, generateLockKey(lockName, key));
-                log.debug("[LockManager] 等待获取锁失败: {}:{} 类型: {}", lockName, key, lockType);
+                log.info("[LockManager] 等待获取锁失败: {}:{} 类型: {}", lockName, key, lockType);
             }
             
             return lockValue;
@@ -272,9 +313,9 @@ public class LockManager {
                 long holdTime = System.currentTimeMillis() - startTime;
                 performanceMonitor.recordLockRelease(lockName, key, lockValue, holdTime);
                 deadlockDetector.recordLockReleased(threadId, lockKey);
-                log.debug("[LockManager] 释放锁成功: {}:{} 类型: {}", lockName, key, lockType);
+                log.info("[LockManager] 释放锁成功: {}:{} 类型: {}", lockName, key, lockType);
             } else {
-                log.debug("[LockManager] 释放锁失败: {}:{} 类型: {}", lockName, key, lockType);
+                log.info("[LockManager] 释放锁失败: {}:{} 类型: {}", lockName, key, lockType);
             }
             
             return released;
@@ -303,9 +344,9 @@ public class LockManager {
                 long holdTime = System.currentTimeMillis() - startTime;
                 performanceMonitor.recordLockRelease(lockName, key, "read", holdTime);
                 deadlockDetector.recordLockReleased(threadId, lockKey);
-                log.debug("[LockManager] 释放读锁成功: {}:{}", lockName, key);
+                log.info("[LockManager] 释放读锁成功: {}:{}", lockName, key);
             } else {
-                log.debug("[LockManager] 释放读锁失败: {}:{}", lockName, key);
+                log.info("[LockManager] 释放读锁失败: {}:{}", lockName, key);
             }
             
             return released;
@@ -335,9 +376,9 @@ public class LockManager {
                 long holdTime = System.currentTimeMillis() - startTime;
                 performanceMonitor.recordLockRelease(lockName, key, lockValue, holdTime);
                 deadlockDetector.recordLockReleased(threadId, lockKey);
-                log.debug("[LockManager] 释放写锁成功: {}:{}", lockName, key);
+                log.info("[LockManager] 释放写锁成功: {}:{}", lockName, key);
             } else {
-                log.debug("[LockManager] 释放写锁失败: {}:{}", lockName, key);
+                log.info("[LockManager] 释放写锁失败: {}:{}", lockName, key);
             }
             
             return released;
@@ -375,6 +416,9 @@ public class LockManager {
         if (lockValue != null) {
             try {
                 return action.execute();
+            } catch (Exception e) {
+                log.error("[LockManager] 执行操作异常: {}:{}", lockName, key, e);
+                throw new RuntimeException("锁内操作执行失败", e);
             } finally {
                 unlock(lockName, key, lockValue, lockType);
             }
@@ -396,6 +440,9 @@ public class LockManager {
         if (lockValue != null) {
             try {
                 return action.execute();
+            } catch (Exception e) {
+                log.error("[LockManager] 读锁操作异常: {}:{}", lockName, key, e);
+                throw new RuntimeException("读锁内操作执行失败", e);
             } finally {
                 releaseReadLock(lockName, key);
             }
@@ -417,6 +464,9 @@ public class LockManager {
         if (lockValue != null) {
             try {
                 return action.execute();
+            } catch (Exception e) {
+                log.error("[LockManager] 写锁操作异常: {}:{}", lockName, key, e);
+                throw new RuntimeException("写锁内操作执行失败", e);
             } finally {
                 releaseWriteLock(lockName, key, lockValue);
             }
@@ -481,11 +531,5 @@ public class LockManager {
         return "lock:" + lockName + ":" + key;
     }
 
-    /**
-     * 锁操作接口
-     */
-    @FunctionalInterface
-    public interface LockAction<T> {
-        T execute();
-    }
+
 } 

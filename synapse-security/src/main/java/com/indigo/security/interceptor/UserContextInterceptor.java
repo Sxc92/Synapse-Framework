@@ -44,13 +44,13 @@ public class UserContextInterceptor implements HandlerInterceptor {
                 if (userContext != null) {
                     // 设置到 ThreadLocal
                     UserContext.setCurrentUser(userContext);
-                    log.debug("用户上下文已设置: userId={}, username={}", 
+                    log.info("用户上下文已设置: userId={}, username={}", 
                             userContext.getUserId(), userContext.getUsername());
                 } else {
-                    log.debug("未找到用户上下文，token: {}", token);
+                    log.info("未找到用户上下文，token: {}", token);
                 }
             } else {
-                log.debug("请求中未包含 token，URL: {}", request.getRequestURI());
+                log.info("请求中未包含 token，URL: {}", request.getRequestURI());
             }
         } catch (Exception e) {
             log.error("设置用户上下文时发生异常", e);

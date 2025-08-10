@@ -3,6 +3,7 @@ package com.indigo.security.model;
 import lombok.Builder;
 import lombok.Data;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -20,6 +21,11 @@ public class AuthRequest {
      * 认证类型
      */
     private AuthType authType;
+
+    /**
+     * 认证策略类型（如：satoken、jwt、oauth2等）
+     */
+    private String strategyType;
 
     private String userId;
 
@@ -64,6 +70,11 @@ public class AuthRequest {
     private String scope;
 
     /**
+     * OAuth2.0提供商（如：google、github、wechat等）
+     */
+    private String provider;
+
+    /**
      * 租户ID（多租户支持）
      */
     private Long tenantId;
@@ -82,6 +93,16 @@ public class AuthRequest {
      * 扩展参数
      */
     private Map<String, Object> extraParams;
+
+    /**
+     * 用户角色列表（由业务模块传入）
+     */
+    private List<String> roles;
+
+    /**
+     * 用户权限列表（由业务模块传入）
+     */
+    private List<String> permissions;
 
     /**
      * 认证类型枚举

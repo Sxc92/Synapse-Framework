@@ -53,7 +53,7 @@ public class UserContextWebFluxFilter implements WebFilter {
                     log.warn("未找到用户上下文，token: {}", token);
                 }
             } else {
-                log.debug("请求中未包含 token，URL: {}", exchange.getRequest().getURI());
+                log.info("请求中未包含 token，URL: {}", exchange.getRequest().getURI());
             }
         } catch (Exception e) {
             log.error("设置用户上下文时发生异常", e);

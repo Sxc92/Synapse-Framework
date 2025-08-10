@@ -105,11 +105,11 @@ public class ConsumerManager {
      */
     public void logClusterStatus() {
         if (log.isDebugEnabled()) {
-            log.debug("Cluster status - Total consumers: {}, Application: {}", 
+            log.info("Cluster status - Total consumers: {}, Application: {}", 
                     clusterConsumers.size(), applicationName);
             
             clusterConsumers.values().forEach(consumer -> 
-                log.debug("Consumer: {} - Status: {} - Last heartbeat: {}", 
+                log.info("Consumer: {} - Status: {} - Last heartbeat: {}", 
                         consumer.getInstanceId(), consumer.getStatus(), consumer.getLastHeartbeat()));
         }
     }

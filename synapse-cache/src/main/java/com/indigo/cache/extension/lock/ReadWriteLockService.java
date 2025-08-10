@@ -1,4 +1,4 @@
-package com.indigo.cache.extension;
+package com.indigo.cache.extension.lock;
 
 import com.indigo.cache.infrastructure.RedisService;
 import com.indigo.cache.manager.CacheKeyGenerator;
@@ -124,10 +124,10 @@ public class ReadWriteLockService {
             boolean acquired = result != null && result == 1L;
             if (acquired) {
                 String lockValue = nodeId + ":" + threadId + ":" + uuid;
-                log.debug("[ReadLock] 获取读锁成功: {} threadId={}", lockKey, threadId);
+                log.info("[ReadLock] 获取读锁成功: {} threadId={}", lockKey, threadId);
                 return lockValue;
             } else {
-                log.debug("[ReadLock] 获取读锁失败: {} threadId={}", lockKey, threadId);
+                log.info("[ReadLock] 获取读锁失败: {} threadId={}", lockKey, threadId);
                 return null;
             }
         } catch (Exception e) {
@@ -157,10 +157,10 @@ public class ReadWriteLockService {
             boolean acquired = result != null && result == 1L;
             if (acquired) {
                 String lockValue = nodeId + ":" + threadId + ":" + uuid;
-                log.debug("[WriteLock] 获取写锁成功: {} threadId={}", lockKey, threadId);
+                log.info("[WriteLock] 获取写锁成功: {} threadId={}", lockKey, threadId);
                 return lockValue;
             } else {
-                log.debug("[WriteLock] 获取写锁失败: {} threadId={}", lockKey, threadId);
+                log.info("[WriteLock] 获取写锁失败: {} threadId={}", lockKey, threadId);
                 return null;
             }
         } catch (Exception e) {
@@ -243,9 +243,9 @@ public class ReadWriteLockService {
             boolean released = result != null && result == 1L;
             
             if (released) {
-                log.debug("[ReadLock] 释放读锁成功: {} threadId={}", lockKey, threadId);
+                log.info("[ReadLock] 释放读锁成功: {} threadId={}", lockKey, threadId);
             } else {
-                log.debug("[ReadLock] 释放读锁失败: {} threadId={}", lockKey, threadId);
+                log.info("[ReadLock] 释放读锁失败: {} threadId={}", lockKey, threadId);
             }
             
             return released;
@@ -272,9 +272,9 @@ public class ReadWriteLockService {
             boolean released = result != null && result == 1L;
             
             if (released) {
-                log.debug("[WriteLock] 释放写锁成功: {} threadId={}", lockKey, threadId);
+                log.info("[WriteLock] 释放写锁成功: {} threadId={}", lockKey, threadId);
             } else {
-                log.debug("[WriteLock] 释放写锁失败: {} threadId={}", lockKey, threadId);
+                log.info("[WriteLock] 释放写锁失败: {} threadId={}", lockKey, threadId);
             }
             
             return released;

@@ -1,4 +1,4 @@
-package com.indigo.cache.extension;
+package com.indigo.cache.extension.lock;
 
 import com.indigo.cache.infrastructure.RedisService;
 import com.indigo.cache.manager.CacheKeyGenerator;
@@ -13,20 +13,32 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
 /**
- * 分布式可重入锁服务（支持Lua原子操作、自动续期、分布式多节点看门狗）
- * <p>
- * 1. 可重入锁：同一线程多次加锁只请求一次Redis，重入计数本地维护。
- * 2. 分布式多节点看门狗：锁value包含nodeId:threadId:uuid，只有持有者节点续期。
- * 3. 加锁/解锁/续期均用Lua脚本，保证原子性。
- * 4. 自动续期：业务未完成时自动延长锁过期时间。
- * 5. 支持便捷执行等。
- * 用法：
- *   DistributedLockService.lock(...)
- *   DistributedLockService.unlock(...)
- *   DistributedLockService.executeWithLock(...)
+ * 分布式可重入锁服务（内部实现）
+ * 
+ * ⚠️ 注意：这是内部实现类，请勿直接使用！
+ * 应该通过 LockManager 统一入口访问分布式锁功能
+ * 
+ * 🔧 技术实现：
+ * 1. 可重入锁：同一线程多次加锁只请求一次Redis，重入计数本地维护
+ * 2. 分布式多节点看门狗：锁value包含nodeId:threadId:uuid，只有持有者节点续期
+ * 3. 加锁/解锁/续期均用Lua脚本，保证原子性
+ * 4. 自动续期：业务未完成时自动延长锁过期时间
+ * 5. 支持便捷执行
+ * 
+ * 📋 正确用法：
+ * ```java
+ * @Autowired
+ * private LockManager lockManager;  // 使用统一入口
+ * 
+ * lockManager.executeWithLock("order", "123", () -> {
+ *     // 业务逻辑
+ *     return processOrder();
+ * });
+ * ```
  *
  * @author 史偕成
  * @date 2025/05/16 15:00
+ * @version 2.0 (内部实现，通过LockManager访问)
  */
 @Slf4j
 public class DistributedLockService implements DisposableBean {
@@ -111,7 +123,7 @@ public class DistributedLockService implements DisposableBean {
         if (threadLocks.containsKey(lockKey)) {
             ReentrantInfo info = threadLocks.get(lockKey);
             info.reentrantCount++;
-            log.debug("[ReentrantLock] 重入锁: {} count={}", lockKey, info.reentrantCount);
+            log.info("[ReentrantLock] 重入锁: {} count={}", lockKey, info.reentrantCount);
             return info.lockValue;
         }
         // 使用 RedisService 执行Lua脚本
@@ -123,10 +135,10 @@ public class DistributedLockService implements DisposableBean {
             ReentrantInfo info = new ReentrantInfo(lockKey, lockValue, 1);
             threadLocks.put(lockKey, info);
             localLocks.put(lockKey, new LockInfo(lockName, key, lockValue));
-            log.debug("[Lock] 获取锁成功: {} value={}", lockKey, lockValue);
+            log.info("[Lock] 获取锁成功: {} value={}", lockKey, lockValue);
             return lockValue;
         } else {
-            log.debug("[Lock] 获取锁失败: {}", lockKey);
+            log.info("[Lock] 获取锁失败: {}", lockKey);
             return null;
         }
     }
@@ -217,7 +229,7 @@ public class DistributedLockService implements DisposableBean {
         // 可重入：重入计数>1时仅减计数，不释放Redis锁
         if (info.reentrantCount > 1) {
             info.reentrantCount--;
-            log.debug("[ReentrantLock] 解锁重入: {} 剩余count={}", lockKey, info.reentrantCount);
+            log.info("[ReentrantLock] 解锁重入: {} 剩余count={}", lockKey, info.reentrantCount);
             return true;
         }
         // 使用 RedisService 执行Lua脚本
@@ -229,10 +241,10 @@ public class DistributedLockService implements DisposableBean {
             localLocks.remove(lockKey);
             // 尝试唤醒等待的线程
             tryWakeupWaitingThreads(lockKey);
-            log.debug("[Lock] 释放锁成功: {} value={}", lockKey, lockValue);
+            log.info("[Lock] 释放锁成功: {} value={}", lockKey, lockValue);
             return true;
         } else {
-            log.debug("[Lock] 释放锁失败: {} value={}", lockKey, lockValue);
+            log.info("[Lock] 释放锁失败: {} value={}", lockKey, lockValue);
             return false;
         }
     }
@@ -268,9 +280,12 @@ public class DistributedLockService implements DisposableBean {
         if (renewed) {
             info.lastRenewTime = System.currentTimeMillis();
             info.expireSeconds = RENEWAL_SECONDS;
-            log.debug("[Lock] 自动续期成功: {} value={}", info.key, info.value);
+            log.info("[Lock] 自动续期成功: {} value={}", info.key, info.value);
         } else {
+            // 续期失败可能表示锁被其他进程释放或过期，需要记录但不要太频繁
             log.warn("[Lock] 自动续期失败: {} value={}", info.key, info.value);
+            // 从本地锁信息中移除，避免重复尝试
+            localLocks.remove(info.key);
         }
     }
 
@@ -287,6 +302,9 @@ public class DistributedLockService implements DisposableBean {
         if (lockValue != null) {
             try {
                 return action.execute();
+            } catch (Exception e) {
+                log.error("[DistributedLock] 执行操作异常: {}:{}", lockName, key, e);
+                throw new RuntimeException("分布式锁内操作执行失败", e);
             } finally {
                 unlock(lockName, key, lockValue);
             }
@@ -309,6 +327,9 @@ public class DistributedLockService implements DisposableBean {
         if (lockValue != null) {
             try {
                 return action.execute();
+            } catch (Exception e) {
+                log.error("[DistributedLock] 等待锁操作异常: {}:{}", lockName, key, e);
+                throw new RuntimeException("分布式锁等待操作执行失败", e);
             } finally {
                 unlock(lockName, key, lockValue);
             }
@@ -334,14 +355,7 @@ public class DistributedLockService implements DisposableBean {
         }
     }
 
-    /**
-     * 锁操作接口
-     * @param <T> 返回值类型
-     */
-    @FunctionalInterface
-    public interface LockAction<T> {
-        T execute();
-    }
+
 
     /**
      * 本地锁信息（仅本节点持有的锁）

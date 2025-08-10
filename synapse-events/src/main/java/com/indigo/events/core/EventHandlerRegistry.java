@@ -69,7 +69,7 @@ public class EventHandlerRegistry {
         // 注册到名称映射
         handlersByName.put(handler.getName(), handler);
         
-        log.debug("Registered handler: {} for event type: {}", handler.getName(), eventType);
+        log.info("Registered handler: {} for event type: {}", handler.getName(), eventType);
     }
     
     /**
@@ -93,7 +93,7 @@ public class EventHandlerRegistry {
         
         handlersByName.remove(handler.getName());
         
-        log.debug("Unregistered handler: {} for event type: {}", handler.getName(), eventType);
+        log.info("Unregistered handler: {} for event type: {}", handler.getName(), eventType);
     }
     
     /**
@@ -168,11 +168,11 @@ public class EventHandlerRegistry {
      */
     private void logRegisteredHandlers() {
         if (log.isDebugEnabled()) {
-            log.debug("Registered handlers:");
+            log.info("Registered handlers:");
             handlersByEventType.forEach((eventType, handlers) -> {
-                log.debug("  Event type: {} -> {} handlers", eventType, handlers.size());
+                log.info("  Event type: {} -> {} handlers", eventType, handlers.size());
                 handlers.forEach(handler -> 
-                    log.debug("    - {} (priority: {})", handler.getName(), handler.getPriority()));
+                    log.info("    - {} (priority: {})", handler.getName(), handler.getPriority()));
             });
         }
     }

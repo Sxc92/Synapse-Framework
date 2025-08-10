@@ -29,14 +29,14 @@ public class DefaultPermissionManager implements PermissionManager {
     public void storeUserPermissions(String token, List<String> permissions, long expiration) {
         String permissionsKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "permissions", token);
         cacheService.setObject(permissionsKey, permissions, expiration);
-        log.debug("Stored user permissions for token: {}", token);
+        log.info("Stored user permissions for token: {}", token);
     }
 
     @Override
     public void storeUserRoles(String token, List<String> roles, long expiration) {
         String rolesKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "roles", token);
         cacheService.setObject(rolesKey, roles, expiration);
-        log.debug("Stored user roles for token: {}", token);
+        log.info("Stored user roles for token: {}", token);
     }
 
     @Override
@@ -69,7 +69,7 @@ public class DefaultPermissionManager implements PermissionManager {
         String rolesKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "roles", token);
         cacheService.delete(permissionsKey);
         cacheService.delete(rolesKey);
-        log.debug("Removed user permissions and roles for token: {}", token);
+        log.info("Removed user permissions and roles for token: {}", token);
     }
 
     @Override
@@ -78,6 +78,6 @@ public class DefaultPermissionManager implements PermissionManager {
         String rolesKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "roles", token);
         cacheService.resetExpiry(permissionsKey, expiration);
         cacheService.resetExpiry(rolesKey, expiration);
-        log.debug("Extended user permissions and roles for token: {}", token);
+        log.info("Extended user permissions and roles for token: {}", token);
     }
 } 

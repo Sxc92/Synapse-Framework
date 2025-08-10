@@ -7,8 +7,7 @@ import com.indigo.cache.core.CacheService;
 import com.indigo.cache.infrastructure.CaffeineCacheManager;
 import com.indigo.cache.infrastructure.RedisService;
 import com.indigo.cache.core.TwoLevelCacheService;
-import com.indigo.cache.extension.DistributedLockService;
-import com.indigo.cache.extension.RateLimitService;
+import com.indigo.cache.extension.ratelimit.RateLimitService;
 import com.indigo.cache.session.UserSessionService;
 import com.indigo.cache.session.UserSessionServiceFactory;
 import com.indigo.core.utils.ThreadUtils;
@@ -37,7 +36,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 @Slf4j
 @AutoConfiguration(after = RedisAutoConfiguration.class)
 @Import({RedisConfiguration.class})
-@ComponentScan(basePackages = {"com.indigo.cache.aspect", "com.indigo.core"})
+@ComponentScan(basePackages = {"com.indigo.cache.aspect", "com.indigo.cache.core", "com.indigo.core"})
 public class CacheAutoConfiguration {
 
     /**
@@ -131,21 +130,6 @@ public class CacheAutoConfiguration {
             @Qualifier("synapseCacheKeyGenerator") CacheKeyGenerator cacheKeyGenerator) {
         log.info("创建RateLimitService Bean");
         return new RateLimitService(redisService, cacheKeyGenerator);
-    }
-
-    /**
-     * 注册分布式锁服务
-     * 依赖于ThreadUtils，只有在ThreadUtils bean存在时才创建
-     */
-    @Bean
-    @ConditionalOnMissingBean
-    @ConditionalOnClass(ThreadUtils.class)
-    public DistributedLockService distributedLockService(
-            RedisService redisService,
-            @Qualifier("synapseCacheKeyGenerator") CacheKeyGenerator cacheKeyGenerator,
-            ThreadUtils threadUtils) {
-        log.info("创建DistributedLockService Bean");
-        return new DistributedLockService(redisService, cacheKeyGenerator, threadUtils);
     }
 
 

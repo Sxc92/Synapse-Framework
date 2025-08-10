@@ -46,7 +46,7 @@ public class DataSourceLoadBalancer {
         }
         
         Map<String, DataSource> dataSources = routingDataSource.getDataSources();
-        log.debug("Available data sources: {}", dataSources.keySet());
+        log.info("Available data sources: {}", dataSources.keySet());
         
         // 过滤出指定类型且健康的数据源
         List<String> availableDataSources = dataSources.keySet().stream()
@@ -57,12 +57,12 @@ public class DataSourceLoadBalancer {
                         case SLAVE -> name.startsWith("slave");
                     };
                     boolean isHealthy = healthChecker.isHealthy(name);
-                    log.debug("DataSource [{}] - isType: {}, isHealthy: {}", name, isType, isHealthy);
+                    log.info("DataSource [{}] - isType: {}, isHealthy: {}", name, isType, isHealthy);
                     return isType && isHealthy;
                 })
                 .toList();
         
-        log.debug("Available {} data sources: {}", type, availableDataSources);
+        log.info("Available {} data sources: {}", type, availableDataSources);
         
         if (availableDataSources.isEmpty()) {
             // 如果没有可用的数据源，尝试使用主数据源
@@ -83,7 +83,7 @@ public class DataSourceLoadBalancer {
         }
         
         String selectedDataSource = availableDataSources.get(index);
-        log.debug("Selected {} data source: {}", type, selectedDataSource);
+        log.info("Selected {} data source: {}", type, selectedDataSource);
         return selectedDataSource;
     }
     
