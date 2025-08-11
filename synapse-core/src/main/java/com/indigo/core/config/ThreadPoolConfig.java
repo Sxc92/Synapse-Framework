@@ -3,113 +3,194 @@ package com.indigo.core.config;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
-import java.util.concurrent.*;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
- * Thread pool configuration
- * Different thread pools for different scenarios
+ * Thread pool configuration for different use cases
+ * Provides optimized thread pools for IO, CPU, common, and monitoring tasks
  * 
  * @author 史偕成
- * @date 2025/04/24 21:57
+ * @date 2025/08/11 12:41:56
  **/
 @Slf4j
 @Configuration
-@EnableAsync
 public class ThreadPoolConfig {
 
-    /**
-     * IO密集型任务线程池
-     * 核心线程数 = CPU核心数 * 2
-     * 最大线程数 = CPU核心数 * 4
-     */
+    // ==================== IO密集型线程池 ====================
+    // 特点：线程数较多，队列较大，适合网络请求、文件操作等
+
     @Bean("ioThreadPool")
     public ThreadPoolTaskExecutor ioThreadPool() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        int processors = Runtime.getRuntime().availableProcessors();
-        executor.setCorePoolSize(processors * 2);
-        executor.setMaxPoolSize(processors * 4);
+        
+        // IO任务通常需要更多线程来处理并发
+        executor.setCorePoolSize(50);
+        executor.setMaxPoolSize(200);
         executor.setQueueCapacity(1000);
         executor.setKeepAliveSeconds(60);
-        executor.setThreadNamePrefix("io-thread-");
+        
+        // 线程名前缀，便于监控和调试
+        executor.setThreadNamePrefix("io-");
+        
+        // 拒绝策略：对于IO任务，通常希望等待而不是拒绝
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        
+        // 等待所有任务完成后再关闭线程池
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(60);
+        
         executor.initialize();
+        log.info("IO thread pool initialized: core={}, max={}, queue={}", 
+                executor.getCorePoolSize(), executor.getMaxPoolSize(), executor.getQueueCapacity());
+        
         return executor;
     }
 
-    /**
-     * CPU密集型任务线程池
-     * 核心线程数 = CPU核心数 + 1
-     * 最大线程数 = CPU核心数 + 1
-     */
+    // ==================== CPU密集型线程池 ====================
+    // 特点：线程数较少，队列较小，适合计算密集型任务
+
     @Bean("cpuThreadPool")
     public ThreadPoolTaskExecutor cpuThreadPool() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        int processors = Runtime.getRuntime().availableProcessors();
-        executor.setCorePoolSize(processors + 1);
-        executor.setMaxPoolSize(processors + 1);
-        executor.setQueueCapacity(1000);
-        executor.setKeepAliveSeconds(60);
-        executor.setThreadNamePrefix("cpu-thread-");
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        
+        // CPU任务线程数通常设置为CPU核心数或略多
+        int cpuCores = Runtime.getRuntime().availableProcessors();
+        executor.setCorePoolSize(cpuCores);
+        executor.setMaxPoolSize(cpuCores * 2);
+        executor.setQueueCapacity(100);
+        executor.setKeepAliveSeconds(300);
+        
+        executor.setThreadNamePrefix("cpu-");
+        
+        // 拒绝策略：CPU任务通常可以拒绝，避免系统过载
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
+        
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
+        
         executor.initialize();
+        log.info("CPU thread pool initialized: core={}, max={}, queue={}", 
+                executor.getCorePoolSize(), executor.getMaxPoolSize(), executor.getQueueCapacity());
+        
         return executor;
     }
 
-    /**
-     * 定时任务线程池
-     * 核心线程数 = CPU核心数
-     */
-    @Bean("scheduledThreadPool")
-    public ScheduledExecutorService scheduledThreadPool() {
-        int processors = Runtime.getRuntime().availableProcessors();
-        return new ScheduledThreadPoolExecutor(processors,
-                new ThreadFactory() {
-                    private int counter = 1;
-                    @Override
-                    public Thread newThread(Runnable r) {
-                        Thread thread = new Thread(r);
-                        thread.setName("scheduled-thread-" + counter++);
-                        thread.setDaemon(true);
-                        return thread;
-                    }
-                },
-                new ThreadPoolExecutor.CallerRunsPolicy());
-    }
+    // ==================== 通用线程池 ====================
+    // 特点：平衡配置，适合一般业务逻辑
 
-    /**
-     * 通用线程池
-     * 用于处理一般的异步任务
-     */
     @Bean("commonThreadPool")
     public ThreadPoolTaskExecutor commonThreadPool() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(10);
-        executor.setMaxPoolSize(20);
-        executor.setQueueCapacity(2000);
-        executor.setKeepAliveSeconds(60);
-        executor.setThreadNamePrefix("common-thread-");
+        
+        // 通用线程池使用中等配置
+        executor.setCorePoolSize(20);
+        executor.setMaxPoolSize(100);
+        executor.setQueueCapacity(500);
+        executor.setKeepAliveSeconds(120);
+        
+        executor.setThreadNamePrefix("common-");
+        
+        // 拒绝策略：使用CallerRunsPolicy，让调用线程执行任务
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(60);
+        
         executor.initialize();
+        log.info("Common thread pool initialized: core={}, max={}, queue={}", 
+                executor.getCorePoolSize(), executor.getMaxPoolSize(), executor.getQueueCapacity());
+        
         return executor;
     }
 
-    /**
-     * 监控线程池
-     * 用于处理监控、日志等非关键任务
-     */
+    // ==================== 监控线程池 ====================
+    // 特点：低优先级，不阻塞主业务
+
     @Bean("monitorThreadPool")
     public ThreadPoolTaskExecutor monitorThreadPool() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(2);
-        executor.setMaxPoolSize(4);
-        executor.setQueueCapacity(100);
-        executor.setKeepAliveSeconds(60);
-        executor.setThreadNamePrefix("monitor-thread-");
+        
+        // 监控任务使用较少线程，避免影响主业务
+        executor.setCorePoolSize(5);
+        executor.setMaxPoolSize(20);
+        executor.setQueueCapacity(200);
+        executor.setKeepAliveSeconds(300);
+        
+        executor.setThreadNamePrefix("monitor-");
+        
+        // 拒绝策略：监控任务可以丢弃，不影响主业务
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy());
+        
+        executor.setWaitForTasksToCompleteOnShutdown(false);
+        executor.setAwaitTerminationSeconds(10);
+        
         executor.initialize();
+        log.info("Monitor thread pool initialized: core={}, max={}, queue={}", 
+                executor.getCorePoolSize(), executor.getMaxPoolSize(), executor.getQueueCapacity());
+        
+        return executor;
+    }
+
+    // ==================== 定时任务线程池 ====================
+    // 特点：支持定时和周期性任务
+
+    @Bean("scheduledThreadPool")
+    public ThreadPoolTaskScheduler scheduledThreadPool() {
+        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        
+        // 定时任务线程池配置
+        scheduler.setPoolSize(10);
+        scheduler.setThreadNamePrefix("scheduled-");
+        scheduler.setWaitForTasksToCompleteOnShutdown(true);
+        scheduler.setAwaitTerminationSeconds(60);
+        
+        scheduler.initialize();
+        log.info("Scheduled thread pool initialized: poolSize={}", scheduler.getPoolSize());
+        
+        return scheduler;
+    }
+
+    // ==================== 虚拟线程工厂 ====================
+    // 用于创建虚拟线程，适合IO密集型任务
+
+    @Bean("virtualThreadFactory")
+    public ThreadFactory virtualThreadFactory() {
+        return ThreadFactory.ofVirtual()
+                .name("virtual-", 0)
+                .uncaughtExceptionHandler((thread, throwable) -> {
+                    log.error("Uncaught exception in virtual thread: {}", thread.getName(), throwable);
+                })
+                .build();
+    }
+
+    // ==================== 异步任务执行器 ====================
+    // 用于@Async注解的默认执行器
+
+    @Bean("asyncTaskExecutor")
+    public Executor asyncTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        
+        // 异步任务执行器配置
+        executor.setCorePoolSize(10);
+        executor.setMaxPoolSize(50);
+        executor.setQueueCapacity(200);
+        executor.setKeepAliveSeconds(60);
+        executor.setThreadNamePrefix("async-");
+        
+        // 拒绝策略：使用CallerRunsPolicy
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(60);
+        
+        executor.initialize();
+        log.info("Async task executor initialized: core={}, max={}, queue={}", 
+                executor.getCorePoolSize(), executor.getMaxPoolSize(), executor.getQueueCapacity());
+        
         return executor;
     }
 } 

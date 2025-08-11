@@ -32,6 +32,12 @@ Synapse Core 是 Synapse Framework 的核心基础模块，提供了框架的基
 - **用户上下文**：用户身份和权限信息管理
 - **业务上下文**：业务相关的上下文数据管理
 
+### 6. 线程池管理
+- **差异化线程池**：针对不同任务类型的专用线程池配置
+- **虚拟线程支持**：JDK17虚拟线程，适用于IO密集型任务
+- **结构化并发**：使用StructuredTaskScope管理并发任务
+- **智能任务路由**：根据任务特性自动选择最佳执行策略
+
 ## 🏗️ 架构设计
 
 ### 模块结构
@@ -50,6 +56,7 @@ synapse-core/
 - **ContextManager**：上下文管理器接口
 - **ExceptionHandler**：异常处理器接口
 - **MessageProvider**：消息提供者接口
+- **ThreadUtils**：现代线程工具类，支持虚拟线程和结构化并发
 
 ## 🚀 快速开始
 
@@ -86,6 +93,32 @@ synapse:
       enable-request-context: true
       enable-user-context: true
       context-timeout: 30000
+    
+    # 线程池配置
+    thread-pool:
+      # IO密集型任务线程池
+      io:
+        core-pool-size: 50
+        max-pool-size: 200
+        queue-capacity: 1000
+      
+      # CPU密集型任务线程池
+      cpu:
+        core-pool-size: 8
+        max-pool-size: 16
+        queue-capacity: 100
+      
+      # 通用任务线程池
+      common:
+        core-pool-size: 20
+        max-pool-size: 100
+        queue-capacity: 500
+      
+      # 监控任务线程池
+      monitor:
+        core-pool-size: 5
+        max-pool-size: 20
+        queue-capacity: 200
 ```
 
 ### 3. 使用示例
@@ -172,6 +205,61 @@ public class BusinessService {
 }
 ```
 
+#### 线程池使用
+```java
+@Service
+public class TaskService {
+    
+    @Autowired
+    private ThreadUtils threadUtils;
+    
+    public void processTasks() {
+        // IO密集型任务（网络请求、文件操作）
+        threadUtils.executeIoTask(() -> {
+            // 执行网络请求或文件操作
+            downloadFile("https://example.com/file.txt");
+        });
+        
+        // CPU密集型任务（复杂计算）
+        threadUtils.executeCpuTask(() -> {
+            // 执行复杂计算
+            processLargeDataset();
+        });
+        
+        // 通用任务（智能选择线程池）
+        threadUtils.executeCommonTask(() -> {
+            // 执行一般业务逻辑
+            processBusinessLogic();
+        });
+        
+        // 监控任务（低优先级）
+        threadUtils.executeMonitorTask(() -> {
+            // 执行健康检查
+            performHealthCheck();
+        });
+    }
+    
+    // 异步任务处理
+    public CompletableFuture<String> processAsync() {
+        return threadUtils.supplyAsync(() -> {
+            // 异步处理逻辑
+            return "处理完成";
+        });
+    }
+    
+    // 批量任务处理
+    public CompletableFuture<Void> processBatchTasks() {
+        List<Callable<String>> tasks = Arrays.asList(
+            () -> "任务1",
+            () -> "任务2",
+            () -> "任务3"
+        );
+        
+        return threadUtils.executeIoTasks(tasks);
+    }
+}
+```
+
 ## 🔧 高级功能
 
 ### 1. 自定义配置源
@@ -227,6 +315,41 @@ public class DatabaseMessageProvider implements MessageProvider {
 }
 ```
 
+### 4. 线程池配置自定义
+```java
+@Configuration
+public class CustomThreadPoolConfig {
+    
+    @Bean("customIoThreadPool")
+    public ThreadPoolTaskExecutor customIoThreadPool() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(100);
+        executor.setMaxPoolSize(500);
+        executor.setQueueCapacity(2000);
+        executor.setThreadNamePrefix("custom-io-");
+        executor.initialize();
+        return executor;
+    }
+}
+```
+
+### 3. 自定义消息提供者
+```java
+@Component
+public class DatabaseMessageProvider implements MessageProvider {
+    
+    @Autowired
+    private MessageRepository messageRepository;
+    
+    @Override
+    public String getMessage(String key, Locale locale) {
+        return messageRepository.findByKeyAndLocale(key, locale)
+            .map(Message::getContent)
+            .orElse(key);
+    }
+}
+```
+
 ## 📊 性能特性
 
 ### 1. 配置缓存
@@ -243,6 +366,12 @@ public class DatabaseMessageProvider implements MessageProvider {
 - **异常缓存**：常见异常的缓存机制
 - **异步处理**：异常日志的异步记录
 - **性能分析**：异常处理的性能分析
+
+### 4. 线程池性能优化
+- **虚拟线程**：IO密集型任务使用虚拟线程，提升并发能力
+- **结构化并发**：使用StructuredTaskScope管理并发任务生命周期
+- **智能路由**：根据任务特性自动选择最佳执行策略
+- **性能监控**：任务执行时间监控和性能分析
 
 ## 🔒 安全特性
 
@@ -282,6 +411,13 @@ public class DatabaseMessageProvider implements MessageProvider {
 - 使用合适的上下文作用域
 - 监控上下文的内存使用情况
 
+### 5. 线程池管理
+- **任务分类**：根据任务特性选择合适的线程池类型
+- **IO任务**：使用虚拟线程处理网络请求、文件操作等
+- **CPU任务**：使用平台线程池处理复杂计算、算法处理等
+- **监控任务**：使用低优先级线程池，不影响主业务
+- **资源管理**：合理配置线程池参数，避免资源浪费
+
 ## 🐛 常见问题
 
 ### 1. 配置加载失败
@@ -308,10 +444,20 @@ public class DatabaseMessageProvider implements MessageProvider {
 - 确认上下文清理的时机
 - 检查异步操作的上下文传递
 
+### 4. 线程池性能问题
+**问题**：线程池性能不佳或资源浪费
+**解决方案**：
+- **IO任务阻塞**：使用虚拟线程处理IO密集型任务
+- **CPU任务排队**：调整CPU线程池大小和队列容量
+- **监控任务影响主业务**：使用独立的监控线程池
+- **资源浪费**：根据实际负载调整线程池参数
+- **任务类型判断**：实现智能任务路由，自动选择最佳线程池
+
 ## 📚 相关文档
 
 - [Synapse Framework 架构设计](../../ARCHITECTURE.md)
 - [Synapse Framework 使用指南](../../USAGE_GUIDE.md)
+- [Synapse Framework 性能调优指南](../../PERFORMANCE_TUNING.md)
 - [Synapse Framework 开发笔记](../../DEVELOPMENT_NOTES.md)
 
 ## 🔗 相关链接
@@ -319,6 +465,9 @@ public class DatabaseMessageProvider implements MessageProvider {
 - [Spring Boot 配置管理](https://spring.io/projects/spring-boot)
 - [Java 国际化指南](https://docs.oracle.com/javase/tutorial/i18n/)
 - [Spring 异常处理](https://spring.io/guides/gs/rest-service/)
+- [JDK17 虚拟线程指南](https://docs.oracle.com/en/java/javase/17/core/virtual-threads.html)
+- [Java 结构化并发](https://openjdk.org/jeps/428)
+- [Spring 线程池配置](https://docs.spring.io/spring-framework/docs/current/reference/html/integration.html#scheduling)
 
 ---
 
