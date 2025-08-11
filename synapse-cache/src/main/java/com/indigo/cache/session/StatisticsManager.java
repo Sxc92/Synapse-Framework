@@ -10,7 +10,7 @@ import java.util.Map;
  * 定义用户会话统计相关的操作
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
 public interface StatisticsManager {
 
@@ -112,6 +112,21 @@ public interface StatisticsManager {
      * @return 用户在线时长映射
      */
     Map<String, Long> getAllUsersOnlineDuration();
+    
+    // ========== 统计管理操作 ==========
+    
+    /**
+     * 重置统计信息
+     */
+    void resetStatistics();
+    
+    /**
+     * 清理过期的统计数据
+     * 
+     * @param cutoffTime 截止时间，早于此时间的数据将被清理
+     * @return 清理的数据数量
+     */
+    long clearExpiredData(java.time.LocalDateTime cutoffTime);
 
     /**
      * 用户会话统计信息

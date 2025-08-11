@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
  * 数据权限服务默认实现
  *
  * @author 史偕成
- * @date 2024/01/09
+ * @date 2025/01/09
  */
 @Slf4j
 @Service
@@ -35,7 +35,7 @@ public class DefaultDataPermissionService implements DataPermissionService {
         // 为演示，我们使用缓存模拟
         rule.setRuleId(System.currentTimeMillis()); // 模拟生成ID
         String cacheKey = RULE_CACHE_PREFIX + rule.getRuleId();
-        cacheService.getRedisService().setObject(cacheKey, rule, CACHE_TIMEOUT);
+        cacheService.setObject(cacheKey, rule, CACHE_TIMEOUT);
 
         // 更新相关缓存
         updateSubjectRulesCache(rule);
@@ -50,7 +50,7 @@ public class DefaultDataPermissionService implements DataPermissionService {
         }
 
         String cacheKey = RULE_CACHE_PREFIX + rule.getRuleId();
-        cacheService.getRedisService().setObject(cacheKey, rule, CACHE_TIMEOUT);
+        cacheService.setObject(cacheKey, rule, CACHE_TIMEOUT);
 
         // 更新相关缓存
         updateSubjectRulesCache(rule);
@@ -62,7 +62,7 @@ public class DefaultDataPermissionService implements DataPermissionService {
         DataPermissionRule rule = getRule(ruleId);
         if (rule != null) {
             // 删除规则缓存
-            cacheService.getRedisService().delete(cacheKey);
+            cacheService.delete(cacheKey);
             // 清除相关主体的规则缓存
             clearSubjectRulesCache(rule);
         }
@@ -71,27 +71,27 @@ public class DefaultDataPermissionService implements DataPermissionService {
     @Override
     public DataPermissionRule getRule(String ruleId) {
         String cacheKey = RULE_CACHE_PREFIX + ruleId;
-        return cacheService.getRedisService().getObject(cacheKey, DataPermissionRule.class);
+        return cacheService.getObject(cacheKey, DataPermissionRule.class);
     }
 
     @Override
     public List<DataPermissionRule> getUserRules(String userId) {
         String cacheKey = USER_RULES_CACHE_PREFIX + userId;
-        List<DataPermissionRule> rules = cacheService.getRedisService().getObject(cacheKey, List.class);
+        List<DataPermissionRule> rules = cacheService.getObject(cacheKey, List.class);
         return rules != null ? rules : new ArrayList<>();
     }
 
     @Override
     public List<DataPermissionRule> getRoleRules(String roleId) {
         String cacheKey = ROLE_RULES_CACHE_PREFIX + roleId;
-        List<DataPermissionRule> rules = cacheService.getRedisService().getObject(cacheKey, List.class);
+        List<DataPermissionRule> rules = cacheService.getObject(cacheKey, List.class);
         return rules != null ? rules : new ArrayList<>();
     }
 
     @Override
     public List<DataPermissionRule> getDepartmentRules(String deptId) {
         String cacheKey = DEPT_RULES_CACHE_PREFIX + deptId;
-        List<DataPermissionRule> rules = cacheService.getRedisService().getObject(cacheKey, List.class);
+        List<DataPermissionRule> rules = cacheService.getObject(cacheKey, List.class);
         return rules != null ? rules : new ArrayList<>();
     }
 
@@ -215,12 +215,12 @@ public class DefaultDataPermissionService implements DataPermissionService {
 
         if (cacheKey != null) {
             List<DataPermissionRule> rules = new ArrayList<>();
-            List<DataPermissionRule> existingRules = cacheService.getRedisService().getObject(cacheKey, List.class);
+            List<DataPermissionRule> existingRules = cacheService.getObject(cacheKey, List.class);
             if (existingRules != null) {
                 rules.addAll(existingRules);
             }
             rules.add(rule);
-            cacheService.getRedisService().setObject(cacheKey, rules, CACHE_TIMEOUT);
+            cacheService.setObject(cacheKey, rules, CACHE_TIMEOUT);
         }
     }
 
@@ -239,7 +239,7 @@ public class DefaultDataPermissionService implements DataPermissionService {
         }
 
         if (cacheKey != null) {
-            cacheService.getRedisService().delete(cacheKey);
+            cacheService.delete(cacheKey);
         }
     }
 

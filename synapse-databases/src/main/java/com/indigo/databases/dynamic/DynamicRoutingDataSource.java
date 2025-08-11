@@ -1,6 +1,6 @@
 package com.indigo.databases.dynamic;
 
-import com.indigo.databases.config.DynamicDataSourceProperties;
+import com.indigo.databases.config.SynapseDataSourceProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource;
 import org.springframework.util.StringUtils;
@@ -13,16 +13,16 @@ import java.util.concurrent.ConcurrentHashMap;
  * 动态路由数据源
  *
  * @author 史偕成
- * @date 2024/03/21
+ * @date 2025/03/21
  */
 @Slf4j
 public class DynamicRoutingDataSource extends AbstractRoutingDataSource {
     
-    private final DynamicDataSourceProperties properties;
+    private final SynapseDataSourceProperties properties;
     private final Map<Object, Object> dataSourceMap = new ConcurrentHashMap<>();
     private final Map<Object, Object> resolvedDataSources = new ConcurrentHashMap<>();
     
-    public DynamicRoutingDataSource(DynamicDataSourceProperties properties) {
+    public DynamicRoutingDataSource(SynapseDataSourceProperties properties) {
         this.properties = properties;
         // 设置默认数据源
         setDefaultTargetDataSource(null);
@@ -50,7 +50,7 @@ public class DynamicRoutingDataSource extends AbstractRoutingDataSource {
         log.info("查找数据源，key: [{}], 可用keys: {}", lookupKey, resolvedDataSources.keySet());
         
         DataSource dataSource = (DataSource) resolvedDataSources.get(lookupKey);
-        if (dataSource == null && properties.getStrict()) {
+        if (dataSource == null && properties.getDynamicDataSource().isStrict()) {
             throw new IllegalStateException("Cannot determine target DataSource for lookup key [" + lookupKey + "]");
         }
         // 如果找不到指定数据源，返回默认数据源

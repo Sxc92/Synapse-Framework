@@ -36,9 +36,9 @@
 //    @Test
 //    void testLocalDateTimeSerialization() throws Exception {
 //        // 测试序列化
-//        LocalDateTime dateTime = LocalDateTime.of(2024, 3, 21, 14, 30, 0);
+//        LocalDateTime dateTime = LocalDateTime.of(2025, 3, 21, 14, 30, 0);
 //        String json = objectMapper.writeValueAsString(dateTime);
-//        assertEquals("\"2024-03-21 14:30:00\"", json);
+//        assertEquals("\"2025-03-21 14:30:00\"", json);
 //
 //        // 测试反序列化
 //        LocalDateTime deserialized = objectMapper.readValue(json, LocalDateTime.class);
@@ -48,9 +48,9 @@
 //    @Test
 //    void testLocalDateSerialization() throws Exception {
 //        // 测试序列化
-//        LocalDate date = LocalDate.of(2024, 3, 21);
+//        LocalDate date = LocalDate.of(2025, 3, 21);
 //        String json = objectMapper.writeValueAsString(date);
-//        assertEquals("\"2024-03-21\"", json);
+//        assertEquals("\"2025-03-21\"", json);
 //
 //        // 测试反序列化
 //        LocalDate deserialized = objectMapper.readValue(json, LocalDate.class);
@@ -73,15 +73,15 @@
 //    void testComplexObjectSerialization() throws Exception {
 //        // 创建一个包含所有时间类型的测试对象
 //        TestTimeObject testObject = new TestTimeObject(
-//            LocalDateTime.of(2024, 3, 21, 14, 30, 0),
-//            LocalDate.of(2024, 3, 21),
+//            LocalDateTime.of(2025, 3, 21, 14, 30, 0),
+//            LocalDate.of(2025, 3, 21),
 //            LocalTime.of(14, 30, 0)
 //        );
 //
 //        // 测试序列化
 //        String json = objectMapper.writeValueAsString(testObject);
-//        assertTrue(json.contains("\"dateTime\":\"2024-03-21 14:30:00\""));
-//        assertTrue(json.contains("\"date\":\"2024-03-21\""));
+//        assertTrue(json.contains("\"dateTime\":\"2025-03-21 14:30:00\""));
+//        assertTrue(json.contains("\"date\":\"2025-03-21\""));
 //        assertTrue(json.contains("\"time\":\"14:30:00\""));
 //
 //        // 测试反序列化

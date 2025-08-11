@@ -4,7 +4,7 @@ import com.indigo.cache.core.CacheService;
 import com.indigo.cache.manager.CacheKeyGenerator;
 import com.indigo.cache.infrastructure.RedisService;
 import com.indigo.cache.session.impl.DefaultSessionManager;
-import com.indigo.cache.session.impl.DefaultPermissionManager;
+import com.indigo.cache.session.impl.DefaultCachePermissionManager;
 import com.indigo.cache.session.impl.DefaultStatisticsManager;
 
 /**
@@ -12,7 +12,7 @@ import com.indigo.cache.session.impl.DefaultStatisticsManager;
  * 使用工厂模式创建和管理UserSessionService实例
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
 public class UserSessionServiceFactory {
 
@@ -31,7 +31,7 @@ public class UserSessionServiceFactory {
         
         // 创建管理器实例
         SessionManager sessionManager = new DefaultSessionManager(cacheService, keyGenerator);
-        PermissionManager permissionManager = new DefaultPermissionManager(cacheService, keyGenerator);
+        CachePermissionManager permissionManager = new DefaultCachePermissionManager(cacheService, keyGenerator);
         StatisticsManager statisticsManager = new DefaultStatisticsManager(
                 cacheService, keyGenerator, redisService, sessionManager, permissionManager);
         
@@ -49,7 +49,7 @@ public class UserSessionServiceFactory {
      */
     public static UserSessionService createUserSessionService(
             SessionManager sessionManager,
-            PermissionManager permissionManager,
+            CachePermissionManager permissionManager,
             StatisticsManager statisticsManager) {
         return new UserSessionService(sessionManager, permissionManager, statisticsManager);
     }
@@ -74,10 +74,10 @@ public class UserSessionServiceFactory {
      * @param keyGenerator 缓存键生成器
      * @return 权限管理器实例
      */
-    public static PermissionManager createPermissionManager(
+    public static CachePermissionManager createPermissionManager(
             CacheService cacheService,
             CacheKeyGenerator keyGenerator) {
-        return new DefaultPermissionManager(cacheService, keyGenerator);
+        return new DefaultCachePermissionManager(cacheService, keyGenerator);
     }
 
     /**
@@ -95,7 +95,7 @@ public class UserSessionServiceFactory {
             CacheKeyGenerator keyGenerator,
             RedisService redisService,
             SessionManager sessionManager,
-            PermissionManager permissionManager) {
+            CachePermissionManager permissionManager) {
         return new DefaultStatisticsManager(cacheService, keyGenerator, redisService, sessionManager, permissionManager);
     }
 } 

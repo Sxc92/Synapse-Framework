@@ -11,7 +11,7 @@ import java.util.Map;
  * 提供数据权限规则的管理和验证功能
  *
  * @author 史偕成
- * @date 2024/01/09
+ * @date 2025/01/09
  */
 public interface DataPermissionService {
 

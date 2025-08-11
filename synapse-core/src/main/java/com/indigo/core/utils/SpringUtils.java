@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
  * Spring 工具类，用于获取 Spring 上下文和 Bean
  * 
  * @author 史偕成
- * @date 2024/03/21
+ * @date 2025/03/21
  **/
 @Component
 @Lazy(false)

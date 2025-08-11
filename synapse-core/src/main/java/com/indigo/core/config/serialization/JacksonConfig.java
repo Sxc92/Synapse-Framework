@@ -27,7 +27,7 @@ import java.util.TimeZone;
  * Jackson serialization configuration
  *
  * @author IndigoByte
- * @date 2024/03/21
+ * @date 2025/03/21
  */
 @Configuration
 public class JacksonConfig {

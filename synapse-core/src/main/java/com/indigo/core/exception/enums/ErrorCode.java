@@ -6,7 +6,7 @@ import lombok.Getter;
  * 标准错误码和消息
  *
  * @author 史偕成
- * @date 2024/03/21
+ * @date 2025/03/21
  **/
 @Getter
 public enum ErrorCode {

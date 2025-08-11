@@ -16,7 +16,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * 基于Sa-Token框架的JWT配置，支持注解权限检查
  * 
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
 @Slf4j
 @Configuration

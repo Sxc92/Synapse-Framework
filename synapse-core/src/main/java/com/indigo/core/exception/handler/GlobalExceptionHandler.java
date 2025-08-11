@@ -23,7 +23,7 @@ import java.nio.charset.StandardCharsets;
  * 处理响应式环境下的所有异常，包括Gateway异常
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  **/
 @Slf4j
 @Order(-1)

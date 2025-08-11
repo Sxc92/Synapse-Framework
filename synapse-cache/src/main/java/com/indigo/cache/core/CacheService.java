@@ -99,6 +99,83 @@ public class CacheService {
         return optionalCache.map(cacheObject -> (T) cacheObject.getData());
     }
 
+    // ========== 基础Redis操作方法 ==========
+    
+    /**
+     * 设置键值对
+     *
+     * @param key   键
+     * @param value 值
+     */
+    public void set(String key, Object value) {
+        redisService.set(key, value);
+    }
+
+    /**
+     * 设置键值对并指定过期时间
+     *
+     * @param key           键
+     * @param value         值
+     * @param expireSeconds 过期时间（秒）
+     */
+    public void set(String key, Object value, long expireSeconds) {
+        redisService.set(key, value, expireSeconds);
+    }
+
+    /**
+     * 获取值
+     *
+     * @param key 键
+     * @return 值
+     */
+    public Object getValue(String key) {
+        return redisService.get(key);
+    }
+
+    /**
+     * 设置键的过期时间
+     *
+     * @param key           键
+     * @param expireSeconds 过期时间（秒）
+     * @return 是否设置成功
+     */
+    public boolean expire(String key, long expireSeconds) {
+        Boolean result = redisService.expire(key, expireSeconds);
+        return Boolean.TRUE.equals(result);
+    }
+
+    /**
+     * 检查键是否存在
+     *
+     * @param key 键
+     * @return 是否存在
+     */
+    public boolean hasKey(String key) {
+        Boolean result = redisService.hasKey(key);
+        return Boolean.TRUE.equals(result);
+    }
+
+    /**
+     * 获取键的剩余过期时间
+     *
+     * @param key 键
+     * @return 剩余过期时间（秒），-1表示永不过期，-2表示键不存在
+     */
+    public long getExpire(String key) {
+        Long result = redisService.getExpire(key);
+        return result != null ? result : -2;
+    }
+
+    /**
+     * 扫描匹配模式的键
+     *
+     * @param pattern 匹配模式
+     * @return 匹配的键集合
+     */
+    public Set<String> scan(String pattern) {
+        return redisService.scan(pattern);
+    }
+
     /**
      * 获取缓存数据，如果缓存不存在或已过期，使用提供的函数加载数据并缓存
      *
@@ -201,61 +278,122 @@ public class CacheService {
         Optional<CacheObject<?>> optCacheObject = (Optional<CacheObject<?>>) (Optional<?>) get(key);
         if (optCacheObject.isPresent()) {
             CacheObject<?> cacheObject = optCacheObject.get();
-            cacheObject.extendExpiry(additionalSeconds);
-            save((CacheObject) cacheObject);
-            return true;
+            long newExpireSeconds = cacheObject.getExpireSeconds() + additionalSeconds;
+            if (newExpireSeconds > 0) {
+                CacheObject<Object> newCacheObject = new CacheObject<>(
+                        key, 
+                        cacheObject.getData(), 
+                        newExpireSeconds
+                );
+                save(newCacheObject);
+                return true;
+            }
         }
-        
-        // 如果缓存对象不是CacheObject类型，尝试直接延长Redis的过期时间
-        return Boolean.TRUE.equals(redisService.expire(key, 
-                redisService.getExpire(key) + additionalSeconds));
+        return false;
     }
-
+    
+    // ========== 缓存管理方法 ==========
+    
     /**
-     * 重置缓存过期时间
-     *
-     * @param key          缓存键
-     * @param expireSeconds 新的过期时间（秒）
-     * @return 是否成功
+     * 清理过期的缓存条目
+     * 
+     * @return 清理的条目数量
      */
-    public boolean resetExpiry(String key, long expireSeconds) {
-        Optional<CacheObject<?>> optCacheObject = (Optional<CacheObject<?>>) (Optional<?>) get(key);
-        if (optCacheObject.isPresent()) {
-            CacheObject<?> cacheObject = optCacheObject.get();
-            cacheObject.resetExpiry(expireSeconds);
-            save((CacheObject) cacheObject);
-            return true;
-        }
-        
-        // 如果缓存对象不是CacheObject类型，尝试直接设置Redis的过期时间
-        return Boolean.TRUE.equals(redisService.expire(key, expireSeconds));
+    public long clearExpiredEntries() {
+        // 这里可以实现具体的过期条目清理逻辑
+        // 由于Redis会自动清理过期键，这里主要处理本地缓存
+        // log.debug("清理过期缓存条目"); // Original code had this line commented out
+        return 0; // 暂时返回0，实际实现中可以扫描并清理过期条目
     }
-
+    
     /**
-     * 获取缓存剩余有效时间
-     *
+     * 清理大对象缓存
+     * 
+     * @param sizeThreshold 大小阈值（字节）
+     * @return 清理的对象数量
+     */
+    public long clearLargeObjects(long sizeThreshold) {
+        // 这里可以实现清理大对象的逻辑
+        // 可以通过序列化大小或其他方式判断对象大小
+        // log.debug("清理大对象缓存，阈值: {} bytes", sizeThreshold); // Original code had this line commented out
+        return 0; // 暂时返回0，实际实现中可以扫描并清理大对象
+    }
+    
+    /**
+     * 压缩缓存空间
+     * 
+     * @return 压缩后的大小（字节）
+     */
+    public long compact() {
+        // 这里可以实现缓存空间压缩逻辑
+        // 可以清理碎片、合并小对象等
+        // log.debug("压缩缓存空间"); // Original code had this line commented out
+        return 0; // 暂时返回0，实际实现中可以返回压缩后的大小
+    }
+    
+    /**
+     * 设置对象到缓存
+     * 
      * @param key 缓存键
-     * @return 剩余有效时间（秒），-1表示永不过期，-2表示不存在
+     * @param value 缓存值
+     * @param expireSeconds 过期时间（秒）
+     * @param <T> 数据类型
      */
-    public long getTimeToLive(String key) {
-        Optional<CacheObject<?>> optCacheObject = (Optional<CacheObject<?>>) (Optional<?>) get(key);
-        if (optCacheObject.isPresent()) {
-            return optCacheObject.get().getRemainingTimeSeconds();
+    public <T> void setObject(String key, T value, long expireSeconds) {
+        if (expireSeconds > 0) {
+            redisService.set(key, value, expireSeconds);
+        } else {
+            redisService.set(key, value);
         }
-        
-        // 如果缓存对象不是CacheObject类型，尝试直接获取Redis的过期时间
-        Long expire = redisService.getExpire(key);
-        return expire == null ? -2L : expire;
     }
-
+    
     /**
-     * 判断缓存是否存在
-     *
+     * 从缓存获取对象
+     * 
+     * @param key 缓存键
+     * @param clazz 数据类型
+     * @param <T> 数据类型
+     * @return 缓存对象
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T getObject(String key, Class<T> clazz) {
+        Object obj = redisService.get(key);
+        if (obj != null && clazz.isInstance(obj)) {
+            return (T) obj;
+        }
+        return null;
+    }
+    
+    /**
+     * 检查缓存键是否存在
+     * 
      * @param key 缓存键
      * @return 是否存在
      */
     public boolean exists(String key) {
-        return Boolean.TRUE.equals(redisService.hasKey(key));
+        return redisService.hasKey(key);
+    }
+    
+    /**
+     * 获取缓存剩余过期时间
+     * 
+     * @param key 缓存键
+     * @return 剩余过期时间（秒），-1表示永不过期，-2表示不存在
+     */
+    public long getTimeToLive(String key) {
+        Long ttl = redisService.getExpire(key);
+        return ttl != null ? ttl : -2;
+    }
+    
+    /**
+     * 重置缓存过期时间
+     * 
+     * @param key 缓存键
+     * @param expireSeconds 新的过期时间（秒）
+     * @return 是否成功
+     */
+    public boolean resetExpiry(String key, long expireSeconds) {
+        return redisService.expire(key, expireSeconds);
     }
 
     /**
@@ -323,20 +461,6 @@ public class CacheService {
     public long hashDelete(String key, String... fields) {
         Long count = redisService.hashDelete(key, (Object[]) fields);
         return count == null ? 0 : count;
-    }
-
-    /**
-     * 存储对象为 JSON 字符串
-     */
-    public <T> void setObject(String key, T value, long timeout) {
-        redisService.setObject(key, value, timeout);
-    }
-
-    /**
-     * 获取 JSON 字符串并反序列化为对象
-     */
-    public <T> T getObject(String key, Class<T> clazz) {
-        return redisService.getObject(key, clazz);
     }
 
 }

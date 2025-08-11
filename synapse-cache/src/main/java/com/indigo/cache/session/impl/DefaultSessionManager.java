@@ -93,43 +93,43 @@ public class DefaultSessionManager implements SessionManager {
     @Override
     public void storeToken(String token, String userId, long expireSeconds) {
         String tokenKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "token", token);
-        cacheService.getRedisService().set(tokenKey, userId, expireSeconds);
+        cacheService.set(tokenKey, userId, expireSeconds);
         log.info("Stored token: {} for user: {}", token, userId);
     }
     
     @Override
     public String validateToken(String token) {
         String tokenKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "token", token);
-        Object result = cacheService.getRedisService().get(tokenKey);
+        Object result = cacheService.getValue(tokenKey);
         return result != null ? result.toString() : null;
     }
     
     @Override
     public boolean refreshToken(String token, long expireSeconds) {
         String tokenKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "token", token);
-        Boolean result = cacheService.getRedisService().expire(tokenKey, expireSeconds);
-        return Boolean.TRUE.equals(result);
+        boolean result = cacheService.expire(tokenKey, expireSeconds);
+        return result;
     }
     
     @Override
     public void removeToken(String token) {
         String tokenKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "token", token);
-        cacheService.getRedisService().delete(tokenKey);
+        cacheService.delete(tokenKey);
         log.info("Removed token: {}", token);
     }
     
     @Override
     public boolean tokenExists(String token) {
         String tokenKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "token", token);
-        Boolean result = cacheService.getRedisService().hasKey(tokenKey);
-        return Boolean.TRUE.equals(result);
+        boolean result = cacheService.hasKey(tokenKey);
+        return result;
     }
     
     @Override
     public long getTokenTtl(String token) {
         String tokenKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "token", token);
-        Long result = cacheService.getRedisService().getExpire(tokenKey);
-        return result != null ? result : -2;
+        long result = cacheService.getExpire(tokenKey);
+        return result;
     }
 
     // ========== 会话数据管理 ==========
@@ -137,22 +137,24 @@ public class DefaultSessionManager implements SessionManager {
     @Override
     public void storeUserSessionData(String userId, Object sessionData, long expireSeconds) {
         String dataKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "data", userId);
-        cacheService.getRedisService().setObject(dataKey, sessionData, expireSeconds);
+        cacheService.setObject(dataKey, sessionData, expireSeconds);
         log.info("Stored session data for user: {}", userId);
     }
     
     @Override
     public <T> T getUserSessionData(String userId, Class<T> clazz) {
         String dataKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "data", userId);
-        return cacheService.getRedisService().getObject(dataKey, clazz);
+        return cacheService.getObject(dataKey, clazz);
     }
     
     @Override
     public void removeUserSessionData(String userId) {
         String dataKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "data", userId);
-        cacheService.getRedisService().delete(dataKey);
+        cacheService.delete(dataKey);
         log.info("Removed session data for user: {}", userId);
     }
+
+
 
     /**
      * 更新用户最后访问时间

@@ -11,7 +11,7 @@ import com.indigo.security.model.UserPrincipal;
  * - TokenService: 高级Token操作（刷新、撤销、黑名单）
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
 public interface TokenService {
 

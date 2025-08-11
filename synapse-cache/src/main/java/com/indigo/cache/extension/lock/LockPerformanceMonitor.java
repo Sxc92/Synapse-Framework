@@ -292,4 +292,57 @@ public class LockPerformanceMonitor {
         public long totalDeadlockDetections = 0;
         public double successRate = 0.0;
     }
+    
+    // ========== 数据清理方法 ==========
+    
+    /**
+     * 清理过期的性能数据
+     * 
+     * @param cutoffTime 截止时间，早于此时间的数据将被清理
+     * @return 清理的数据数量
+     */
+    public long clearExpiredData(java.time.LocalDateTime cutoffTime) {
+        long cutoffMillis = cutoffTime.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+        final AtomicLong clearedCount = new AtomicLong(0);
+        
+        // 清理过期的锁统计信息
+        lockStats.entrySet().removeIf(entry -> {
+            LockStats stats = entry.getValue();
+            if (stats.lastAttemptTime < cutoffMillis && 
+                stats.lastSuccessTime < cutoffMillis && 
+                stats.lastFailureTime < cutoffMillis && 
+                stats.lastReleaseTime < cutoffMillis) {
+                clearedCount.incrementAndGet();
+                return true;
+            }
+            return false;
+        });
+        
+        log.info("[LockMonitor] 清理过期性能数据完成，清理数量: {}", clearedCount.get());
+        return clearedCount.get();
+    }
+    
+    /**
+     * 清理过期的锁信息
+     * 
+     * @return 清理的锁数量
+     */
+    public long clearExpiredLocks() {
+        long currentTime = System.currentTimeMillis();
+        long expiredThreshold = 30 * 60 * 1000; // 30分钟
+        final AtomicLong clearedCount = new AtomicLong(0);
+        
+        // 清理长时间未使用的锁统计
+        lockStats.entrySet().removeIf(entry -> {
+            LockStats stats = entry.getValue();
+            if (currentTime - stats.lastAttemptTime > expiredThreshold) {
+                clearedCount.incrementAndGet();
+                return true;
+            }
+            return false;
+        });
+        
+        log.info("[LockMonitor] 清理过期锁信息完成，清理数量: {}", clearedCount.get());
+        return clearedCount.get();
+    }
 } 

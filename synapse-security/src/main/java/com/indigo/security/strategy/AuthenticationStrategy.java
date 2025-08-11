@@ -9,7 +9,7 @@ import com.indigo.security.model.AuthResponse;
  * 定义不同认证方式的统一接口
  *
  * @author 史偕成
- * @date 2024/01/08
+ * @date 2025/01/08
  */
 public interface AuthenticationStrategy {
 

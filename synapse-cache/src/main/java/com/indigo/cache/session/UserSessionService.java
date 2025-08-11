@@ -7,35 +7,22 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 用户会话管理服务
- * 门面模式，统一对外提供用户会话管理功能
- * 只依赖接口，不依赖具体实现
- * 
- * 功能范围：
- * - 用户会话管理（基于token的会话存储和获取）
- * - 权限和角色管理（与会话关联的权限信息）
- * - 统计和监控（在线用户、会话统计等）
- * - Token管理（基础token操作：存储、验证、刷新、删除）
- * - 会话数据管理（用户自定义会话数据存储）
- * 
- * 设计原则：
- * - 统一入口：所有用户会话和token相关操作的唯一入口
- * - 门面模式：只做协调，不直接操作基础设施
- * - 接口隔离：只依赖抽象接口，不依赖具体实现
- * - 事务协调：处理跨管理器的组合操作
+ * 用户会话服务
+ * 门面模式（Facade Pattern），协调各个管理器
+ * 对外提供统一的会话管理接口
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
 @Slf4j
 public class UserSessionService {
 
     private final SessionManager sessionManager;
-    private final PermissionManager permissionManager;
+    private final CachePermissionManager permissionManager;
     private final StatisticsManager statisticsManager;
 
     public UserSessionService(SessionManager sessionManager,
-                              PermissionManager permissionManager,
+                              CachePermissionManager permissionManager,
                               StatisticsManager statisticsManager) {
         this.sessionManager = sessionManager;
         this.permissionManager = permissionManager;

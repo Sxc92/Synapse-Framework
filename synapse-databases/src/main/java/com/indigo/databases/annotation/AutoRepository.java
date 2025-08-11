@@ -7,7 +7,7 @@ import java.lang.annotation.*;
  * 标记需要自动生成实现的Repository接口
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)

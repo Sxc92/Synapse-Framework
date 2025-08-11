@@ -10,7 +10,7 @@ import java.lang.annotation.Target;
  * 用于标记需要进行限流的方法
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
 @Target({ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)

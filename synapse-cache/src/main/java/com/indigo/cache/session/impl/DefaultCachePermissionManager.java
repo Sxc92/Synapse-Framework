@@ -2,25 +2,25 @@ package com.indigo.cache.session.impl;
 
 import com.indigo.cache.core.CacheService;
 import com.indigo.cache.manager.CacheKeyGenerator;
-import com.indigo.cache.session.PermissionManager;
+import com.indigo.cache.session.CachePermissionManager;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 
 /**
- * 默认权限管理器实现
+ * 默认缓存权限管理器实现
  * 基于缓存服务的权限管理
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
 @Slf4j
-public class DefaultPermissionManager implements PermissionManager {
+public class DefaultCachePermissionManager implements CachePermissionManager {
 
     private final CacheService cacheService;
     private final CacheKeyGenerator keyGenerator;
 
-    public DefaultPermissionManager(CacheService cacheService, CacheKeyGenerator keyGenerator) {
+    public DefaultCachePermissionManager(CacheService cacheService, CacheKeyGenerator keyGenerator) {
         this.cacheService = cacheService;
         this.keyGenerator = keyGenerator;
     }

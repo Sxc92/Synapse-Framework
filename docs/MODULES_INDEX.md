@@ -23,10 +23,13 @@ Synapse Security 模块提供了完整的认证、授权和权限管理功能，
 **位置**: `docs/modules/synapse-cache/`
 
 **文档列表**:
+- [README](modules/synapse-cache/README.md) - 模块概述和快速开始指南
 - [缓存注解使用指南](modules/synapse-cache/CACHE_ANNOTATIONS_USAGE.md) - 缓存注解的详细使用说明
+- [分布式锁优化文档](modules/synapse-cache/DISTRIBUTED_LOCK_OPTIMIZATION.md) - 分布式锁功能详解和最佳实践
+- [优化工作总结](modules/synapse-cache/OPTIMIZATION_SUMMARY.md) - 模块优化历程和成果总结
 
 **模块简介**: 
-Synapse Cache 模块提供了强大的缓存管理功能，支持多种缓存策略和注解驱动的缓存操作。
+Synapse Cache 模块提供了强大的缓存管理功能，支持多种缓存策略、注解驱动的缓存操作和分布式锁服务。采用延迟初始化和自动释放机制，确保资源的高效利用。
 
 ### 3. Synapse Databases 模块
 **位置**: `docs/modules/synapse-databases/`
@@ -76,7 +79,8 @@ Synapse Events 模块提供了事件驱动架构支持，包括事件发布、�
 1. [主文档](README.md) - 了解框架整体架构
 2. [使用指南](USAGE_GUIDE.md) - 学习基本使用方法
 3. [Security 模块使用示例](modules/synapse-security/USAGE_EXAMPLES.md) - 学习认证授权
-4. [Cache 模块使用指南](modules/synapse-cache/CACHE_ANNOTATIONS_USAGE.md) - 学习缓存管理
+4. [Cache 模块 README](modules/synapse-cache/README.md) - 了解缓存模块功能
+5. [Cache 模块使用指南](modules/synapse-cache/CACHE_ANNOTATIONS_USAGE.md) - 学习缓存管理
 
 ### 开发者推荐阅读顺序
 1. [架构文档](ARCHITECTURE.md) - 深入理解架构设计
@@ -107,4 +111,4 @@ Synapse Events 模块提供了事件驱动架构支持，包括事件发布、�
 
 ---
 
-*最后更新: 2024年12月19日* 
+*最后更新: 2025年12月19日* 

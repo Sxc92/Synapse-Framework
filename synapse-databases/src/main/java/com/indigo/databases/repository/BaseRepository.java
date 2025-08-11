@@ -16,7 +16,7 @@ import java.util.List;
  * 同时支持注解SQL查询和自动查询条件构建
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
 public interface BaseRepository<T, M extends BaseMapper<T>> extends IService<T> {
     

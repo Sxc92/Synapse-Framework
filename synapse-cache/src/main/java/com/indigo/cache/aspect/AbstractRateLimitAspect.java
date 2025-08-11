@@ -22,7 +22,7 @@ import java.lang.reflect.Method;
  * 提取公共的限流逻辑，减少代码重复
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
 @Slf4j
 @Aspect

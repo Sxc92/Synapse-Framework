@@ -17,7 +17,7 @@ import java.util.List;
  * 用于在业务模块中获取网关传递的用户信息
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  * @deprecated 此类已迁移到 {@link com.indigo.security.utils.UserContextHolder}，
  * 请使用新的包路径。此类将在后续版本中移除。
  */

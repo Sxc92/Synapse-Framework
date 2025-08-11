@@ -5,7 +5,7 @@ package com.indigo.core.exception;
  * 支持国际化 messageKey 及参数
  *
  * @author 史偕成
- * @date 2024/05/14
+ * @date 2025/05/14
  */
 public class JsonException extends RuntimeException {
     

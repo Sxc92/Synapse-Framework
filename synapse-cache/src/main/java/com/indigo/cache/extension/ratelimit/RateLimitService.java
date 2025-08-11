@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit;
  * 支持滑动窗口、令牌桶、固定窗口等多种限流算法
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
 @Slf4j
 public class RateLimitService {

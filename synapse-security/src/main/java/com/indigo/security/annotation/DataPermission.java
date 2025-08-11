@@ -9,7 +9,7 @@ import java.lang.annotation.*;
  * 用于标记需要进行数据权限检查的方法
  *
  * @author 史偕成
- * @date 2024/01/09
+ * @date 2025/01/09
  */
 @Target({ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)

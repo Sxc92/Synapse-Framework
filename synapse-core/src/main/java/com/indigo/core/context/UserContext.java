@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
  * 用于存储JWT token中的用户信息
  *
  * @author 史偕成
- * @date 2024/03/21
+ * @date 2025/03/21
  */
 @Data
 @Builder

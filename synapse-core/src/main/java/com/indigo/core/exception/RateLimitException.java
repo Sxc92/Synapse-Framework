@@ -9,7 +9,7 @@ import lombok.Getter;
  * 当请求超出限流阈值时抛出此异常
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
 @Getter
 public class RateLimitException extends BaseException {

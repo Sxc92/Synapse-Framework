@@ -28,7 +28,7 @@ import java.lang.reflect.Type;
  * 用于动态代理处理MyBatis-Plus注解SQL方法
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
 @Slf4j
 @Component

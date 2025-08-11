@@ -17,7 +17,7 @@ import java.util.Map;
  * 充分利用 MyBatis-Plus 的配置，避免重复造轮子
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
 @Slf4j
 @Component

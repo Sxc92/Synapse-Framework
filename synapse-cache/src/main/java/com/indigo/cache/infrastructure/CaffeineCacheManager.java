@@ -216,4 +216,31 @@ public class CaffeineCacheManager {
             cache.invalidateAll();
         }
     }
+    
+    /**
+     * 获取所有缓存实例
+     *
+     * @return 缓存名称到缓存实例的映射
+     */
+    public Map<String, Cache<String, Object>> getAllCaches() {
+        return new ConcurrentHashMap<>(cacheMap);
+    }
+    
+    /**
+     * 获取缓存数量
+     *
+     * @return 缓存数量
+     */
+    public int getCacheCount() {
+        return cacheMap.size();
+    }
+    
+    /**
+     * 获取所有缓存名称
+     *
+     * @return 缓存名称集合
+     */
+    public java.util.Set<String> getCacheNames() {
+        return new java.util.HashSet<>(cacheMap.keySet());
+    }
 } 

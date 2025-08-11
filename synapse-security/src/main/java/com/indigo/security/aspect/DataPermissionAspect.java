@@ -19,7 +19,7 @@ import org.springframework.stereotype.Component;
  * 用于自动处理数据权限检查
  *
  * @author 史偕成
- * @date 2024/01/09
+ * @date 2025/01/09
  */
 @Slf4j
 @Aspect

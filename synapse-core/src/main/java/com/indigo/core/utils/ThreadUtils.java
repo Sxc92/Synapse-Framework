@@ -31,7 +31,7 @@ public class ThreadUtils {
     public ThreadUtils(
             @Qualifier("ioThreadPool") ThreadPoolTaskExecutor ioThreadPool,
             @Qualifier("cpuThreadPool") ThreadPoolTaskExecutor cpuThreadPool,
-            ScheduledExecutorService scheduledThreadPool,
+            @Qualifier("scheduledThreadPool") ScheduledExecutorService scheduledThreadPool,
             @Qualifier("commonThreadPool") ThreadPoolTaskExecutor commonThreadPool,
             @Qualifier("monitorThreadPool") ThreadPoolTaskExecutor monitorThreadPool) {
         this.ioThreadPool = ioThreadPool;

@@ -5,7 +5,7 @@ package com.indigo.core.exception;
  * 用于处理安全相关的异常情况
  *
  * @author 史偕成
- * @date 2024/01/09
+ * @date 2025/01/09
  */
 public class SecurityException extends BaseException {
 

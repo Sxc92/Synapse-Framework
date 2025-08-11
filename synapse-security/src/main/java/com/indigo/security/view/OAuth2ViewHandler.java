@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
  * 处理OAuth2.0相关的视图响应
  *
  * @author 史偕成
- * @date 2024/01/08
+ * @date 2025/01/08
  */
 @Slf4j
 @Component

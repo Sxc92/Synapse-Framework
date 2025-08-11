@@ -20,7 +20,7 @@ import java.util.Properties;
  * - INSERT/UPDATE/DELETE语句使用主库
  *
  * @author 史偕成
- * @date 2024/03/21
+ * @date 2025/03/21
  */
 @Slf4j
 @Component

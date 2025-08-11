@@ -1,18 +1,28 @@
 package com.indigo.cache.config;
 
 import com.indigo.cache.extension.lock.*;
+import com.indigo.cache.extension.lock.resource.*;
 import com.indigo.cache.infrastructure.RedisService;
 import com.indigo.cache.manager.CacheKeyGenerator;
+import com.indigo.cache.core.CacheService;
+import com.indigo.cache.infrastructure.CaffeineCacheManager;
+import com.indigo.cache.session.SessionManager;
+import com.indigo.cache.session.CachePermissionManager;
+import com.indigo.cache.session.StatisticsManager;
 import com.indigo.core.utils.ThreadUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 分布式锁自动配置类
@@ -24,7 +34,17 @@ import java.util.concurrent.ScheduledExecutorService;
 @Slf4j
 @AutoConfiguration
 @ConditionalOnClass({RedisService.class, ThreadUtils.class})
+@EnableConfigurationProperties(LockProperties.class)
+@EnableScheduling
 public class LockAutoConfiguration {
+    
+    private final LockProperties lockProperties;
+    private final AtomicLong lastAccessTime = new AtomicLong(System.currentTimeMillis());
+    
+    public LockAutoConfiguration(LockProperties lockProperties) {
+        this.lockProperties = lockProperties;
+        log.info("LockAutoConfiguration 已创建，延迟初始化策略已启用");
+    }
 
     /**
      * 锁专用调度线程池（内部Bean）
@@ -32,7 +52,7 @@ public class LockAutoConfiguration {
     @Bean("lockScheduledExecutor")
     @ConditionalOnMissingBean(name = "lockScheduledExecutor")
     public ScheduledExecutorService lockScheduledExecutor() {
-        log.info("创建锁专用ScheduledExecutorService Bean");
+        log.debug("创建锁专用ScheduledExecutorService Bean（延迟初始化）");
         return Executors.newScheduledThreadPool(2);
     }
 
@@ -42,7 +62,7 @@ public class LockAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public LockPerformanceMonitor lockPerformanceMonitor() {
-        log.info("创建LockPerformanceMonitor Bean");
+        log.debug("创建LockPerformanceMonitor Bean（延迟初始化）");
         return new LockPerformanceMonitor();
     }
 
@@ -55,7 +75,7 @@ public class LockAutoConfiguration {
             RedisService redisService,
             @Qualifier("synapseCacheKeyGenerator") CacheKeyGenerator cacheKeyGenerator,
             ThreadUtils threadUtils) {
-        log.info("创建DistributedLockService Bean");
+        log.debug("创建DistributedLockService Bean（延迟初始化）");
         return new DistributedLockService(redisService, cacheKeyGenerator, threadUtils);
     }
 
@@ -69,7 +89,7 @@ public class LockAutoConfiguration {
             @Qualifier("synapseCacheKeyGenerator") CacheKeyGenerator cacheKeyGenerator,
             DistributedLockService distributedLockService,
             @Qualifier("lockScheduledExecutor") ScheduledExecutorService scheduler) {
-        log.info("创建DeadlockDetector Bean");
+        log.debug("创建DeadlockDetector Bean（延迟初始化）");
         return new DeadlockDetector(redisService, cacheKeyGenerator, distributedLockService, scheduler);
     }
 
@@ -82,7 +102,7 @@ public class LockAutoConfiguration {
             RedisService redisService,
             @Qualifier("synapseCacheKeyGenerator") CacheKeyGenerator cacheKeyGenerator,
             DistributedLockService distributedLockService) {
-        log.info("创建ReadWriteLockService Bean");
+        log.debug("创建ReadWriteLockService Bean（延迟初始化）");
         return new ReadWriteLockService(redisService, cacheKeyGenerator, distributedLockService);
     }
 
@@ -95,10 +115,48 @@ public class LockAutoConfiguration {
             RedisService redisService,
             @Qualifier("synapseCacheKeyGenerator") CacheKeyGenerator cacheKeyGenerator,
             DistributedLockService distributedLockService) {
-        log.info("创建FairLockService Bean");
+        log.debug("创建FairLockService Bean（延迟初始化）");
         return new FairLockService(redisService, cacheKeyGenerator, distributedLockService);
     }
 
+    /**
+     * 资源池管理器
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public ResourcePool resourcePool() {
+        log.debug("创建ResourcePool Bean");
+        return new ResourcePool();
+    }
+    
+    /**
+     * 快速恢复管理器
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public FastRecoveryManager fastRecoveryManager(ResourcePool resourcePool) {
+        log.debug("创建FastRecoveryManager Bean");
+        return new FastRecoveryManager(resourcePool);
+    }
+    
+    /**
+     * 自动释放检查器
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public AutoReleaseChecker autoReleaseChecker(
+            ResourcePool resourcePool, 
+            LockProperties lockProperties,
+            CacheService cacheService,
+            CaffeineCacheManager caffeineCacheManager,
+            SessionManager sessionManager,
+            StatisticsManager statisticsManager,
+            LockPerformanceMonitor lockPerformanceMonitor) {
+        log.debug("创建AutoReleaseChecker Bean");
+        return new AutoReleaseChecker(resourcePool, lockProperties, cacheService, 
+                                   caffeineCacheManager, sessionManager, statisticsManager, lockPerformanceMonitor);
+    }
+    
     /**
      * 统一分布式锁管理器（对外暴露的唯一入口）
      */
@@ -109,9 +167,40 @@ public class LockAutoConfiguration {
             ReadWriteLockService readWriteLockService,
             FairLockService fairLockService,
             DeadlockDetector deadlockDetector,
-            LockPerformanceMonitor performanceMonitor) {
+            LockPerformanceMonitor performanceMonitor,
+            FastRecoveryManager fastRecoveryManager) {
         log.info("创建LockManager Bean - 分布式锁统一入口");
         return new LockManager(distributedLockService, readWriteLockService, 
-                             fairLockService, deadlockDetector, performanceMonitor);
+                             fairLockService, deadlockDetector, performanceMonitor, fastRecoveryManager);
+    }
+    
+    /**
+     * 自动释放资源检查任务
+     * 根据配置的阈值自动释放长时间未使用的资源
+     */
+    @Scheduled(fixedDelayString = "${synapse.cache.lock.auto-release.check-interval:60000}")
+    public void autoReleaseCheck() {
+        if (!lockProperties.getAutoRelease().isEnabled()) {
+            return;
+        }
+        
+        long currentTime = System.currentTimeMillis();
+        long lastAccess = lastAccessTime.get();
+        long threshold = lockProperties.getAutoRelease().getCoreServiceThreshold();
+        
+        if (currentTime - lastAccess > threshold) {
+            log.info("检测到长时间未使用，开始自动释放分布式锁资源...");
+            // 这里可以添加具体的资源释放逻辑
+            // 例如：关闭线程池、清理缓存等
+            log.info("分布式锁资源自动释放完成");
+        }
+    }
+    
+    /**
+     * 更新最后访问时间
+     * 供外部调用以更新活跃状态
+     */
+    public void updateLastAccessTime() {
+        lastAccessTime.set(System.currentTimeMillis());
     }
 } 

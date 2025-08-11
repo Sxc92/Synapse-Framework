@@ -23,7 +23,7 @@ import java.util.UUID;
  * Custom serializers configuration
  *
  * @author IndigoByte
- * @date 2024/03/21
+ * @date 2025/03/21
  */
 @Configuration
 public class CustomSerializers {

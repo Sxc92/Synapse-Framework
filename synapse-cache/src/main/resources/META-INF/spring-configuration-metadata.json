@@ -1,153 +1,524 @@
 {
   "groups": [
     {
-      "name": "spring.datasource.dynamic",
-      "type": "com.indigo.databases.config.DynamicDataSourceProperties",
-      "description": "动态数据源配置属性"
+      "name": "synapse.cache",
+      "type": "com.indigo.cache.config.CacheProperties",
+      "description": "缓存配置属性",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.lock",
+      "type": "com.indigo.cache.config.LockProperties",
+      "description": "分布式锁配置属性",
+      "sourceType": "com.indigo.cache.config.LockProperties"
     }
   ],
   "properties": [
     {
-      "name": "spring.datasource.dynamic.primary",
-      "type": "java.lang.String",
-      "description": "默认数据源",
-      "defaultValue": "master"
-    },
-    {
-      "name": "spring.datasource.dynamic.strict",
+      "name": "synapse.cache.enabled",
       "type": "java.lang.Boolean",
-      "description": "是否启用严格模式，严格模式下未匹配到数据源直接报错",
-      "defaultValue": false
+      "description": "是否启用缓存功能",
+      "defaultValue": true,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
     },
     {
-      "name": "spring.datasource.dynamic.seata",
+      "name": "synapse.cache.default-strategy",
+      "type": "java.lang.String",
+      "description": "默认缓存策略",
+      "defaultValue": "LOCAL_AND_REDIS",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.redis.enabled",
       "type": "java.lang.Boolean",
-      "description": "是否启用seata分布式事务",
-      "defaultValue": false
+      "description": "是否启用Redis缓存",
+      "defaultValue": true,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
     },
     {
-      "name": "spring.datasource.dynamic.p6spy",
+      "name": "synapse.cache.redis.key-prefix",
+      "type": "java.lang.String",
+      "description": "Redis键前缀",
+      "defaultValue": "synapse",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.redis.default-expire",
+      "type": "java.time.Duration",
+      "description": "Redis默认过期时间",
+      "defaultValue": "PT1H",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.redis.connection.host",
+      "type": "java.lang.String",
+      "description": "Redis主机地址",
+      "defaultValue": "localhost",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.redis.connection.port",
+      "type": "java.lang.Integer",
+      "description": "Redis端口",
+      "defaultValue": 6379,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.redis.connection.database",
+      "type": "java.lang.Integer",
+      "description": "Redis数据库索引",
+      "defaultValue": 0,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.redis.connection.password",
+      "type": "java.lang.String",
+      "description": "Redis密码",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.redis.connection.timeout",
+      "type": "java.time.Duration",
+      "description": "Redis连接超时时间",
+      "defaultValue": "PT2S",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.redis.connection.ssl",
       "type": "java.lang.Boolean",
-      "description": "是否启用p6spy",
-      "defaultValue": false
+      "description": "是否启用SSL连接",
+      "defaultValue": false,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
     },
     {
-      "name": "spring.datasource.dynamic.datasource",
-      "type": "java.util.Map<java.lang.String,com.indigo.databases.config.DynamicDataSourceProperties$DataSourceProperties>",
-      "description": "数据源配置"
-    },
-    {
-      "name": "spring.datasource.dynamic.datasource.*.type",
-      "type": "com.indigo.databases.enums.DatabaseType",
-      "description": "数据库类型"
-    },
-    {
-      "name": "spring.datasource.dynamic.datasource.*.pool-type",
-      "type": "com.indigo.databases.enums.PoolType",
-      "description": "连接池类型",
-      "defaultValue": "HIKARI"
-    },
-    {
-      "name": "spring.datasource.dynamic.datasource.*.host",
+      "name": "synapse.cache.redis.connection.client-name",
       "type": "java.lang.String",
-      "description": "主机地址"
+      "description": "Redis客户端名称",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
     },
     {
-      "name": "spring.datasource.dynamic.datasource.*.port",
+      "name": "synapse.cache.redis.cluster.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用Redis集群模式",
+      "defaultValue": false,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.redis.cluster.nodes",
+      "type": "java.lang.String[]",
+      "description": "Redis集群节点列表",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.redis.cluster.max-redirects",
       "type": "java.lang.Integer",
-      "description": "端口号"
+      "description": "Redis集群最大重定向次数",
+      "defaultValue": 5,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
     },
     {
-      "name": "spring.datasource.dynamic.datasource.*.database",
+      "name": "synapse.cache.redis.cluster.refresh-period",
+      "type": "java.time.Duration",
+      "description": "Redis集群刷新周期",
+      "defaultValue": "PT30S",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.redis.sentinel.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用Redis哨兵模式",
+      "defaultValue": false,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.redis.sentinel.nodes",
+      "type": "java.lang.String[]",
+      "description": "Redis哨兵节点列表",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.redis.sentinel.master",
       "type": "java.lang.String",
-      "description": "数据库名"
+      "description": "Redis哨兵主节点名称",
+      "defaultValue": "mymaster",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
     },
     {
-      "name": "spring.datasource.dynamic.datasource.*.username",
+      "name": "synapse.cache.redis.sentinel.password",
       "type": "java.lang.String",
-      "description": "用户名"
+      "description": "Redis哨兵密码",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
     },
     {
-      "name": "spring.datasource.dynamic.datasource.*.password",
-      "type": "java.lang.String",
-      "description": "密码"
-    },
-    {
-      "name": "spring.datasource.dynamic.datasource.*.params",
-      "type": "java.util.Map<java.lang.String,java.lang.String>",
-      "description": "连接参数"
-    },
-    {
-      "name": "spring.datasource.dynamic.datasource.*.hikari.minimum-idle",
+      "name": "synapse.cache.redis.pool.max-active",
       "type": "java.lang.Integer",
-      "description": "连接池最小空闲连接数",
-      "defaultValue": 5
+      "description": "Redis连接池最大活跃连接数",
+      "defaultValue": 8,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
     },
     {
-      "name": "spring.datasource.dynamic.datasource.*.hikari.maximum-pool-size",
+      "name": "synapse.cache.redis.pool.max-idle",
       "type": "java.lang.Integer",
-      "description": "连接池最大连接数",
-      "defaultValue": 15
+      "description": "Redis连接池最大空闲连接数",
+      "defaultValue": 8,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
     },
     {
-      "name": "spring.datasource.dynamic.datasource.*.hikari.idle-timeout",
-      "type": "java.lang.Long",
-      "description": "空闲连接最大存活时间，默认600000(10分钟)",
-      "defaultValue": 600000
+      "name": "synapse.cache.redis.pool.min-idle",
+      "type": "java.lang.Integer",
+      "description": "Redis连接池最小空闲连接数",
+      "defaultValue": 0,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
     },
     {
-      "name": "spring.datasource.dynamic.datasource.*.hikari.max-lifetime",
-      "type": "java.lang.Long",
-      "description": "连接最大存活时间，默认1800000(30分钟)",
-      "defaultValue": 1800000
+      "name": "synapse.cache.redis.pool.max-wait",
+      "type": "java.time.Duration",
+      "description": "Redis连接池最大等待时间",
+      "defaultValue": "-1ms",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
     },
     {
-      "name": "spring.datasource.dynamic.datasource.*.hikari.connection-timeout",
-      "type": "java.lang.Long",
-      "description": "连接超时时间，默认30000(30秒)",
-      "defaultValue": 30000
+      "name": "synapse.cache.redis.pool.time-between-eviction-runs",
+      "type": "java.time.Duration",
+      "description": "Redis连接池空闲连接检测间隔",
+      "defaultValue": "PT30S",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
     },
     {
-      "name": "spring.datasource.dynamic.datasource.*.hikari.connection-test-query",
+      "name": "synapse.cache.redis.pool.min-evictable-idle-time",
+      "type": "java.time.Duration",
+      "description": "Redis连接池空闲连接最小空闲时间",
+      "defaultValue": "PT10M",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.redis.pool.max-evictable-idle-time",
+      "type": "java.time.Duration",
+      "description": "Redis连接池空闲连接最大空闲时间",
+      "defaultValue": "PT30M",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.redis.pool.test-query",
       "type": "java.lang.String",
-      "description": "连接测试查询",
-      "defaultValue": "SELECT 1"
-    }
-  ],
-  "hints": [
-    {
-      "name": "spring.datasource.dynamic.datasource.*.type",
-      "values": [
-        {
-          "value": "MYSQL",
-          "description": "MySQL数据库"
-        },
-        {
-          "value": "POSTGRESQL",
-          "description": "PostgreSQL数据库"
-        },
-        {
-          "value": "ORACLE",
-          "description": "Oracle数据库"
-        },
-        {
-          "value": "SQLSERVER",
-          "description": "SQL Server数据库"
-        }
-      ]
+      "description": "Redis连接池连接测试查询",
+      "defaultValue": "SELECT 1",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
     },
     {
-      "name": "spring.datasource.dynamic.datasource.*.pool-type",
-      "values": [
-        {
-          "value": "HIKARI",
-          "description": "HikariCP连接池"
-        },
-        {
-          "value": "DRUID",
-          "description": "Druid连接池"
-        }
-      ]
+      "name": "synapse.cache.redis.pool.test-while-idle",
+      "type": "java.lang.Boolean",
+      "description": "Redis连接池空闲时是否测试连接",
+      "defaultValue": true,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.redis.pool.test-on-borrow",
+      "type": "java.lang.Boolean",
+      "description": "Redis连接池借用时是否测试连接",
+      "defaultValue": false,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.redis.pool.test-on-return",
+      "type": "java.lang.Boolean",
+      "description": "Redis连接池归还时是否测试连接",
+      "defaultValue": false,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.local-cache.maximum-size",
+      "type": "java.lang.Long",
+      "description": "本地缓存最大条目数",
+      "defaultValue": 10000,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.local-cache.expire-after-write",
+      "type": "java.time.Duration",
+      "description": "本地缓存写入后过期时间",
+      "defaultValue": "PT30M",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.local-cache.expire-after-access",
+      "type": "java.time.Duration",
+      "description": "本地缓存访问后过期时间",
+      "defaultValue": "PT10M",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.local-cache.refresh-after-write",
+      "type": "java.time.Duration",
+      "description": "本地缓存写入后刷新时间",
+      "defaultValue": "PT5M",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.local-cache.enable-stats",
+      "type": "java.lang.Boolean",
+      "description": "是否启用本地缓存统计",
+      "defaultValue": true,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.local-cache.enable-record",
+      "type": "java.lang.Boolean",
+      "description": "是否启用本地缓存记录",
+      "defaultValue": false,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.lock.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用分布式锁功能",
+      "defaultValue": true,
+      "sourceType": "com.indigo.cache.config.LockProperties"
+    },
+    {
+      "name": "synapse.cache.lock.key-prefix",
+      "type": "java.lang.String",
+      "description": "分布式锁键前缀",
+      "defaultValue": "synapse:lock",
+      "sourceType": "com.indigo.cache.config.LockProperties"
+    },
+    {
+      "name": "synapse.cache.lock.default-timeout",
+      "type": "java.lang.Long",
+      "description": "分布式锁默认超时时间(秒)",
+      "defaultValue": 30,
+      "sourceType": "com.indigo.cache.config.LockProperties"
+    },
+    {
+      "name": "synapse.cache.lock.retry-interval",
+      "type": "java.lang.Long",
+      "description": "分布式锁重试间隔(毫秒)",
+      "defaultValue": 100,
+      "sourceType": "com.indigo.cache.config.LockProperties"
+    },
+    {
+      "name": "synapse.cache.lock.max-retries",
+      "type": "java.lang.Integer",
+      "description": "分布式锁最大重试次数",
+      "defaultValue": 3,
+      "sourceType": "com.indigo.cache.config.LockProperties"
+    },
+    {
+      "name": "synapse.cache.lock.auto-release.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用分布式锁自动释放",
+      "defaultValue": true,
+      "sourceType": "com.indigo.cache.config.LockProperties"
+    },
+    {
+      "name": "synapse.cache.lock.auto-release.check-interval",
+      "type": "java.lang.Long",
+      "description": "分布式锁自动释放检查间隔(毫秒)",
+      "defaultValue": 60000,
+      "sourceType": "com.indigo.cache.config.LockProperties"
+    },
+    {
+      "name": "synapse.cache.lock.auto-release.core-service-threshold",
+      "type": "java.lang.Long",
+      "description": "核心服务释放阈值(毫秒)",
+      "defaultValue": 1800000,
+      "sourceType": "com.indigo.cache.config.LockProperties"
+    },
+    {
+      "name": "synapse.cache.lock.auto-release.business-cache-threshold",
+      "type": "java.lang.Long",
+      "description": "业务缓存释放阈值(毫秒)",
+      "defaultValue": 900000,
+      "sourceType": "com.indigo.cache.config.LockProperties"
+    },
+    {
+      "name": "synapse.cache.lock.auto-release.temporary-threshold",
+      "type": "java.lang.Long",
+      "description": "临时资源释放阈值(毫秒)",
+      "defaultValue": 300000,
+      "sourceType": "com.indigo.cache.config.LockProperties"
+    },
+    {
+      "name": "synapse.cache.warmup.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用缓存预热",
+      "defaultValue": false,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.warmup.thread-pool-size",
+      "type": "java.lang.Integer",
+      "description": "缓存预热线程池大小",
+      "defaultValue": 5,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.warmup.timeout",
+      "type": "java.time.Duration",
+      "description": "缓存预热超时时间",
+      "defaultValue": "PT5M",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.warmup.batch-size",
+      "type": "java.lang.Integer",
+      "description": "缓存预热批次大小",
+      "defaultValue": 100,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.warmup.interval",
+      "type": "java.time.Duration",
+      "description": "缓存预热间隔",
+      "defaultValue": "PT1H",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.penetration-protection.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用缓存穿透防护",
+      "defaultValue": true,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.penetration-protection.null-value-expire",
+      "type": "java.time.Duration",
+      "description": "空值缓存过期时间",
+      "defaultValue": "PT5M",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.penetration-protection.bloom-filter-size",
+      "type": "java.lang.Long",
+      "description": "布隆过滤器大小",
+      "defaultValue": 1000000,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.penetration-protection.bloom-filter-false-positive-rate",
+      "type": "java.lang.Double",
+      "description": "布隆过滤器误判率",
+      "defaultValue": 0.01,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.penetration-protection.enable-bloom-filter",
+      "type": "java.lang.Boolean",
+      "description": "是否启用布隆过滤器",
+      "defaultValue": false,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.penetration-protection.rate-limit.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用限流防护",
+      "defaultValue": true,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.penetration-protection.rate-limit.requests-per-second",
+      "type": "java.lang.Integer",
+      "description": "每秒请求数限制",
+      "defaultValue": 100,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.penetration-protection.rate-limit.burst-requests",
+      "type": "java.lang.Integer",
+      "description": "突发请求数限制",
+      "defaultValue": 200,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.penetration-protection.rate-limit.window-size",
+      "type": "java.time.Duration",
+      "description": "限流窗口大小",
+      "defaultValue": "PT1S",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.exception-handling.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用异常处理",
+      "defaultValue": true,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.exception-handling.log-exceptions",
+      "type": "java.lang.Boolean",
+      "description": "是否记录异常日志",
+      "defaultValue": true,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.exception-handling.throw-exceptions",
+      "type": "java.lang.Boolean",
+      "description": "是否抛出异常",
+      "defaultValue": false,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.exception-handling.retry-count",
+      "type": "java.lang.Integer",
+      "description": "异常重试次数",
+      "defaultValue": 3,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.exception-handling.retry-interval",
+      "type": "java.time.Duration",
+      "description": "异常重试间隔",
+      "defaultValue": "PT0.1S",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.exception-handling.fallback-strategy",
+      "type": "java.lang.String",
+      "description": "异常降级策略",
+      "defaultValue": "RETURN_NULL",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.health-check.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用健康检查",
+      "defaultValue": true,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.health-check.interval",
+      "type": "java.time.Duration",
+      "description": "健康检查间隔",
+      "defaultValue": "PT30S",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.health-check.timeout",
+      "type": "java.time.Duration",
+      "description": "健康检查超时时间",
+      "defaultValue": "PT5S",
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.health-check.failure-threshold",
+      "type": "java.lang.Integer",
+      "description": "健康检查失败阈值",
+      "defaultValue": 3,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.health-check.recovery-threshold",
+      "type": "java.lang.Integer",
+      "description": "健康检查恢复阈值",
+      "defaultValue": 2,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
+    },
+    {
+      "name": "synapse.cache.health-check.detailed-check",
+      "type": "java.lang.Boolean",
+      "description": "是否启用详细健康检查",
+      "defaultValue": false,
+      "sourceType": "com.indigo.cache.config.CacheProperties"
     }
   ]
 } 

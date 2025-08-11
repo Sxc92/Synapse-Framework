@@ -7,7 +7,7 @@ import java.lang.annotation.*;
  * 用于标记实体类中的查询条件字段
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)

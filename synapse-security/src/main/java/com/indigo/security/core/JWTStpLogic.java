@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
  * 用户信息存储在Redis中
  * 
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
 @Slf4j
 @Component

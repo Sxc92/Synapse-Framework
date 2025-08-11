@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -14,24 +13,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 
 /**
- * Redis服务类，提供基础的Redis操作方法
- * 注意：该类不使用@Service注解，而是通过CacheAutoConfiguration创建bean
- * 这样可以确保RedisTemplate等依赖已经正确初始化
+ * Redis基础设施服务类
  * 
- * 功能特性：
- * - 基础Redis操作（字符串、对象、集合、哈希、列表、有序集合等）
+ * 职责：专注于Redis基础设施操作，不包含业务缓存逻辑
+ * - 分布式锁支持
+ * - 限流控制
+ * - 消息队列
  * - 位图操作
  * - Lua脚本执行
  * - 键扫描和模式匹配
- * - 简单限流功能（基于计数器）
+ * - 原子操作（递增、递减等）
  * 
  * 设计原则：
- * - 专注于Redis基础操作，不包含业务逻辑
- * - Token和会话管理由UserSessionService负责
+ * - 不提供业务对象的序列化/反序列化
+ * - 专注于Redis原生数据类型操作
+ * - 为上层服务提供基础设施支持
  * - 保持接口简洁，易于使用和测试
  * 
  * @author 史偕成
@@ -52,8 +51,10 @@ public class RedisService {
         this.objectMapper = objectMapper;
     }
 
+    // ==================== 基础键值操作（基础设施层） ====================
+
     /**
-     * 设置缓存
+     * 设置键值（无过期时间）
      *
      * @param key   键
      * @param value 值
@@ -63,7 +64,7 @@ public class RedisService {
     }
 
     /**
-     * 设置缓存并设置过期时间
+     * 设置键值并设置过期时间
      *
      * @param key     键
      * @param value   值
@@ -74,7 +75,7 @@ public class RedisService {
     }
 
     /**
-     * 获取缓存
+     * 获取值
      *
      * @param key 键
      * @return 值
@@ -84,7 +85,7 @@ public class RedisService {
     }
 
     /**
-     * 删除缓存
+     * 删除键
      *
      * @param key 键
      * @return 是否成功
@@ -94,7 +95,7 @@ public class RedisService {
     }
 
     /**
-     * 批量删除缓存
+     * 批量删除键
      *
      * @param keys 键集合
      * @return 成功删除的数量
@@ -125,7 +126,7 @@ public class RedisService {
     }
 
     /**
-     * 判断key是否存在
+     * 判断键是否存在
      *
      * @param key 键
      * @return 是否存在
@@ -133,6 +134,8 @@ public class RedisService {
     public Boolean hasKey(String key) {
         return redisTemplate.hasKey(key);
     }
+
+    // ==================== 原子操作（基础设施层） ====================
 
     /**
      * 递增
@@ -156,10 +159,10 @@ public class RedisService {
         return redisTemplate.opsForValue().decrement(key, delta);
     }
 
-    // Hash 操作
+    // ==================== Hash操作（基础设施层） ====================
 
     /**
-     * 设置Hash缓存
+     * 设置Hash字段
      *
      * @param key     键
      * @param hashKey hash键
@@ -170,7 +173,7 @@ public class RedisService {
     }
 
     /**
-     * 获取Hash缓存
+     * 获取Hash字段值
      *
      * @param key     键
      * @param hashKey hash键
@@ -191,7 +194,7 @@ public class RedisService {
     }
 
     /**
-     * 批量设置Hash缓存
+     * 批量设置Hash字段
      *
      * @param key  键
      * @param map  对应多个键值
@@ -201,7 +204,7 @@ public class RedisService {
     }
 
     /**
-     * 删除Hash缓存
+     * 删除Hash字段
      *
      * @param key      键
      * @param hashKeys hash键
@@ -212,7 +215,7 @@ public class RedisService {
     }
 
     /**
-     * 判断hash表中是否有该项的值
+     * 判断Hash字段是否存在
      *
      * @param key     键
      * @param hashKey hash键
@@ -222,10 +225,10 @@ public class RedisService {
         return redisTemplate.opsForHash().hasKey(key, hashKey);
     }
 
-    // List 操作
+    // ==================== List操作（基础设施层） ====================
 
     /**
-     * 获取List缓存的内容
+     * 获取List指定范围内容
      *
      * @param key   键
      * @param start 开始
@@ -237,7 +240,7 @@ public class RedisService {
     }
 
     /**
-     * 获取List缓存的长度
+     * 获取List长度
      *
      * @param key 键
      * @return 长度
@@ -258,7 +261,7 @@ public class RedisService {
     }
 
     /**
-     * 将List放入缓存
+     * 从右侧推入List
      *
      * @param key   键
      * @param value 值
@@ -269,10 +272,10 @@ public class RedisService {
     }
 
     /**
-     * 将List放入缓存
+     * 从右侧推入List并设置过期时间
      *
-     * @param key   键
-     * @param value 值
+     * @param key     键
+     * @param value   值
      * @param timeout 过期时间(秒)
      * @return 是否成功
      */
@@ -283,7 +286,7 @@ public class RedisService {
     }
 
     /**
-     * 将List放入缓存
+     * 批量从右侧推入List
      *
      * @param key   键
      * @param value 值
@@ -294,10 +297,10 @@ public class RedisService {
     }
 
     /**
-     * 将List放入缓存并设置过期时间
+     * 批量从右侧推入List并设置过期时间
      *
-     * @param key   键
-     * @param value 值
+     * @param key     键
+     * @param value   值
      * @param timeout 过期时间(秒)
      * @return 是否成功
      */
@@ -330,10 +333,10 @@ public class RedisService {
         return redisTemplate.opsForList().remove(key, count, value);
     }
 
-    // Set 操作
+    // ==================== Set操作（基础设施层） ====================
 
     /**
-     * 将数据放入Set缓存
+     * 向Set添加元素
      *
      * @param key    键
      * @param values 值 可以是多个
@@ -344,10 +347,10 @@ public class RedisService {
     }
 
     /**
-     * 获取Set缓存的长度
+     * 获取Set大小
      *
      * @param key 键
-     * @return 长度
+     * @return 大小
      */
     public Long setSize(String key) {
         return redisTemplate.opsForSet().size(key);
@@ -365,7 +368,7 @@ public class RedisService {
     }
 
     /**
-     * 获取Set缓存的所有值
+     * 获取Set的所有值
      *
      * @param key 键
      * @return 所有值
@@ -375,7 +378,7 @@ public class RedisService {
     }
 
     /**
-     * 移除值为value的
+     * 从Set移除元素
      *
      * @param key    键
      * @param values 值 可以是多个
@@ -385,7 +388,7 @@ public class RedisService {
         return redisTemplate.opsForSet().remove(key, values);
     }
 
-    // ZSet 操作
+    // ==================== ZSet操作（基础设施层） ====================
 
     /**
      * 添加ZSet元素
@@ -432,46 +435,22 @@ public class RedisService {
         return redisTemplate.opsForZSet().remove(key, values);
     }
 
+    // ==================== 基础设施功能 ====================
 
     /**
-     * 检查 token 是否有效（存在并未过期）
+     * 检查键是否有效（存在并未过期）
      */
-    public boolean isTokenValid(String tokenKey) {
-        return this.hasKey(tokenKey) && Boolean.TRUE.equals(this.getExpire(tokenKey) > 0);
+    public boolean isKeyValid(String key) {
+        return this.hasKey(key) && Boolean.TRUE.equals(this.getExpire(key) > 0);
     }
 
     /**
      * 自动续期，如果 TTL 小于阈值则刷新
      */
-    public void tryRenewToken(String key, long ttlThreshold, long newTtl) {
+    public void tryRenewKey(String key, long ttlThreshold, long newTtl) {
         Long ttl = this.getExpire(key);
         if (ttl != null && ttl > 0 && ttl < ttlThreshold) {
             this.expire(key, newTtl);
-        }
-    }
-
-    /**
-     * 存储对象为 JSON 字符串
-     */
-    public <T> void setObject(String key, T value, long timeout) {
-        try {
-            String json = objectMapper.writeValueAsString(value);
-            stringRedisTemplate.opsForValue().set(key, json, timeout, TimeUnit.SECONDS);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to serialize object for redis", e);
-        }
-    }
-
-    /**
-     * 获取 JSON 字符串并反序列化为对象
-     */
-    public <T> T getObject(String key, Class<T> clazz) {
-        try {
-            String json = stringRedisTemplate.opsForValue().get(key);
-            if (json == null) return null;
-            return objectMapper.readValue(json, clazz);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to deserialize object from redis", e);
         }
     }
 
@@ -489,6 +468,8 @@ public class RedisService {
         return stringRedisTemplate.opsForValue().get(key);
     }
 
+    // ==================== Lua脚本执行（基础设施层） ====================
+
     /**
      * 执行Lua脚本
      *
@@ -498,13 +479,10 @@ public class RedisService {
      * @return 执行结果
      */
     public Long executeScript(String script, String key, String... args) {
-        // 使用现代的 RedisScript 方式
-        DefaultRedisScript<Long> redisScript =
-            new DefaultRedisScript<>();
+        DefaultRedisScript<Long> redisScript = new DefaultRedisScript<>();
         redisScript.setScriptText(script);
         redisScript.setResultType(Long.class);
         
-        // 准备键和参数
         java.util.List<String> keys = java.util.Collections.singletonList(key);
 
         try {
@@ -514,6 +492,8 @@ public class RedisService {
             return 0L;
         }
     }
+
+    // ==================== 键扫描（基础设施层） ====================
 
     /**
      * 根据模式扫描键
@@ -558,6 +538,8 @@ public class RedisService {
         return keys;
     }
 
+    // ==================== 位图操作（基础设施层） ====================
+
     /**
      * 获取位图中的位值
      *
@@ -591,7 +573,7 @@ public class RedisService {
         }
     }
 
-    // ==================== 限流相关方法 ====================
+    // ==================== 限流控制（基础设施层） ====================
     
     /**
      * 基于用户的简单限流
@@ -631,5 +613,35 @@ public class RedisService {
         }
         
         return current <= limit;
+    }
+
+    // ==================== 消息队列支持（基础设施层） ====================
+    
+    /**
+     * 发布消息到频道
+     *
+     * @param channel 频道
+     * @param message 消息
+     */
+    public void publish(String channel, Object message) {
+        redisTemplate.convertAndSend(channel, message);
+    }
+
+    /**
+     * 获取RedisTemplate（用于高级操作）
+     *
+     * @return RedisTemplate
+     */
+    public RedisTemplate<String, Object> getRedisTemplate() {
+        return redisTemplate;
+    }
+
+    /**
+     * 获取StringRedisTemplate（用于字符串操作）
+     *
+     * @return StringRedisTemplate
+     */
+    public StringRedisTemplate getStringRedisTemplate() {
+        return stringRedisTemplate;
     }
 } 

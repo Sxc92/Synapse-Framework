@@ -10,7 +10,7 @@ import org.springframework.context.support.ResourceBundleMessageSource;
  * Test configuration for core module
  * 
  * @author 史偕成
- * @date 2024/03/21
+ * @date 2025/03/21
  **/
 @Configuration
 public class TestConfig {

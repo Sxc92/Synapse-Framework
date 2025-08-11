@@ -3,13 +3,13 @@ package com.indigo.cache.session;
 import java.util.List;
 
 /**
- * 权限管理器接口
+ * 缓存权限管理器接口
  * 定义用户权限和角色管理的核心操作
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
-public interface PermissionManager {
+public interface CachePermissionManager {
 
     /**
      * 存储用户权限信息

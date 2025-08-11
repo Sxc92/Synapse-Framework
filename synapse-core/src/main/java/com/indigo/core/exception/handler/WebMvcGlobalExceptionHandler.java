@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * 处理传统 Servlet 环境下的所有异常
  * 
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  **/
 @Slf4j
 @RestControllerAdvice

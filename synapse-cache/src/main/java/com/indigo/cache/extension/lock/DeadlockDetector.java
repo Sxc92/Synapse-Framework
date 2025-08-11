@@ -3,6 +3,7 @@ package com.indigo.cache.extension.lock;
 import com.indigo.cache.infrastructure.RedisService;
 import com.indigo.cache.manager.CacheKeyGenerator;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -56,7 +57,7 @@ public class DeadlockDetector {
     public DeadlockDetector(RedisService redisService, 
                            CacheKeyGenerator keyGenerator,
                            DistributedLockService distributedLockService,
-                           ScheduledExecutorService scheduler) {
+                           @Qualifier("lockScheduledExecutor") ScheduledExecutorService scheduler) {
         this.redisService = redisService;
         this.keyGenerator = keyGenerator;
         this.distributedLockService = distributedLockService;

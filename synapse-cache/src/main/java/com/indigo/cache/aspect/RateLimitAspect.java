@@ -22,7 +22,7 @@ import jakarta.servlet.http.HttpServletRequest;
  * 注意：在 WebFlux 环境中，请使用 ReactiveRateLimitAspect
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
 @Slf4j
 @Component

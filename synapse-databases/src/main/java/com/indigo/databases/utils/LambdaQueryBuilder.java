@@ -15,7 +15,7 @@ import java.util.Map;
  * 注意：对于简单的链式查询，建议直接使用 MyBatis-Plus 的 LambdaQueryWrapper
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
 public class LambdaQueryBuilder<T> {
     

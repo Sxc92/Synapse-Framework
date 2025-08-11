@@ -11,7 +11,7 @@ import java.util.Map;
  * 用于定义用户或角色对数据的访问规则
  *
  * @author 史偕成
- * @date 2024/01/09
+ * @date 2025/01/09
  */
 @Data
 @Builder

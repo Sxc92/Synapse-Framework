@@ -17,12 +17,16 @@ import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import com.indigo.cache.session.SessionManager;
+import com.indigo.cache.session.CachePermissionManager;
+import com.indigo.cache.session.StatisticsManager;
 
 /**
  * 缓存自动配置类，用于自动注册缓存服务
@@ -36,6 +40,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 @Slf4j
 @AutoConfiguration(after = RedisAutoConfiguration.class)
 @Import({RedisConfiguration.class})
+@EnableConfigurationProperties(CacheProperties.class)
 @ComponentScan(basePackages = {"com.indigo.cache.aspect", "com.indigo.cache.core", "com.indigo.core"})
 public class CacheAutoConfiguration {
 
@@ -118,6 +123,46 @@ public class CacheAutoConfiguration {
             RedisService redisService) {
         log.info("创建UserSessionService Bean - 使用新的session包架构");
         return UserSessionServiceFactory.createUserSessionService(cacheService, cacheKeyGenerator, redisService);
+    }
+
+    /**
+     * 注册会话管理器
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public SessionManager sessionManager(
+            CacheService cacheService,
+            @Qualifier("synapseCacheKeyGenerator") CacheKeyGenerator cacheKeyGenerator) {
+        log.info("创建SessionManager Bean");
+        return UserSessionServiceFactory.createSessionManager(cacheService, cacheKeyGenerator);
+    }
+
+    /**
+     * 注册缓存权限管理器
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public CachePermissionManager cachePermissionManager(
+            CacheService cacheService,
+            @Qualifier("synapseCacheKeyGenerator") CacheKeyGenerator cacheKeyGenerator) {
+        log.info("创建CachePermissionManager Bean");
+        return UserSessionServiceFactory.createPermissionManager(cacheService, cacheKeyGenerator);
+    }
+
+    /**
+     * 注册统计管理器
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public StatisticsManager statisticsManager(
+            CacheService cacheService,
+            @Qualifier("synapseCacheKeyGenerator") CacheKeyGenerator cacheKeyGenerator,
+            RedisService redisService,
+            SessionManager sessionManager,
+            CachePermissionManager permissionManager) {
+        log.info("创建StatisticsManager Bean");
+        return UserSessionServiceFactory.createStatisticsManager(
+                cacheService, cacheKeyGenerator, redisService, sessionManager, permissionManager);
     }
 
     /**

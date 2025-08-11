@@ -3,12 +3,13 @@ package com.indigo.cache.session.impl;
 import com.indigo.cache.core.CacheService;
 import com.indigo.cache.manager.CacheKeyGenerator;
 import com.indigo.cache.infrastructure.RedisService;
-import com.indigo.cache.session.PermissionManager;
+import com.indigo.cache.session.CachePermissionManager;
 import com.indigo.cache.session.SessionManager;
 import com.indigo.cache.session.StatisticsManager;
 import com.indigo.core.context.UserContext;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -29,13 +30,13 @@ public class DefaultStatisticsManager implements StatisticsManager {
     private final CacheKeyGenerator keyGenerator;
     private final RedisService redisService;
     private final SessionManager sessionManager;
-    private final PermissionManager permissionManager;
+    private final CachePermissionManager permissionManager;
 
     public DefaultStatisticsManager(CacheService cacheService,
                                     CacheKeyGenerator keyGenerator,
                                     RedisService redisService,
                                     SessionManager sessionManager,
-                                    PermissionManager permissionManager) {
+                                    CachePermissionManager permissionManager) {
         this.cacheService = cacheService;
         this.keyGenerator = keyGenerator;
         this.redisService = redisService;
@@ -212,6 +213,16 @@ public class DefaultStatisticsManager implements StatisticsManager {
                             return 0L;
                         }
                 ));
+    }
+
+    @Override
+    public void resetStatistics() {
+
+    }
+
+    @Override
+    public long clearExpiredData(LocalDateTime cutoffTime) {
+        return 0;
     }
 
     /**

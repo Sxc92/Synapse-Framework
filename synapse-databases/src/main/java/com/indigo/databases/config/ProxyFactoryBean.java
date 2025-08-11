@@ -8,7 +8,7 @@ import org.springframework.beans.factory.FactoryBean;
  * 用于创建动态代理实例
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
 @Slf4j
 public class ProxyFactoryBean implements FactoryBean<Object> {

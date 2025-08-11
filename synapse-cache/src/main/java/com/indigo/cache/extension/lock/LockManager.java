@@ -1,7 +1,13 @@
 package com.indigo.cache.extension.lock;
 
+import com.indigo.cache.extension.lock.resource.FastRecoveryManager;
+import com.indigo.cache.extension.lock.resource.ResourceType;
+import com.indigo.cache.extension.lock.resource.ResourceState;
+import com.indigo.cache.extension.lock.resource.RecoveryState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -70,17 +76,52 @@ public class LockManager {
     private final FairLockService fairLockService;
     private final DeadlockDetector deadlockDetector;
     private final LockPerformanceMonitor performanceMonitor;
+    private final FastRecoveryManager fastRecoveryManager;
+    
+    // 延迟初始化相关字段
+    private volatile boolean isInitialized = false;
+    private final AtomicLong lastAccessTime = new AtomicLong(System.currentTimeMillis());
 
     public LockManager(DistributedLockService distributedLockService,
                       ReadWriteLockService readWriteLockService,
                       FairLockService fairLockService,
                       DeadlockDetector deadlockDetector,
-                      LockPerformanceMonitor performanceMonitor) {
+                      LockPerformanceMonitor performanceMonitor,
+                      FastRecoveryManager fastRecoveryManager) {
         this.distributedLockService = distributedLockService;
         this.readWriteLockService = readWriteLockService;
         this.fairLockService = fairLockService;
         this.deadlockDetector = deadlockDetector;
         this.performanceMonitor = performanceMonitor;
+        this.fastRecoveryManager = fastRecoveryManager;
+        
+        log.info("LockManager Bean 已创建，采用延迟初始化策略");
+    }
+    
+    /**
+     * 确保服务已初始化
+     * 采用延迟初始化策略，首次使用时才启动相关服务
+     */
+    private synchronized void ensureInitialized() {
+        if (!isInitialized) {
+            log.info("首次使用分布式锁服务，开始初始化相关组件...");
+            
+            // 启动死锁检测器
+            if (deadlockDetector != null) {
+                log.debug("启动死锁检测器");
+            }
+            
+            // 启动性能监控器
+            if (performanceMonitor != null) {
+                log.debug("启动性能监控器");
+            }
+            
+            isInitialized = true;
+            log.info("分布式锁服务初始化完成");
+        }
+        
+        // 更新最后访问时间
+        lastAccessTime.set(System.currentTimeMillis());
     }
 
     /**
@@ -122,6 +163,7 @@ public class LockManager {
      * @return 锁值，null表示获取失败
      */
     public String tryLock(String lockName, String key, int timeout, LockType lockType) {
+        ensureInitialized();
         long startTime = System.currentTimeMillis();
         String threadId = String.valueOf(Thread.currentThread().getId());
         
@@ -168,6 +210,7 @@ public class LockManager {
      * @return 锁值，null表示获取失败
      */
     public String tryReadLock(String lockName, String key, int timeout) {
+        ensureInitialized();
         long startTime = System.currentTimeMillis();
         String threadId = String.valueOf(Thread.currentThread().getId());
         
@@ -202,6 +245,7 @@ public class LockManager {
      * @return 锁值，null表示获取失败
      */
     public String tryWriteLock(String lockName, String key, int timeout) {
+        ensureInitialized();
         long startTime = System.currentTimeMillis();
         String threadId = String.valueOf(Thread.currentThread().getId());
         
@@ -238,6 +282,7 @@ public class LockManager {
      * @return 锁值，null表示获取失败
      */
     public String lock(String lockName, String key, int lockTimeout, int waitTimeout, LockType lockType) {
+        ensureInitialized();
         long startTime = System.currentTimeMillis();
         String threadId = String.valueOf(Thread.currentThread().getId());
         
@@ -531,5 +576,114 @@ public class LockManager {
         return "lock:" + lockName + ":" + key;
     }
 
-
+    /**
+     * 获取当前初始化状态
+     */
+    public boolean isInitialized() {
+        return isInitialized;
+    }
+    
+    /**
+     * 获取最后访问时间
+     */
+    public long getLastAccessTime() {
+        return lastAccessTime.get();
+    }
+    
+    /**
+     * 手动触发初始化（用于测试或特殊情况）
+     */
+    public void forceInitialize() {
+        ensureInitialized();
+    }
+    
+    // ==================== 快速恢复相关方法 ====================
+    
+    /**
+     * 快速恢复资源
+     * 
+     * @param resourceType 资源类型
+     * @param resourceClass 资源类
+     * @param <T> 资源类型
+     * @return 恢复的资源实例
+     */
+    public <T> T fastRecoverResource(ResourceType resourceType, Class<T> resourceClass) {
+        log.debug("开始快速恢复资源: {} - {}", resourceType, resourceClass.getSimpleName());
+        return fastRecoveryManager.fastRecover(resourceType, resourceClass);
+    }
+    
+    /**
+     * 检查资源是否可用
+     * 
+     * @param resourceType 资源类型
+     * @return 是否可用
+     */
+    public boolean isResourceAvailable(ResourceType resourceType) {
+        return fastRecoveryManager.getResourcePool().isResourceAvailable(resourceType);
+    }
+    
+    /**
+     * 获取资源状态
+     * 
+     * @param resourceType 资源类型
+     * @return 资源状态
+     */
+    public ResourceState getResourceState(ResourceType resourceType) {
+        return fastRecoveryManager.getResourcePool().getResourceState(resourceType);
+    }
+    
+    /**
+     * 获取恢复状态
+     * 
+     * @param resourceType 资源类型
+     * @return 恢复状态
+     */
+    public RecoveryState getRecoveryState(ResourceType resourceType) {
+        return fastRecoveryManager.getRecoveryState(resourceType);
+    }
+    
+    /**
+     * 手动触发资源释放检查
+     */
+    public void triggerResourceReleaseCheck() {
+        log.info("手动触发资源释放检查");
+        // 这里可以调用AutoReleaseChecker的方法
+        // 或者直接通过Spring容器获取Bean
+    }
+    
+    /**
+     * 获取资源管理统计信息
+     * 
+     * @return 统计信息字符串
+     */
+    public String getResourceManagementStats() {
+        StringBuilder stats = new StringBuilder();
+        stats.append("资源管理统计:\n");
+        
+        // 添加资源状态统计
+        for (ResourceType resourceType : ResourceType.values()) {
+            ResourceState state = getResourceState(resourceType);
+            if (state != null) {
+                stats.append(String.format("  %s: 可用=%s, 最后访问=%dms前, 访问次数=%d\n",
+                    resourceType.getName(),
+                    state.isAvailable(),
+                    state.getTimeSinceLastAccess(),
+                    state.getAccessCount()));
+            }
+        }
+        
+        // 添加恢复状态统计
+        stats.append("\n恢复状态统计:\n");
+        for (ResourceType resourceType : ResourceType.values()) {
+            RecoveryState recoveryState = getRecoveryState(resourceType);
+            if (recoveryState != null) {
+                stats.append(String.format("  %s: 恢复次数=%d, 平均恢复时间=%.2fms\n",
+                    resourceType.getName(),
+                    recoveryState.getRecoveryCount(),
+                    recoveryState.getAverageRecoveryTime()));
+            }
+        }
+        
+        return stats.toString();
+    }
 } 

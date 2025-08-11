@@ -18,7 +18,7 @@ import static org.mockito.Mockito.mock;
  * 安全自动配置测试
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
 public class AutoConfigurationTest {
 

@@ -105,9 +105,39 @@ public class CacheProperties {
     @Data
     public static class RedisCache {
         /**
+         * 是否启用Redis缓存
+         */
+        private boolean enabled = true;
+        
+        /**
+         * Redis键前缀
+         */
+        private String keyPrefix = "synapse";
+        
+        /**
          * 默认过期时间
          */
         private Duration defaultExpire = Duration.ofHours(1);
+
+        /**
+         * Redis连接配置
+         */
+        private Connection connection = new Connection();
+        
+        /**
+         * Redis集群配置
+         */
+        private Cluster cluster = new Cluster();
+        
+        /**
+         * Redis哨兵配置
+         */
+        private Sentinel sentinel = new Sentinel();
+        
+        /**
+         * Redis连接池配置
+         */
+        private Pool pool = new Pool();
 
         /**
          * 连接超时时间
@@ -143,6 +173,160 @@ public class CacheProperties {
          * 压缩阈值（字节）
          */
         private int compressionThreshold = 1024;
+        
+        /**
+         * Redis连接配置
+         */
+        @Data
+        public static class Connection {
+            /**
+             * Redis主机地址
+             */
+            private String host = "localhost";
+            
+            /**
+             * Redis端口
+             */
+            private int port = 6379;
+            
+            /**
+             * Redis数据库索引
+             */
+            private int database = 0;
+            
+            /**
+             * Redis密码
+             */
+            private String password;
+            
+            /**
+             * 连接超时时间
+             */
+            private Duration timeout = Duration.ofSeconds(2);
+            
+            /**
+             * 是否启用SSL
+             */
+            private boolean ssl = false;
+            
+            /**
+             * 连接名称
+             */
+            private String clientName;
+        }
+        
+        /**
+         * Redis集群配置
+         */
+        @Data
+        public static class Cluster {
+            /**
+             * 是否启用集群模式
+             */
+            private boolean enabled = false;
+            
+            /**
+             * 集群节点列表
+             */
+            private String[] nodes = {};
+            
+            /**
+             * 集群最大重定向次数
+             */
+            private int maxRedirects = 5;
+            
+            /**
+             * 集群刷新周期
+             */
+            private Duration refreshPeriod = Duration.ofSeconds(30);
+        }
+        
+        /**
+         * Redis哨兵配置
+         */
+        @Data
+        public static class Sentinel {
+            /**
+             * 是否启用哨兵模式
+             */
+            private boolean enabled = false;
+            
+            /**
+             * 哨兵节点列表
+             */
+            private String[] nodes = {};
+            
+            /**
+             * 主节点名称
+             */
+            private String master = "mymaster";
+            
+            /**
+             * 哨兵密码
+             */
+            private String password;
+        }
+        
+        /**
+         * Redis连接池配置
+         */
+        @Data
+        public static class Pool {
+            /**
+             * 最大活跃连接数
+             */
+            private int maxActive = 8;
+            
+            /**
+             * 最大空闲连接数
+             */
+            private int maxIdle = 8;
+            
+            /**
+             * 最小空闲连接数
+             */
+            private int minIdle = 0;
+            
+            /**
+             * 最大等待时间
+             */
+            private Duration maxWait = Duration.ofMillis(-1);
+            
+            /**
+             * 空闲连接检测间隔
+             */
+            private Duration timeBetweenEvictionRuns = Duration.ofSeconds(30);
+            
+            /**
+             * 空闲连接最小空闲时间
+             */
+            private Duration minEvictableIdleTime = Duration.ofMinutes(10);
+            
+            /**
+             * 空闲连接最大空闲时间
+             */
+            private Duration maxEvictableIdleTime = Duration.ofMinutes(30);
+            
+            /**
+             * 连接测试查询
+             */
+            private String testQuery = "SELECT 1";
+            
+            /**
+             * 空闲时是否测试连接
+             */
+            private boolean testWhileIdle = true;
+            
+            /**
+             * 借用时是否测试连接
+             */
+            private boolean testOnBorrow = false;
+            
+            /**
+             * 归还时是否测试连接
+             */
+            private boolean testOnReturn = false;
+        }
     }
 
     /**

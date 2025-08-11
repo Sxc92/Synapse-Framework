@@ -17,7 +17,7 @@ import java.util.Locale;
  * 注意：此配置仅在非 Gateway 服务中生效
  * 
  * @author 史偕成
- * @date 2024/03/21
+ * @date 2025/03/21
  **/
 @Configuration
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)

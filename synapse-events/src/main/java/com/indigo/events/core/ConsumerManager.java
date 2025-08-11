@@ -54,8 +54,8 @@ public class ConsumerManager {
         try {
             // 获取所有消费者状态键
             String pattern = "consumer:status:*";
-            // 使用RedisService的scan方法
-            Set<String> statusKeys = cacheService.getRedisService().scan(pattern);
+            // 使用CacheService的scan方法
+            Set<String> statusKeys = cacheService.scan(pattern);
             
             clusterConsumers.clear();
             

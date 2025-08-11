@@ -25,19 +25,19 @@ import java.util.Map;
  * 动态数据源自动配置
  *
  * @author 史偕成
- * @date 2024/03/21
+ * @date 2025/03/21
  */
 @Slf4j
 @Configuration
-@EnableConfigurationProperties(DynamicDataSourceProperties.class)
+@EnableConfigurationProperties(SynapseDataSourceProperties.class)
 @AutoConfigureBefore(DataSourceAutoConfiguration.class)
 public class DynamicDataSourceAutoConfiguration {
 
-    private final DynamicDataSourceProperties properties;
+    private final SynapseDataSourceProperties properties;
 
-    public DynamicDataSourceAutoConfiguration(DynamicDataSourceProperties properties) {
+    public DynamicDataSourceAutoConfiguration(SynapseDataSourceProperties properties) {
         this.properties = properties;
-        log.info("DynamicDataSourceProperties loaded: {}", properties);
+        log.info("SynapseDataSourceProperties loaded: {}", properties);
     }
 
     @Bean
@@ -45,7 +45,7 @@ public class DynamicDataSourceAutoConfiguration {
         DynamicRoutingDataSource dynamicDataSource = new DynamicRoutingDataSource(properties);
 
         // 配置数据源
-        properties.getDatasource().forEach((name, props) -> {
+        properties.getDynamicDataSource().getDatasource().forEach((name, props) -> {
             try {
                 // 创建数据源 - 不要在这里包裹 DataSourceProxy
                 DataSource dataSource = createDataSource(props);
@@ -80,7 +80,7 @@ public class DynamicDataSourceAutoConfiguration {
     /**
      * 创建数据源
      */
-    private DataSource createDataSource(DynamicDataSourceProperties.DataSourceProperties props) {
+    private DataSource createDataSource(SynapseDataSourceProperties.DynamicDataSource.DataSourceConfig props) {
         // 根据连接池类型创建数据源
         DataSource dataSource = switch (props.getPoolType()) {
             case HIKARI -> createHikariDataSource(props);
@@ -96,7 +96,7 @@ public class DynamicDataSourceAutoConfiguration {
     /**
      * 创建HikariCP数据源
      */
-    private DataSource createHikariDataSource(DynamicDataSourceProperties.DataSourceProperties props) {
+    private DataSource createHikariDataSource(SynapseDataSourceProperties.DynamicDataSource.DataSourceConfig props) {
         HikariDataSource dataSource = new HikariDataSource();
 
         // 设置基本属性
@@ -106,7 +106,7 @@ public class DynamicDataSourceAutoConfiguration {
         dataSource.setDriverClassName(props.getDriverClassName());
 
         // 设置连接池属性
-        DynamicDataSourceProperties.HikariPoolProperties hikari = props.getHikari();
+        SynapseDataSourceProperties.DynamicDataSource.HikariConfig hikari = props.getHikari();
         dataSource.setMinimumIdle(hikari.getMinimumIdle());
         dataSource.setMaximumPoolSize(hikari.getMaximumPoolSize());
         dataSource.setIdleTimeout(hikari.getIdleTimeout());
@@ -120,7 +120,7 @@ public class DynamicDataSourceAutoConfiguration {
     /**
      * 创建Druid数据源
      */
-    private DataSource createDruidDataSource(DynamicDataSourceProperties.DataSourceProperties props) {
+    private DataSource createDruidDataSource(SynapseDataSourceProperties.DynamicDataSource.DataSourceConfig props) {
         DruidDataSource dataSource = new DruidDataSource();
 
         // 设置基本属性
@@ -130,7 +130,7 @@ public class DynamicDataSourceAutoConfiguration {
         dataSource.setDriverClassName(props.getDriverClassName());
 
         // 设置连接池属性
-        DynamicDataSourceProperties.DruidPoolProperties druid = props.getDruid();
+        SynapseDataSourceProperties.DynamicDataSource.DruidConfig druid = props.getDruid();
         dataSource.setInitialSize(druid.getInitialSize());
         dataSource.setMinIdle(druid.getMinIdle());
         dataSource.setMaxActive(druid.getMaxActive());

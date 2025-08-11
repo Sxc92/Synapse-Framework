@@ -31,7 +31,7 @@ import java.util.Set;
  * 自动扫描并注册带有@AutoRepository和@AutoService注解的接口
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
 @Slf4j
 @AutoConfiguration

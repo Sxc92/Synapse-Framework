@@ -102,7 +102,7 @@
 2. **事件驱动** → [USAGE_GUIDE.md#事件功能使用](USAGE_GUIDE.md#事件功能使用)
 3. **动态数据源** → [USAGE_GUIDE.md#动态数据源](USAGE_GUIDE.md#动态数据源)
 4. **批量操作** → [USAGE_GUIDE.md#批量操作](USAGE_GUIDE.md#批量操作)
-5. **会话管理** → [DEVELOPMENT_NOTES.md#-会话管理模块重构-2024年](DEVELOPMENT_NOTES.md#-会话管理模块重构-2024年)
+5. **会话管理** → [DEVELOPMENT_NOTES.md#-会话管理模块重构-2025年](DEVELOPMENT_NOTES.md#-会话管理模块重构-2025年)
 
 ## 🎯 使用场景
 

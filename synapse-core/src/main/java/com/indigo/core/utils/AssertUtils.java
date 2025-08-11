@@ -13,7 +13,7 @@ import java.util.Objects;
  * 断言工具类，用于参数校验和业务断言
  * 
  * @author 史偕成
- * @date 2024/03/21
+ * @date 2025/03/21
  **/
 public class AssertUtils {
     

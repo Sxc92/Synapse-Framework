@@ -291,8 +291,44 @@ public class UserService {
 mvn test -Dtest=CacheAnnotationTest
 ```
 
+## 🔒 分布式锁支持
+
+除了缓存注解，Synapse Cache 还提供了强大的分布式锁功能，支持延迟初始化和自动释放机制。
+
+### 基本用法
+
+```java
+@Autowired
+private LockManager lockManager;
+
+// 获取分布式锁
+String lockValue = lockManager.tryLock("order", "123", 10);
+if (lockValue != null) {
+    try {
+        // 执行业务逻辑
+        processOrder("123");
+    } finally {
+        // 释放锁
+        lockManager.releaseLock("order", "123", lockValue);
+    }
+}
+```
+
+### 高级特性
+
+- **延迟初始化**: 服务启动时不占用资源，首次使用时才初始化
+- **自动释放**: 长时间未使用时自动释放资源
+- **性能监控**: 提供详细的性能指标和死锁检测
+- **配置灵活**: 支持多种配置选项和阈值设置
+
+详细用法请参考：
+- [分布式锁优化文档](DISTRIBUTED_LOCK_OPTIMIZATION.md)
+- [优化工作总结](OPTIMIZATION_SUMMARY.md)
+
 ## 📚 更多信息
 
 - [缓存策略详解](CACHE_STRATEGY.md)
 - [性能优化指南](PERFORMANCE_GUIDE.md)
-- [常见问题解答](FAQ.md) 
+- [常见问题解答](FAQ.md)
+- [分布式锁优化](DISTRIBUTED_LOCK_OPTIMIZATION.md)
+- [优化工作总结](OPTIMIZATION_SUMMARY.md) 

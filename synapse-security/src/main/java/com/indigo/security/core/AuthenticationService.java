@@ -9,7 +9,7 @@ import com.indigo.security.model.AuthResponse;
  * 提供基础的认证和Token续期功能
  *
  * @author 史偕成
- * @date 2024/12/19
+ * @date 2025/12/19
  */
 public interface AuthenticationService {
 

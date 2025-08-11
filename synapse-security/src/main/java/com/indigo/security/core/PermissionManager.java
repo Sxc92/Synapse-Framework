@@ -1,6 +1,8 @@
 package com.indigo.security.core;
 
 import cn.dev33.satoken.stp.StpInterface;
+import cn.dev33.satoken.stp.StpUtil;
+import com.indigo.cache.session.UserSessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -11,16 +13,19 @@ import java.util.List;
  * 权限管理服务
  * 实现Sa-Token的StpInterface接口，专注于权限和角色的获取逻辑
  * 权限检查请使用Sa-Token的注解：@SaCheckPermission、@SaCheckRole
+ * 
+ * 注意：该类通过UserSessionService使用synapse-cache模块中的权限管理功能，
+ * 避免重复实现权限管理逻辑，同时保持更好的封装性
  *
  * @author 史偕成
- * @date 2024/01/08
+ * @date 2025/01/08
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class PermissionManager implements StpInterface {
 
-    private final TokenManager tokenManager;
+    private final UserSessionService userSessionService;
 
     @Override
     public List<String> getPermissionList(Object loginId, String loginType) {
@@ -30,22 +35,16 @@ public class PermissionManager implements StpInterface {
                 return List.of();
             }
 
-            // 通过TokenManager获取当前token
-            String token = tokenManager.getCurrentToken();
-            if (token == null) {
+            // 获取当前token
+            String token = StpUtil.getTokenValue();
+            if (token == null || token.trim().isEmpty()) {
                 log.warn("获取用户权限失败: 无法获取当前token, loginId={}", loginId);
                 return List.of();
             }
-
-            // 通过TokenManager获取用户上下文
-            var userContext = tokenManager.getUserContext(token);
-            if (userContext == null) {
-                log.warn("获取用户权限失败: 用户上下文为空, loginId={}, token={}", loginId, token);
-                return List.of();
-            }
-
-            List<String> permissions = userContext.getPermissions();
-            log.debug("获取用户权限列表: loginId={}, permissions={}", loginId, permissions);
+            
+            // 通过UserSessionService获取权限
+            List<String> permissions = userSessionService.getUserPermissions(token);
+            log.debug("获取用户权限列表: loginId={}, token={}, permissions={}", loginId, token, permissions);
             return permissions != null ? permissions : List.of();
 
         } catch (Exception e) {
@@ -62,22 +61,16 @@ public class PermissionManager implements StpInterface {
                 return List.of();
             }
 
-            // 通过TokenManager获取当前token
-            String token = tokenManager.getCurrentToken();
-            if (token == null) {
+            // 获取当前token
+            String token = StpUtil.getTokenValue();
+            if (token == null || token.trim().isEmpty()) {
                 log.warn("获取用户角色失败: 无法获取当前token, loginId={}", loginId);
                 return List.of();
             }
-
-            // 通过TokenManager获取用户上下文
-            var userContext = tokenManager.getUserContext(token);
-            if (userContext == null) {
-                log.warn("获取用户角色失败: 用户上下文为空, loginId={}, token={}", loginId, token);
-                return List.of();
-            }
-
-            List<String> roles = userContext.getRoles();
-            log.debug("获取用户角色列表: loginId={}, roles={}", loginId, roles);
+            
+            // 通过UserSessionService获取角色
+            List<String> roles = userSessionService.getUserRoles(token);
+            log.debug("获取用户角色列表: loginId={}, token={}, roles={}", loginId, token, roles);
             return roles != null ? roles : List.of();
 
         } catch (Exception e) {

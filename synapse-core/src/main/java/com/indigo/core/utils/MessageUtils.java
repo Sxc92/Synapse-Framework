@@ -10,7 +10,7 @@ import java.util.Locale;
  * 国际化消息工具类
  * 
  * @author 史偕成
- * @date 2024/03/21
+ * @date 2025/03/21
  **/
 @Component
 public class MessageUtils {

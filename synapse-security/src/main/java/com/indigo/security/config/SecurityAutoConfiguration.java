@@ -16,6 +16,7 @@ import com.indigo.security.view.OAuth2ViewHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.*;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -34,17 +35,28 @@ import java.util.Map;
  * 支持WebMVC和WebFlux环境
  *
  * @author 史偕成
- * @date 2024/01/08
+ * @date 2025/01/08
  */
 @Slf4j
 @AutoConfiguration
 @ConditionalOnClass({UserSessionService.class})
+@EnableConfigurationProperties(SecurityProperties.class)
 @ComponentScan(basePackages = {
     "com.indigo.security.service",
     "com.indigo.security.factory",
     "com.indigo.security.core"
 })
 public class SecurityAutoConfiguration {
+
+    /**
+     * 初始化安全配置
+     */
+    @PostConstruct
+    public void init() {
+        // 关闭Sa-Token的banner图
+        System.setProperty("sa-token.is-print", "false");
+        log.info("Sa-Token banner已关闭");
+    }
 
     /**
      * Token管理服务
@@ -62,9 +74,9 @@ public class SecurityAutoConfiguration {
     @Bean
     @Primary
     @ConditionalOnMissingBean(StpInterface.class)
-    public PermissionManager permissionManager(TokenManager tokenManager) {
+    public PermissionManager permissionManager(UserSessionService userSessionService) {
         log.info("初始化权限管理服务");
-        return new PermissionManager(tokenManager);
+        return new PermissionManager(userSessionService);
     }
 
     /**
@@ -75,9 +87,8 @@ public class SecurityAutoConfiguration {
     @ConditionalOnProperty(name = "synapse.oauth2.enabled", havingValue = "true", matchIfMissing = false)
     public SaOAuth2Config oAuth2Config() {
         log.info("初始化OAuth2.0配置");
-        SaOAuth2Config config = new SaOAuth2Config();
         // 基础的OAuth2配置，具体的视图处理可以在后续版本中完善
-        return config;
+        return new SaOAuth2Config();
     }
 
     /**
