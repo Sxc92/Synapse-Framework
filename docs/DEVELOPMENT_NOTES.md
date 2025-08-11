@@ -6,7 +6,7 @@
 
 ---
 
-## 🔄 会话管理模块重构 (2025年)
+## 🔄 会话管理模块重构 (2025年08月)
 
 ### 重构背景
 
@@ -177,7 +177,7 @@ Map<String, Object> data = userSessionService.getUserSessionData("user456", Map.
 
 ---
 
-## 🔒 分布式锁模块增强 (2025年)
+## 🔒 分布式锁模块增强 (2025年08月)
 
 ### 增强背景
 
@@ -282,7 +282,7 @@ lockManager.executeWithReadWriteLock("data:" + id, true, () -> {
 
 ---
 
-## 🎯 缓存属性翻译注解设计 (2025年)
+## 🎯 缓存属性翻译注解设计 (2025年08月)
 
 ### 设计背景
 
@@ -394,7 +394,7 @@ synapse:
 
 ---
 
-## 📊 日志优化 (2025年)
+## 📊 日志优化 (2025年08月)
 
 ### 优化内容
 
@@ -440,6 +440,202 @@ synapse:
 
 ---
 
+## 🗄️ 数据库模块配置重构 (2025年8月)
+
+### 重构背景
+
+数据库模块在初始设计中存在以下问题：
+- 配置类分散：`MybatisPlusProperties` 和 `DynamicDataSourceProperties` 分别管理不同配置
+- 配置结构复杂：`primary` 属性位置不当，导致Spring Boot配置绑定错误
+- 元数据文件冗余：多个配置文件维护困难，容易产生不一致
+- 向后兼容性：缺乏对标准Spring Boot配置格式的支持
+
+### 重构方案
+
+#### 1. 配置类整合
+
+**原有结构**
+```
+MybatisPlusProperties.java          DynamicDataSourceProperties.java
+├── MybatisPlus                     ├── DynamicDataSource
+│   ├── Configuration               │   ├── primary (String)
+│   └── GlobalConfig               │   ├── strict (boolean)
+└── SpringDatasource               │   ├── seata (boolean)
+    └── Dynamic                    │   ├── p6spy (boolean)
+        ├── primary (String)       │   └── datasource (Map)
+        └── datasource (Map)       └── DataSourceConfig
+```
+
+**重构后结构**
+```
+SynapseDataSourceProperties.java
+├── primary (String)                    # 主数据源名称
+├── MybatisPlus                        # MyBatis-Plus配置
+│   ├── Configuration
+│   └── GlobalConfig
+├── DynamicDataSource                   # 动态数据源配置
+│   ├── strict (boolean)
+│   ├── seata (boolean)
+│   ├── p6spy (boolean)
+│   └── datasource (Map<String, DataSourceConfig>)
+└── SpringDatasource                   # 兼容性配置
+    └── Dynamic
+        ├── primary (String)
+        └── datasource (Map)
+```
+
+#### 2. 配置结构优化
+
+**问题分析**
+```
+# 错误配置结构（导致绑定错误）
+synapse:
+  datasource:
+    dynamic-data-source:
+      primary: master1        # ❌ 位置不当，Spring Boot误解为DataSourceConfig
+      datasource:
+        master1: ...
+```
+
+**解决方案**
+```
+# 正确配置结构
+synapse:
+  datasource:
+    primary: master1          # ✅ 根级别，明确为字符串类型
+    dynamic-data-source:
+      datasource:
+        master1: ...          # 明确为DataSourceConfig对象
+```
+
+#### 3. 元数据文件整合
+
+**原有文件**
+- `spring-configuration-metadata.json`
+- `additional-spring-configuration-metadata.json`
+- `spring-configuration-metadata-ide.json`
+
+**整合后**
+- 单一 `spring-configuration-metadata.json` 文件
+- 包含所有配置属性和组定义
+- 支持IDE自动补全和文档提示
+
+### 重构实现细节
+
+#### 1. 配置类重构
+
+**SynapseDataSourceProperties.java**
+```java
+@Data
+@ConfigurationProperties(prefix = "synapse.datasource", ignoreUnknownFields = true)
+public class SynapseDataSourceProperties {
+    
+    /**
+     * 主数据源名称
+     */
+    private String primary = "master1";
+    
+    /**
+     * MyBatis-Plus配置
+     */
+    private MybatisPlus mybatisPlus = new MybatisPlus();
+    
+    /**
+     * 动态数据源配置
+     */
+    private DynamicDataSource dynamicDataSource = new DynamicDataSource();
+    
+    /**
+     * 兼容标准Spring Boot配置
+     */
+    private SpringDatasource springDatasource = new SpringDatasource();
+    
+    // 内部类定义...
+}
+```
+
+#### 2. 配置绑定修复
+
+**问题代码**
+```java
+// 错误：Spring Boot试图将String绑定到DataSourceConfig
+properties.getDynamicDataSource().getPrimary()
+```
+
+**修复后**
+```java
+// 正确：直接访问根级别的primary属性
+properties.getPrimary()
+```
+
+**说明**
+- 移除了对 `@DS` 注解的依赖
+- 实现了基于SQL类型的智能数据源路由
+- 支持编程式精确控制数据源切换
+
+#### 3. 向后兼容性
+
+**支持两种配置格式**
+```yaml
+# 方式1: 使用 synapse.datasource 配置（推荐）
+synapse:
+  datasource:
+    primary: master1
+    dynamic-data-source:
+      datasource:
+        master1: ...
+
+# 方式2: 使用标准Spring Boot配置（兼容性）
+spring:
+  datasource:
+    dynamic:
+      primary: master1
+      datasource:
+        master1: ...
+```
+
+### 重构优势
+
+1. **配置结构清晰**：单一配置类管理所有数据库相关配置
+2. **类型绑定正确**：Spring Boot配置绑定不再出现类型转换错误
+3. **维护性提升**：减少配置文件数量，降低维护成本
+4. **向后兼容**：保持对现有Spring Boot配置格式的支持
+5. **IDE支持**：统一的配置元数据，提供更好的开发体验
+
+### 迁移指南
+
+**原有配置**
+```yaml
+synapse:
+  databases:
+    enabled: true
+    dynamic-data-source:
+      primary: master1
+      datasource:
+        master1: ...
+```
+
+**新配置格式**
+```yaml
+synapse:
+  datasource:
+    primary: master1          # 注意：移除了 enabled 属性
+    dynamic-data-source:
+      datasource:
+        master1: ...
+```
+
+**代码更新**
+```java
+// 原有代码
+properties.getDynamicDataSource().getPrimary()
+
+// 更新后代码
+properties.getPrimary()
+```
+
+---
+
 ## 🔮 未来规划
 
 ### 短期目标 (1-2个月)
@@ -466,4 +662,5 @@ synapse:
 | 2025-01 | v1.0 | 会话管理模块重构 | 开发团队 |
 | 2025-01 | v1.1 | 分布式锁模块增强 | 开发团队 |
 | 2025-01 | v1.2 | 缓存属性翻译注解设计 | 开发团队 |
-| 2025-01 | v1.3 | 日志优化和架构优化 | 开发团队 | 
+| 2025-01 | v1.3 | 日志优化和架构优化 | 开发团队 |
+| 2025-08 | v1.4 | 数据库模块配置重构 | 开发团队 | 

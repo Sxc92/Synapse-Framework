@@ -23,8 +23,10 @@ Synapse Framework 的文档体系已经完整建立，包含以下文档：
 | **ARCHITECTURE.md** | 18KB | 517行 | 架构设计和设计模式 |
 | **USAGE_GUIDE.md** | 23KB | 934行 | 详细使用指南和代码示例 |
 | **DEVELOPMENT_NOTES.md** | 7.5KB | 201行 | 开发笔记和重构记录 |
-| **OPTIMIZATION_TODO.md** | 14KB | 519行 | 优化计划和进度跟踪 |
-| **总计** | **82.3KB** | **2869行** | **完整的文档体系** |
+| **API_REFERENCE.md** | 15KB | 450行 | API接口参考和功能说明 |
+| **CONFIGURATION_REFERENCE.md** | 18KB | 580行 | 详细配置参考和参数说明 |
+| **PERFORMANCE_TUNING.md** | 20KB | 650行 | 性能调优指南和最佳实践 |
+| **总计** | **124.3KB** | **4549行** | **完整的文档体系** |
 
 ## 🎯 文档特色
 
@@ -78,7 +80,7 @@ Synapse Framework 的文档体系已经完整建立，包含以下文档：
 - **基础配置**：数据源、Redis、Sa-Token配置
 - **核心功能**：实体定义、Repository、Service、Controller
 - **安全功能**：认证配置、权限控制、权限管理
-- **高级功能**：缓存使用、事件驱动、动态数据源
+- **高级功能**：缓存使用、事件驱动、智能数据源路由
 
 ### 4. 文档索引 (INDEX.md)
 - **文档概览**：所有文档的简要说明
@@ -87,7 +89,28 @@ Synapse Framework 的文档体系已经完整建立，包含以下文档：
 - **问题解决**：常见问题、性能优化、安全防护
 - **代码示例**：基础CRUD、权限控制、缓存使用
 
-### 5. 开发笔记 (DEVELOPMENT_NOTES.md)
+### 5. API 参考 (API_REFERENCE.md)
+- **核心模块 API**：各模块的接口说明和功能描述
+- **配置 API**：配置选项和参数说明
+- **注解参考**：框架提供的各种注解说明
+- **扩展 API**：自定义扩展点和插件系统
+- **错误码参考**：系统错误码和业务错误码说明
+
+### 6. 配置参考 (CONFIGURATION_REFERENCE.md)
+- **基础配置结构**：配置层次结构和环境配置支持
+- **模块配置详解**：各模块的详细配置选项
+- **环境特定配置**：开发、测试、生产环境配置
+- **配置验证和监控**：配置验证规则和监控指标
+- **最佳实践**：配置管理原则和优化建议
+
+### 7. 性能调优指南 (PERFORMANCE_TUNING.md)
+- **性能调优目标**：核心指标和调优原则
+- **模块性能优化**：各模块的性能优化策略
+- **参数调优建议**：连接池、缓存、线程池等参数优化
+- **性能监控**：监控指标、监控工具和监控流程
+- **最佳实践**：性能调优原则和常见优化策略
+
+### 8. 开发笔记 (DEVELOPMENT_NOTES.md)
 - **会话管理重构**：会话管理模块重构的背景、方案和实现
 - **分布式锁增强**：分布式锁模块的功能增强和架构优化
 - **缓存翻译注解**：缓存属性翻译注解的设计方案和实现
@@ -104,12 +127,16 @@ Synapse Framework 的文档体系已经完整建立，包含以下文档：
 ### 开发者
 1. 查看 **[ARCHITECTURE.md](ARCHITECTURE.md)** 理解架构设计
 2. 参考 **[USAGE_GUIDE.md](USAGE_GUIDE.md)** 的代码示例
-3. 使用 **[INDEX.md](INDEX.md)** 快速定位问题
+3. 使用 **[API_REFERENCE.md](API_REFERENCE.md)** 了解接口功能
+4. 参考 **[CONFIGURATION_REFERENCE.md](CONFIGURATION_REFERENCE.md)** 进行配置
+5. 使用 **[INDEX.md](INDEX.md)** 快速定位问题
 
 ### 架构师
 1. 深入阅读 **[ARCHITECTURE.md](ARCHITECTURE.md)** 了解设计模式
 2. 查看 **[README.md](README.md)** 的模块架构
-3. 参考 **[USAGE_GUIDE.md](USAGE_GUIDE.md)** 的扩展点设计
+3. 参考 **[PERFORMANCE_TUNING.md](PERFORMANCE_TUNING.md)** 进行性能优化
+4. 使用 **[CONFIGURATION_REFERENCE.md](CONFIGURATION_REFERENCE.md)** 进行架构配置
+5. 参考 **[USAGE_GUIDE.md](USAGE_GUIDE.md)** 的扩展点设计
 
 ## 📈 文档质量
 
@@ -150,4 +177,4 @@ Synapse Framework 的文档体系已经完整建立，包含以下文档：
 ---
 
 *文档版本：v1.0.0*  
-*最后更新时间：2025年1月7日* 
+*最后更新时间：2025年08月11日 12:41:56* 

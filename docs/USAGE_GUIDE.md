@@ -120,7 +120,66 @@ spring:
         min-idle: 0
         max-wait: -1ms
 
-# MyBatis-Plus 配置
+# Synapse Framework 数据库配置（推荐）
+synapse:
+  datasource:
+    primary: master1
+    mybatis-plus:
+      configuration:
+        map-underscore-to-camel-case: true
+        log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+        cache-enabled: true
+        lazy-loading-enabled: true
+        aggressive-lazy-loading: false
+        multiple-result-sets-enabled: true
+        use-column-label: true
+        use-generated-keys: false
+        auto-mapping-behavior: PARTIAL
+        auto-mapping-unknown-column-behavior: WARNING
+        default-executor-type: SIMPLE
+        default-statement-timeout: 25
+        default-fetch-size: 100
+        safe-row-bounds-enabled: false
+        safe-result-handler-enabled: true
+        local-cache-scope: SESSION
+        lazy-load-trigger-methods: "equals,clone,hashCode,toString"
+      global-config:
+        banner: false
+        enable-sql-runner: false
+        enable-meta-object-handler: true
+        enable-sql-injector: true
+        enable-pagination: true
+        enable-optimistic-locker: true
+        enable-block-attack: true
+      type-aliases-package: com.example.**.entity
+      mapper-locations: "classpath*:mapper/**/*.xml"
+    dynamic-data-source:
+      strict: false
+      seata: false
+      p6spy: false
+      datasource:
+        master1:
+          type: MYSQL
+          host: localhost
+          port: 3306
+          database: my_db
+          username: root
+          password: password
+          pool-type: HIKARI
+          params:
+            useUnicode: "true"
+            characterEncoding: "utf8"
+            useSSL: "false"
+            serverTimezone: "Asia/Shanghai"
+          hikari:
+            minimum-idle: 5
+            maximum-pool-size: 15
+            idle-timeout: 30000
+            max-lifetime: 1800000
+            connection-timeout: 30000
+            connection-test-query: "SELECT 1"
+
+# 兼容性配置（可选）
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
@@ -718,11 +777,81 @@ public class UserEventListener {
 
 ## 高级功能
 
-### 1. 动态数据源
+### 1. 数据库模块使用
 
-#### 数据源配置
+#### 1.1 基础配置
+
+**推荐配置方式（使用 synapse.datasource）**
 ```yaml
-# application.yml
+synapse:
+  datasource:
+    primary: master1
+    mybatis-plus:
+      type-aliases-package: com.example.**.entity
+      mapper-locations: "classpath*:mapper/**/*.xml"
+      configuration:
+        map-underscore-to-camel-case: true
+        log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+      global-config:
+        banner: false
+        enable-pagination: true
+    dynamic-data-source:
+      strict: false
+      seata: false
+      p6spy: false
+      datasource:
+        master1:
+          type: MYSQL
+          host: localhost
+          port: 3306
+          database: master_db
+          username: root
+          password: password
+          pool-type: HIKARI
+          params:
+            useUnicode: "true"
+            characterEncoding: "utf8"
+            useSSL: "false"
+            serverTimezone: "Asia/Shanghai"
+          hikari:
+            minimum-idle: 5
+            maximum-pool-size: 15
+            idle-timeout: 30000
+            max-lifetime: 1800000
+            connection-timeout: 30000
+            connection-test-query: "SELECT 1"
+        slave1:
+          type: MYSQL
+          host: localhost
+          port: 3306
+          database: slave_db
+          username: root
+          password: password
+          pool-type: DRUID
+          params:
+            useUnicode: "true"
+            characterEncoding: "utf8"
+            useSSL: "false"
+            serverTimezone: "Asia/Shanghai"
+          druid:
+            initial-size: 5
+            min-idle: 5
+            max-active: 20
+            max-wait: 60000
+            time-between-eviction-runs-millis: 60000
+            min-evictable-idle-time-millis: 300000
+            validation-query: "SELECT 1"
+            test-while-idle: true
+            test-on-borrow: false
+            test-on-return: false
+            pool-prepared-statements: true
+            max-pool-prepared-statement-per-connection-size: 20
+```
+
+#### 1.2 兼容性配置
+
+**标准Spring Boot配置格式（向后兼容）**
+```yaml
 spring:
   datasource:
     dynamic:
@@ -741,21 +870,327 @@ spring:
           driver-class-name: com.mysql.cj.jdbc.Driver
 ```
 
-#### 数据源切换
+#### 1.3 多数据源配置
+
+**读写分离配置**
+```yaml
+synapse:
+  datasource:
+    primary: master
+    dynamic-data-source:
+      strict: true
+      datasource:
+        master:
+          type: MYSQL
+          host: master-db.example.com
+          port: 3306
+          database: myapp
+          username: root
+          password: password
+          pool-type: HIKARI
+          hikari:
+            minimum-idle: 10
+            maximum-pool-size: 30
+        slave1:
+          type: MYSQL
+          host: slave1-db.example.com
+          port: 3306
+          database: myapp
+          username: readonly
+          password: readonly_pass
+          pool-type: HIKARI
+          hikari:
+            minimum-idle: 5
+            maximum-pool-size: 20
+        slave2:
+          type: MYSQL
+          host: slave2-db.example.com
+          port: 3306
+          database: myapp
+          username: readonly
+          password: readonly_pass
+          pool-type: HIKARI
+          hikari:
+            minimum-idle: 5
+            maximum-pool-size: 20
+```
+
+**多数据库类型支持**
+```yaml
+synapse:
+  datasource:
+    primary: mysql-master
+    dynamic-data-source:
+      datasource:
+        mysql-master:
+          type: MYSQL
+          host: mysql.example.com
+          port: 3306
+          database: myapp
+          username: root
+          password: password
+          pool-type: HIKARI
+        postgres-slave:
+          type: POSTGRESQL
+          host: postgres.example.com
+          port: 5432
+          database: myapp
+          username: postgres
+          password: password
+          pool-type: HIKARI
+        oracle-analytics:
+          type: ORACLE
+          host: oracle.example.com
+          port: 1521
+          database: ORCL
+          username: analytics
+          password: password
+          pool-type: DRUID
+```
+
+#### 1.4 动态数据源切换
+
+**使用注解切换数据源**
 ```java
 @Service
 public class UserService {
     
+    @Autowired
+    private UserMapper userMapper;
+    
+    // 使用主数据源（写操作）
     @DS("master")
     public User createUser(User user) {
-        // 在主库创建用户
+        return userMapper.insert(user);
+    }
+    
+    // 使用从数据源（读操作）
+    @DS("slave1")
+    public User getUserById(Long id) {
+        return userMapper.selectById(id);
+    }
+    
+    // 使用从数据源（读操作）
+    @DS("slave2")
+    public List<User> getAllUsers() {
+        return userMapper.selectList(null);
+    }
+}
+```
+
+**编程式切换数据源**
+```java
+@Service
+public class UserService {
+    
+    @Autowired
+    private UserMapper userMapper;
+    
+    public User getUserById(Long id) {
+        // 动态切换到从数据源
+        DynamicDataSourceContextHolder.setDataSource("slave1");
+        try {
+            return userMapper.selectById(id);
+        } finally {
+            // 清除数据源上下文
+            DynamicDataSourceContextHolder.clearDataSource();
+        }
+    }
+    
+    public void batchProcessUsers(List<User> users) {
+        // 使用主数据源进行批量操作
+        DynamicDataSourceContextHolder.setDataSource("master");
+        try {
+            for (User user : users) {
+                userMapper.insert(user);
+            }
+        } finally {
+            DynamicDataSourceContextHolder.clearDataSource();
+        }
+    }
+}
+```
+
+#### 1.5 连接池配置优化
+
+**HikariCP 高性能配置**
+```yaml
+synapse:
+  datasource:
+    dynamic-data-source:
+      datasource:
+        master:
+          type: MYSQL
+          host: localhost
+          port: 3306
+          database: myapp
+          username: root
+          password: password
+          pool-type: HIKARI
+          hikari:
+            minimum-idle: 10
+            maximum-pool-size: 50
+            idle-timeout: 300000        # 5分钟
+            max-lifetime: 1800000       # 30分钟
+            connection-timeout: 20000   # 20秒
+            connection-test-query: "SELECT 1"
+            connection-init-sql: "SET NAMES utf8mb4"
+            validation-timeout: 5000    # 5秒
+            leak-detection-threshold: 60000  # 1分钟
+            register-mbeans: true
+```
+
+**Druid 监控配置**
+```yaml
+synapse:
+  datasource:
+    dynamic-data-source:
+      datasource:
+        master:
+          type: MYSQL
+          host: localhost
+          port: 3306
+          database: myapp
+          username: root
+          password: password
+          pool-type: DRUID
+          druid:
+            initial-size: 10
+            min-idle: 10
+            max-active: 50
+            max-wait: 60000
+            time-between-eviction-runs-millis: 60000
+            min-evictable-idle-time-millis: 300000
+            validation-query: "SELECT 1"
+            test-while-idle: true
+            test-on-borrow: false
+            test-on-return: false
+            pool-prepared-statements: true
+            max-pool-prepared-statement-per-connection-size: 20
+            filters: "stat,wall,log4j2"
+            connection-properties: "druid.stat.mergeSql=true;druid.stat.slowSqlMillis=5000"
+```
+
+#### 1.6 事务管理
+
+**分布式事务支持（Seata）**
+```yaml
+synapse:
+  datasource:
+    dynamic-data-source:
+      seata: true
+      datasource:
+        master:
+          type: MYSQL
+          host: localhost
+          port: 3306
+          database: myapp
+          username: root
+          password: password
+          pool-type: HIKARI
+```
+
+**事务注解使用**
+```java
+@Service
+public class OrderService {
+    
+    @Autowired
+    private OrderMapper orderMapper;
+    
+    @Autowired
+    private UserMapper userMapper;
+    
+    @Transactional
+    @DS("master")
+    public void createOrder(Order order) {
+        // 创建订单
+        orderMapper.insert(order);
+        
+        // 更新用户积分
+        User user = userMapper.selectById(order.getUserId());
+        user.setPoints(user.getPoints() + order.getPoints());
+        userMapper.updateById(user);
+    }
+}
+```
+
+#### 1.7 性能监控
+
+**P6Spy SQL监控**
+```yaml
+synapse:
+  datasource:
+    dynamic-data-source:
+      p6spy: true
+      datasource:
+        master:
+          type: MYSQL
+          host: localhost
+          port: 3306
+          database: myapp
+          username: root
+          password: password
+          pool-type: HIKARI
+```
+
+**P6Spy配置文件 (spy.properties)**
+```properties
+# 使用日志系统记录sql
+appender=com.p6spy.engine.spy.appender.Slf4JLogger
+# 自定义日志打印
+logMessageFormat=com.p6spy.engine.spy.appender.CustomLineFormat
+customLogMessageFormat=执行SQL：%(sql) 执行时间：%(executionTime)ms
+# 是否开启慢SQL记录
+outageDetection=true
+# 慢SQL记录标准 2秒
+outageDetectionThreshold=2000
+```
+
+### 2. 动态数据源
+
+#### 智能数据源路由（推荐）
+```java
+@Service
+public class UserService {
+    
+    public User createUser(User user) {
+        // 系统自动使用主数据源（写操作）
         return userRepository.save(user);
     }
     
-    @DS("slave")
     public List<User> getUsers() {
-        // 从从库查询用户列表
+        // 系统自动使用从数据源（读操作）
         return userRepository.list();
+    }
+}
+```
+
+#### 编程式数据源切换
+```java
+@Service
+public class UserService {
+    
+    public User createUser(User user) {
+        // 动态切换到主数据源
+        DynamicDataSourceContextHolder.setDataSource("master");
+        try {
+            return userRepository.save(user);
+        } finally {
+            // 清除数据源上下文
+            DynamicDataSourceContextHolder.clearDataSource();
+        }
+    }
+    
+    public List<User> getUsers() {
+        // 动态切换到从数据源
+        DynamicDataSourceContextHolder.setDataSource("slave");
+        try {
+            return userRepository.list();
+        } finally {
+            // 清除数据源上下文
+            DynamicDataSourceContextHolder.clearDataSource();
+        }
     }
 }
 ```
@@ -905,17 +1340,42 @@ public class OperationLogAspect {
 **问题**：`NoClassDefFoundError: SqlMethodInterceptor$1`
 **解决**：已修复，使用静态内部类替代匿名内部类
 
-### 2. 配置问题
+### 2. 数据库配置问题
+
+**问题**：`Failed to bind properties under 'synapse.datasource.dynamic-data-source.datasource.primary'`
+**解决**：配置结构错误，`primary` 属性应该放在 `synapse.datasource` 根级别，而不是在 `dynamic-data-source` 下
+
+**问题**：`找不到符号: 方法 getTestWhileIdle()`
+**解决**：Druid配置类缺少getter方法，已修复，确保使用最新版本的 `SynapseDataSourceProperties`
 
 **问题**：MyBatis-Plus 配置不生效
-**解决**：确保添加了 `@MapperScan` 注解
+**解决**：确保添加了 `@MapperScan` 注解，并检查配置前缀是否为 `synapse.datasource.mybatis-plus`
 
-### 3. 权限问题
+### 3. 数据源切换问题
+
+**问题**：动态数据源切换不生效
+**解决**：检查数据源名称是否与配置文件中的名称一致，确保在finally块中清除数据源上下文
+
+**问题**：事务中数据源切换失败
+**解决**：在事务方法中避免动态切换数据源，或使用编程式切换并确保在finally块中清理上下文
+
+**问题**：自动数据源路由不工作
+**解决**：确保配置了正确的数据源类型（master/slave），系统会根据SQL类型自动选择数据源
+
+### 4. 连接池问题
+
+**问题**：HikariCP 连接池配置不生效
+**解决**：检查配置路径是否正确，确保在 `synapse.datasource.dynamic-data-source.datasource.{name}.hikari` 下配置
+
+**问题**：Druid 监控页面无法访问
+**解决**：确保添加了 Druid 监控依赖，并配置了相应的过滤器
+
+### 5. 权限问题
 
 **问题**：Sa-Token 注解不生效
 **解决**：确保添加了 `SaInterceptor` 配置
 
-### 4. 缓存问题
+### 6. 缓存问题
 
 **问题**：Redis 连接失败
 **解决**：检查 Redis 配置和网络连接
@@ -926,7 +1386,7 @@ public class OperationLogAspect {
 
 记住以下关键点：
 - ✅ **模块化使用**：根据需要选择合适的模块
-- ✅ **注解驱动**：充分利用注解简化开发
+- ✅ **智能路由**：系统自动根据SQL类型选择数据源
 - ✅ **统一规范**：遵循框架的设计规范
 - ✅ **性能优化**：合理使用缓存和分页
 - ✅ **安全防护**：正确配置认证和权限

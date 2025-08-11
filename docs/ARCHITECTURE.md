@@ -72,6 +72,7 @@ synapse-bom
     ├── synapse-databases (依赖 core)
     │   ├── MyBatis-Plus
     │   ├── Dynamic Datasource
+    │   ├── HikariCP/Druid
     │   └── synapse-core
     │
     ├── synapse-security (依赖 core, cache)
@@ -210,6 +211,165 @@ public class DataSourceFactory {
         }
     }
 }
+```
+
+## 数据库模块架构
+
+### 1. 配置架构设计
+
+**配置类层次结构**
+```
+SynapseDataSourceProperties
+├── primary: String                    # 主数据源名称
+├── mybatisPlus: MybatisPlus          # MyBatis-Plus配置
+│   ├── configuration: Configuration   # MyBatis配置
+│   └── globalConfig: GlobalConfig    # 全局配置
+├── dynamicDataSource: DynamicDataSource # 动态数据源配置
+│   ├── strict: boolean               # 严格模式
+│   ├── seata: boolean                # Seata分布式事务
+│   ├── p6spy: boolean                # P6Spy监控
+│   └── datasource: Map<String, DataSourceConfig> # 数据源映射
+└── springDatasource: SpringDatasource # 兼容性配置
+    └── dynamic: Dynamic              # 标准Spring Boot格式
+        ├── primary: String           # 主数据源名称
+        └── datasource: Map<String, SpringDataSourceConfig> # 数据源配置
+```
+
+**数据源配置结构**
+```
+DataSourceConfig
+├── type: DatabaseType                 # 数据库类型 (MYSQL, POSTGRESQL, ORACLE, SQLSERVER, H2)
+├── host: String                       # 主机地址
+├── port: Integer                      # 端口号
+├── database: String                   # 数据库名
+├── username: String                   # 用户名
+├── password: String                   # 密码
+├── poolType: PoolType                 # 连接池类型 (HIKARI, DRUID)
+├── params: Map<String, String>        # 连接参数
+├── hikari: HikariConfig               # HikariCP配置
+└── druid: DruidConfig                 # Druid配置
+```
+
+### 2. 智能数据源路由架构
+
+**路由机制**
+```
+Application Request
+    │
+    ▼
+┌─────────────────┐
+│ DynamicRouting  │ ← 动态路由数据源
+│   DataSource    │
+└─────────────────┘
+    │
+    ▼
+┌─────────────────┐
+│ AutoDataSource  │ ← 自动数据源拦截器
+│  Interceptor    │   (根据SQL类型自动选择)
+└─────────────────┘
+    │
+    ▼
+┌─────────────────┐
+│ Context Holder  │ ← 数据源上下文持有者
+└─────────────────┘
+    │
+    ▼
+┌─────────────────┐
+│ Target DataSource│ ← 目标数据源选择
+└─────────────────┘
+    │
+    ├─ master ──┐
+    │           ▼
+    │  ┌─────────────────┐
+    │  │  Master DS      │ ← 主数据源 (写操作)
+    │  └─────────────────┘
+    │
+    ├─ slave1 ──┐
+    │           ▼
+    │  ┌─────────────────┐
+    │  │  Slave1 DS      │ ← 从数据源1 (读操作)
+    │  └─────────────────┘
+    │
+    └─ slave2 ──┐
+                ▼
+        ┌─────────────────┐
+        │  Slave2 DS      │ ← 从数据源2 (读操作)
+        └─────────────────┘
+```
+
+**智能路由策略**
+- **SELECT语句** → 自动路由到从库（轮询负载均衡）
+- **INSERT/UPDATE/DELETE语句** → 自动路由到主库
+- **编程式切换** → 支持精确控制数据源选择
+
+**自动配置流程**
+```
+Spring Boot Startup
+    │
+    ▼
+┌─────────────────┐
+│ AutoConfiguration│ ← 自动配置类
+└─────────────────┘
+    │
+    ▼
+┌─────────────────┐
+│ Properties      │ ← 配置属性绑定
+│   Binding       │
+└─────────────────┘
+    │
+    ▼
+┌─────────────────┐
+│ DataSource      │ ← 数据源创建
+│   Creation      │
+└─────────────────┘
+    │
+    ▼
+┌─────────────────┐
+│ Dynamic Routing │ ← 动态路由设置
+│   Setup         │
+└─────────────────┘
+    │
+    ▼
+┌─────────────────┐
+│ MyBatis-Plus   │ ← MyBatis-Plus配置
+│   Configuration │
+└─────────────────┘
+```
+
+### 3. 连接池架构
+
+**HikariCP配置**
+```
+HikariConfig
+├── minimumIdle: Integer               # 最小空闲连接数
+├── maximumPoolSize: Integer           # 最大连接池大小
+├── idleTimeout: Long                  # 空闲超时时间
+├── maxLifetime: Long                  # 最大生命周期
+├── connectionTimeout: Long            # 连接超时时间
+├── connectionTestQuery: String        # 连接测试查询
+├── connectionInitSql: String          # 连接初始化SQL
+├── validationTimeout: Long            # 验证超时时间
+├── leakDetectionThreshold: Long       # 连接泄漏检测阈值
+└── registerMbeans: boolean           # 是否注册MBean
+```
+
+**Druid配置**
+```
+DruidConfig
+├── initialSize: Integer                # 初始连接数
+├── minIdle: Integer                    # 最小空闲连接数
+├── maxActive: Integer                  # 最大活跃连接数
+├── maxWait: Long                       # 最大等待时间
+├── timeBetweenEvictionRunsMillis: Long # 空闲连接检测间隔
+├── minEvictableIdleTimeMillis: Long   # 最小空闲时间
+├── maxEvictableIdleTimeMillis: Long   # 最大空闲时间
+├── validationQuery: String             # 验证查询
+├── testWhileIdle: boolean             # 空闲时测试
+├── testOnBorrow: boolean              # 借用时测试
+├── testOnReturn: boolean              # 归还时测试
+├── poolPreparedStatements: boolean    # 池化预处理语句
+├── maxPoolPreparedStatementPerConnectionSize: Integer # 每连接最大预处理语句数
+└── filters: String                     # 过滤器配置
 ```
 
 ## 数据流架构

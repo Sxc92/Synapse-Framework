@@ -27,7 +27,19 @@
 - **代码示例**：完整的代码示例和最佳实践
 - **常见问题**：常见问题的解决方案
 
-### 4. [DEVELOPMENT_NOTES.md](DEVELOPMENT_NOTES.md) - 开发笔记
+### 4. [API_REFERENCE.md](API_REFERENCE.md) - API 参考
+- **核心模块 API**：各模块的接口说明和功能描述
+- **配置 API**：配置选项和参数说明
+- **注解参考**：框架提供的各种注解说明
+- **扩展 API**：自定义扩展点和插件系统
+
+### 5. [CONFIGURATION_REFERENCE.md](CONFIGURATION_REFERENCE.md) - 配置参考
+- **基础配置结构**：配置层次结构和环境配置支持
+- **模块配置详解**：各模块的详细配置选项
+- **环境特定配置**：开发、测试、生产环境配置
+- **配置验证和监控**：配置验证规则和监控指标
+
+### 6. [DEVELOPMENT_NOTES.md](DEVELOPMENT_NOTES.md) - 开发笔记
 - **会话管理重构**：会话管理模块重构的背景、方案和实现
 - **分布式锁增强**：分布式锁模块的功能增强和架构优化
 - **缓存翻译注解**：缓存属性翻译注解的设计方案和实现
@@ -81,16 +93,19 @@
 ### 🚀 新手上路
 1. [README.md](README.md) - 了解框架概览
 2. [USAGE_GUIDE.md](USAGE_GUIDE.md) - 快速开始指南
-3. [ARCHITECTURE.md](ARCHITECTURE.md) - 深入理解架构
-4. [模块文档索引](MODULES_INDEX.md) - 查看各模块详细文档
+3. [CONFIGURATION_REFERENCE.md](CONFIGURATION_REFERENCE.md) - 配置参考
+4. [ARCHITECTURE.md](ARCHITECTURE.md) - 深入理解架构
+5. [模块文档索引](MODULES_INDEX.md) - 查看各模块详细文档
 
 ### 🔧 开发指南
 1. **环境搭建** → [USAGE_GUIDE.md#环境准备](USAGE_GUIDE.md#环境准备)
 2. **项目创建** → [USAGE_GUIDE.md#项目创建](USAGE_GUIDE.md#项目创建)
-3. **实体定义** → [USAGE_GUIDE.md#实体类定义](USAGE_GUIDE.md#实体类定义)
-4. **数据访问** → [USAGE_GUIDE.md#repository-层](USAGE_GUIDE.md#repository-层)
-5. **业务逻辑** → [USAGE_GUIDE.md#service-层](USAGE_GUIDE.md#service-层)
-6. **API 接口** → [USAGE_GUIDE.md#controller-层](USAGE_GUIDE.md#controller-层)
+3. **配置参考** → [CONFIGURATION_REFERENCE.md](CONFIGURATION_REFERENCE.md)
+4. **API 接口** → [API_REFERENCE.md](API_REFERENCE.md)
+5. **实体定义** → [USAGE_GUIDE.md#实体类定义](USAGE_GUIDE.md#实体类定义)
+6. **数据访问** → [USAGE_GUIDE.md#repository-层](USAGE_GUIDE.md#repository-层)
+7. **业务逻辑** → [USAGE_GUIDE.md#service-层](USAGE_GUIDE.md#service-层)
+8. **API 接口** → [USAGE_GUIDE.md#controller-层](USAGE_GUIDE.md#controller-层)
 
 ### 🔐 安全配置
 1. **认证配置** → [USAGE_GUIDE.md#认证配置](USAGE_GUIDE.md#认证配置)
@@ -102,7 +117,7 @@
 2. **事件驱动** → [USAGE_GUIDE.md#事件功能使用](USAGE_GUIDE.md#事件功能使用)
 3. **动态数据源** → [USAGE_GUIDE.md#动态数据源](USAGE_GUIDE.md#动态数据源)
 4. **批量操作** → [USAGE_GUIDE.md#批量操作](USAGE_GUIDE.md#批量操作)
-5. **会话管理** → [DEVELOPMENT_NOTES.md#-会话管理模块重构-2025年](DEVELOPMENT_NOTES.md#-会话管理模块重构-2025年)
+5. **会话管理** → [DEVELOPMENT_NOTES.md#-会话管理模块重构-2025年08月](DEVELOPMENT_NOTES.md#-会话管理模块重构-2025年08月)
 
 ## 🎯 使用场景
 
@@ -235,6 +250,6 @@ public class UserService {
 
 ---
 
-*最后更新时间：2025年1月7日*
+*最后更新时间：2025年08月11日 12:41:56*
 
 **文档版本**：v1.0.0 

@@ -1,39 +1,20 @@
 # Synapse Cache 模块
 
-## 📋 概述
+## 概述
 
-Synapse Cache 是一个高性能的缓存和分布式锁解决方案，提供了完整的缓存注解支持、多级缓存策略和分布式锁功能。该模块采用延迟初始化和自动释放机制，确保资源的高效利用。
+Synapse Cache 模块是 Synapse Framework 的缓存管理模块，提供了统一的缓存抽象、多种缓存实现以及智能的缓存策略管理。支持本地缓存、分布式缓存和混合缓存模式。
 
-## 🚀 核心功能
+## 主要特性
 
-### 1. 缓存注解系统
-- **@Cacheable**: 方法结果缓存
-- **@CachePut**: 缓存数据更新
-- **@CacheEvict**: 缓存数据删除
-- **@Caching**: 组合缓存操作
+- 🚀 **多种缓存实现**：Redis、Caffeine、EhCache、Hazelcast
+- 🔄 **缓存策略**：TTL、LRU、LFU、FIFO 等
+- 🎯 **注解驱动**：基于注解的缓存操作
+- 🔒 **分布式锁**：基于缓存的分布式锁实现
+- 📊 **缓存监控**：缓存命中率、性能统计
+- 🧠 **智能缓存**：自动缓存预热、失效策略
+- 🔧 **自动配置**：Spring Boot 自动配置支持
 
-### 2. 分布式锁服务
-- **延迟初始化**: 按需分配资源
-- **自动释放**: 智能资源管理
-- **性能监控**: 实时性能指标
-- **死锁检测**: 自动死锁识别
-
-### 3. 多级缓存策略
-- **LOCAL_ONLY**: 仅本地缓存
-- **REDIS_ONLY**: 仅Redis缓存
-- **LOCAL_AND_REDIS**: 本地+Redis缓存
-- **REDIS_SYNC_TO_LOCAL**: Redis同步到本地
-
-## 📚 文档索引
-
-### 使用指南
-- [缓存注解使用指南](CACHE_ANNOTATIONS_USAGE.md) - 详细的缓存注解使用方法
-- [分布式锁优化文档](DISTRIBUTED_LOCK_OPTIMIZATION.md) - 分布式锁功能详解
-
-### 技术文档
-- [优化工作总结](OPTIMIZATION_SUMMARY.md) - 模块优化历程和成果总结
-
-## 🔧 快速开始
+## 快速开始
 
 ### 1. 添加依赖
 
@@ -50,136 +31,372 @@ Synapse Cache 是一个高性能的缓存和分布式锁解决方案，提供了
 ```yaml
 synapse:
   cache:
-    lock:
-      auto-release:
-        enabled: true
-        threshold: 300000      # 5分钟
-        check-interval: 60000  # 1分钟
-      monitor:
-        enabled: true
-        granularity: 1000      # 1秒
+    # 默认缓存类型
+    default-type: REDIS
+    # 缓存前缀
+    key-prefix: "synapse:"
+    # 默认过期时间（秒）
+    default-ttl: 3600
+    
+    # Redis 配置
+    redis:
+      host: localhost
+      port: 6379
+      password: 
+      database: 0
+      timeout: 3000
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+    
+    # Caffeine 配置
+    caffeine:
+      maximum-size: 1000
+      expire-after-write: 1h
+      expire-after-access: 30m
 ```
 
-### 3. 使用缓存注解
+### 3. 使用示例
 
 ```java
 @Service
 public class UserService {
     
-    @Cacheable(key = "user:#id", expireSeconds = 3600)
+    @Autowired
+    private UserMapper userMapper;
+    
+    // 缓存查询结果
+    @Cacheable(value = "user", key = "#id")
     public User getUserById(Long id) {
-        return userRepository.findById(id);
+        return userMapper.selectById(id);
+    }
+    
+    // 更新缓存
+    @CachePut(value = "user", key = "#user.id")
+    public User createUser(User user) {
+        userMapper.insert(user);
+        return user;
+    }
+    
+    // 删除缓存
+    @CacheEvict(value = "user", key = "#id")
+    public void deleteUser(Long id) {
+        userMapper.deleteById(id);
+    }
+    
+    // 清空所有缓存
+    @CacheEvict(value = "user", allEntries = true)
+    public void clearAllCache() {
+        // 清空缓存的逻辑
     }
 }
 ```
 
-### 4. 使用分布式锁
+## 配置说明
 
+### 1. 缓存类型配置
+
+**Redis 缓存**
+```yaml
+synapse:
+  cache:
+    redis:
+      host: localhost
+      port: 6379
+      password: your-password
+      database: 0
+      timeout: 3000
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+      # 序列化配置
+      serializer: JACKSON
+      # 压缩配置
+      compression: true
+```
+
+**Caffeine 本地缓存**
+```yaml
+synapse:
+  cache:
+    caffeine:
+      # 最大缓存条目数
+      maximum-size: 1000
+      # 写入后过期时间
+      expire-after-write: 1h
+      # 访问后过期时间
+      expire-after-access: 30m
+      # 最大权重
+      maximum-weight: 10000
+      # 统计信息
+      record-stats: true
+```
+
+**EhCache 配置**
+```yaml
+synapse:
+  cache:
+    ehcache:
+      # 配置文件路径
+      config-location: classpath:ehcache.xml
+      # 最大堆内存
+      max-heap-size: 100MB
+      # 最大堆外内存
+      max-off-heap-size: 200MB
+```
+
+### 2. 缓存策略配置
+
+**TTL 策略**
+```yaml
+synapse:
+  cache:
+    # 默认过期时间
+    default-ttl: 3600
+    # 最大过期时间
+    max-ttl: 86400
+    # 最小过期时间
+    min-ttl: 60
+```
+
+**LRU 策略**
+```yaml
+synapse:
+  cache:
+    # 最大缓存条目数
+    maximum-size: 1000
+    # 淘汰策略
+    eviction-policy: LRU
+```
+
+### 3. 分布式锁配置
+
+```yaml
+synapse:
+  cache:
+    # 分布式锁配置
+    distributed-lock:
+      # 锁超时时间
+      timeout: 30000
+      # 重试次数
+      retry-times: 3
+      # 重试间隔
+      retry-interval: 1000
+      # 锁前缀
+      key-prefix: "lock:"
+```
+
+## 高级功能
+
+### 1. 缓存注解
+
+**基础缓存注解**
 ```java
-@Autowired
-private LockManager lockManager;
+// 缓存查询结果
+@Cacheable(value = "user", key = "#id", unless = "#result == null")
 
-String lockValue = lockManager.tryLock("resource", "key", 10);
-try {
-    // 执行业务逻辑
-} finally {
-    lockManager.releaseLock("resource", "key", lockValue);
+// 更新缓存
+@CachePut(value = "user", key = "#user.id")
+
+// 删除缓存
+@CacheEvict(value = "user", key = "#id")
+
+// 条件缓存
+@Cacheable(value = "user", condition = "#id > 0", unless = "#result == null")
+```
+
+**自定义缓存注解**
+```java
+@Target({ElementType.METHOD})
+@Retention(RetentionPolicy.RUNTIME)
+@Cacheable(value = "user", key = "#id", unless = "#result == null")
+public @interface UserCache {
+    String value() default "user";
+    String key() default "#id";
 }
 ```
 
-## 🎯 主要特性
-
-### 性能优化
-- **延迟初始化**: 启动时不占用资源
-- **自动释放**: 空闲时自动回收资源
-- **智能缓存**: 多级缓存策略优化
-
-### 运维友好
-- **配置灵活**: 支持多种配置选项
-- **监控完善**: 详细的性能指标
-- **日志优化**: 合理的日志级别
-
-### 开发便利
-- **注解驱动**: 简单的注解使用方式
-- **API简洁**: 清晰的接口设计
-- **异常处理**: 完善的异常处理机制
-
-## 🔍 配置选项
-
-### 分布式锁配置
-```yaml
-synapse:
-  cache:
-    lock:
-      auto-release:
-        enabled: true          # 启用自动释放
-        threshold: 300000      # 释放阈值（毫秒）
-        check-interval: 60000  # 检查间隔（毫秒）
-      monitor:
-        enabled: true          # 启用监控
-        granularity: 1000      # 监控粒度（毫秒）
-        deadlock-detection: true  # 死锁检测
-```
-
-### 缓存策略配置
-```yaml
-synapse:
-  cache:
-    strategy:
-      default: LOCAL_AND_REDIS  # 默认缓存策略
-      local:
-        max-size: 10000         # 本地缓存最大大小
-        expire-seconds: 1800    # 本地缓存过期时间
-      redis:
-        expire-seconds: 3600    # Redis缓存过期时间
-```
-
-## 🧪 测试
-
-运行测试用例验证功能：
-
-```bash
-# 运行所有测试
-mvn test
-
-# 运行特定测试
-mvn test -Dtest=CacheAnnotationTest
-mvn test -Dtest=LockManagerTest
-```
-
-## 📊 性能指标
-
-### 缓存性能
-- **本地缓存**: 纳秒级响应
-- **Redis缓存**: 毫秒级响应
-- **命中率**: 支持实时监控
-
-### 分布式锁性能
-- **获取锁**: 平均 < 10ms
-- **释放锁**: 平均 < 5ms
-- **死锁检测**: 5秒内识别
-
-## 🚨 注意事项
-
-### 1. 缓存使用
-- 合理设置过期时间
-- 避免缓存雪崩
-- 注意缓存一致性
-
 ### 2. 分布式锁
-- 设置合理的超时时间
-- 确保锁的释放
-- 避免死锁情况
 
-### 3. 配置建议
-- 生产环境使用较长的阈值
-- 开发环境使用较短的检查间隔
-- 根据业务需求调整缓存策略
+**注解方式使用**
+```java
+@Service
+public class OrderService {
+    
+    @DistributedLock(key = "order:#{#orderId}", timeout = 30000)
+    public void processOrder(Long orderId) {
+        // 处理订单逻辑
+        // 分布式锁会自动管理
+    }
+}
+```
 
-## 🤝 贡献
+**编程方式使用**
+```java
+@Service
+public class OrderService {
+    
+    @Autowired
+    private DistributedLockManager lockManager;
+    
+    public void processOrder(Long orderId) {
+        String lockKey = "order:" + orderId;
+        
+        try {
+            // 获取锁
+            if (lockManager.tryLock(lockKey, 30000)) {
+                try {
+                    // 处理订单逻辑
+                    processOrderLogic(orderId);
+                } finally {
+                    // 释放锁
+                    lockManager.unlock(lockKey);
+                }
+            } else {
+                throw new RuntimeException("获取锁失败");
+            }
+        } catch (Exception e) {
+            log.error("处理订单失败", e);
+            throw e;
+        }
+    }
+}
+```
 
-欢迎提交 Issue 和 Pull Request 来改进 Synapse Cache 模块。
+### 3. 缓存管理
 
-## 📄 许可证
+**缓存统计信息**
+```java
+@Service
+public class CacheStatisticsService {
+    
+    @Autowired
+    private CacheManager cacheManager;
+    
+    public CacheStatistics getStatistics(String cacheName) {
+        Cache cache = cacheManager.getCache(cacheName);
+        if (cache instanceof CacheStatistics) {
+            return (CacheStatistics) cache;
+        }
+        return null;
+    }
+    
+    public Map<String, CacheStatistics> getAllStatistics() {
+        Map<String, CacheStatistics> statistics = new HashMap<>();
+        
+        cacheManager.getCacheNames().forEach(cacheName -> {
+            Cache cache = cacheManager.getCache(cacheName);
+            if (cache instanceof CacheStatistics) {
+                statistics.put(cacheName, (CacheStatistics) cache);
+            }
+        });
+        
+        return statistics;
+    }
+}
+```
 
-本项目采用 [Apache License 2.0](LICENSE) 许可证。 
+**缓存预热**
+```java
+@Component
+public class CacheWarmupService {
+    
+    @Autowired
+    private UserService userService;
+    
+    @EventListener(ApplicationReadyEvent.class)
+    public void warmupCache() {
+        log.info("开始缓存预热...");
+        
+        // 预热用户缓存
+        List<Long> userIds = Arrays.asList(1L, 2L, 3L, 4L, 5L);
+        userIds.forEach(id -> {
+            try {
+                userService.getUserById(id);
+            } catch (Exception e) {
+                log.warn("预热用户缓存失败: {}", id, e);
+            }
+        });
+        
+        log.info("缓存预热完成");
+    }
+}
+```
+
+## 最佳实践
+
+### 1. 缓存键设计
+
+- 使用有意义的键名：`user:profile:123`
+- 避免键名过长：使用缩写和编码
+- 保持键名一致性：遵循命名规范
+
+### 2. 缓存策略选择
+
+- **热点数据**：使用本地缓存（Caffeine）
+- **共享数据**：使用分布式缓存（Redis）
+- **大对象**：考虑压缩和序列化策略
+
+### 3. 缓存失效策略
+
+- **时间失效**：设置合理的 TTL
+- **事件失效**：数据更新时主动失效
+- **容量失效**：达到容量上限时淘汰
+
+### 4. 性能优化
+
+- 使用批量操作减少网络开销
+- 合理设置连接池参数
+- 监控缓存命中率和性能指标
+
+## 故障排除
+
+### 常见问题
+
+1. **缓存穿透**
+   - 使用布隆过滤器
+   - 缓存空值
+   - 接口限流
+
+2. **缓存雪崩**
+   - 设置随机过期时间
+   - 使用熔断器
+   - 多级缓存
+
+3. **缓存击穿**
+   - 使用分布式锁
+   - 热点数据永不过期
+   - 异步更新缓存
+
+### 日志配置
+
+```yaml
+logging:
+  level:
+    com.indigo.cache: DEBUG
+    org.springframework.cache: DEBUG
+```
+
+## 版本历史
+
+| 版本 | 更新内容 |
+|------|----------|
+| 1.0.0 | 初始版本，基础缓存功能 |
+| 1.1.0 | 添加分布式锁功能 |
+| 1.2.0 | 集成多种缓存实现 |
+| 1.3.0 | 优化缓存策略和性能 |
+| 1.4.0 | 添加缓存监控和统计 |
+
+## 贡献
+
+欢迎提交 Issue 和 Pull Request 来改进这个模块。
+
+## 许可证
+
+本项目采用 MIT 许可证。 
