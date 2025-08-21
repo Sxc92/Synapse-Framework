@@ -6,12 +6,14 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.ConstructorBinding;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
  * Synapse Framework 数据源配置属性类
- * 整合 MyBatis-Plus 和动态数据源配置
+ * 统一配置入口，支持读写分离、负载均衡、故障转移
  *
  * @author 史偕成
  * @date 2025/01/08
@@ -28,17 +30,271 @@ public class SynapseDataSourceProperties {
     /**
      * 主数据源名称
      */
-    private String primary = "master1";
+    private String primary = "master";
 
     /**
-     * 动态数据源配置
+     * 读写分离配置
      */
-    private DynamicDataSource dynamicDataSource = new DynamicDataSource();
+    private ReadWriteConfig readWrite = new ReadWriteConfig();
 
     /**
-     * 兼容标准Spring Boot配置
+     * 负载均衡配置
      */
-    private SpringDatasource springDatasource = new SpringDatasource();
+    private LoadBalanceConfig loadBalance = new LoadBalanceConfig();
+
+    /**
+     * 故障转移配置
+     */
+    private FailoverConfig failover = new FailoverConfig();
+
+    /**
+     * 数据源配置
+     */
+    private Map<String, DataSourceConfig> datasources = new LinkedHashMap<>();
+
+    /**
+     * 读写分离配置
+     */
+    @Data
+    public static class ReadWriteConfig {
+        /**
+         * 是否启用读写分离
+         */
+        private boolean enabled = true;
+
+        /**
+         * 读数据源列表
+         */
+        private List<String> readSources = new ArrayList<>();
+
+        /**
+         * 写数据源列表
+         */
+        private List<String> writeSources = new ArrayList<>();
+
+        /**
+         * 读写分离模式
+         */
+        private ReadWriteMode mode = ReadWriteMode.AUTO;
+
+        /**
+         * 读写分离模式枚举
+         */
+        public enum ReadWriteMode {
+            /**
+             * 自动模式：根据SQL类型自动路由
+             */
+            AUTO,
+            /**
+             * 手动模式：需要手动指定数据源
+             */
+            MANUAL,
+            /**
+             * 禁用模式：不进行读写分离
+             */
+            DISABLED
+        }
+    }
+
+    /**
+     * 负载均衡配置
+     */
+    @Data
+    public static class LoadBalanceConfig {
+        /**
+         * 负载均衡策略
+         */
+        private LoadBalanceStrategy strategy = LoadBalanceStrategy.ROUND_ROBIN;
+
+        /**
+         * 权重配置（仅在使用WEIGHTED策略时有效）
+         */
+        private Map<String, Integer> weights = new LinkedHashMap<>();
+
+        /**
+         * 负载均衡策略枚举
+         */
+        public enum LoadBalanceStrategy {
+            /**
+             * 轮询策略
+             */
+            ROUND_ROBIN,
+            /**
+             * 权重策略
+             */
+            WEIGHTED,
+            /**
+             * 随机策略
+             */
+            RANDOM
+        }
+    }
+
+    /**
+     * 故障转移配置
+     */
+    @Data
+    public static class FailoverConfig {
+        /**
+         * 是否启用故障转移
+         */
+        private boolean enabled = true;
+
+        /**
+         * 故障转移超时时间（毫秒）
+         */
+        private long timeout = 5000;
+
+        /**
+         * 最大重试次数
+         */
+        private int maxRetries = 3;
+
+        /**
+         * 故障转移策略
+         */
+        private FailoverStrategy strategy = FailoverStrategy.PRIMARY_FIRST;
+
+        /**
+         * 故障转移策略枚举
+         */
+        public enum FailoverStrategy {
+            /**
+             * 主数据源优先
+             */
+            PRIMARY_FIRST,
+            /**
+             * 健康数据源优先
+             */
+            HEALTHY_FIRST,
+            /**
+             * 轮询故障转移
+             */
+            ROUND_ROBIN
+        }
+    }
+
+    /**
+     * 数据源配置
+     */
+    @Data
+    public static class DataSourceConfig {
+        /**
+         * 数据库类型
+         */
+        private DatabaseType type = DatabaseType.MYSQL;
+
+        /**
+         * 主机地址
+         */
+        private String host = "localhost";
+
+        /**
+         * 端口号
+         */
+        private Integer port = 3306;
+
+        /**
+         * 数据库名
+         */
+        private String database;
+
+        /**
+         * 用户名
+         */
+        private String username;
+
+        /**
+         * 密码
+         */
+        private String password;
+
+        /**
+         * 数据源角色
+         */
+        private DataSourceRole role = DataSourceRole.READ_WRITE;
+
+        /**
+         * 权重（用于负载均衡）
+         */
+        private Integer weight = 100;
+
+        /**
+         * 连接池类型
+         */
+        private PoolType poolType = PoolType.HIKARI;
+
+        /**
+         * 连接参数
+         */
+        private Map<String, String> params = new LinkedHashMap<>();
+
+        /**
+         * HikariCP连接池配置
+         */
+        private HikariConfig hikari = new HikariConfig();
+
+        /**
+         * Druid连接池配置
+         */
+        private DruidConfig druid = new DruidConfig();
+
+        /**
+         * 数据源角色枚举
+         */
+        public enum DataSourceRole {
+            /**
+             * 只读数据源
+             */
+            READ,
+            /**
+             * 只写数据源
+             */
+            WRITE,
+            /**
+             * 读写数据源
+             */
+            READ_WRITE
+        }
+
+        /**
+         * 获取JDBC URL
+         */
+        public String getUrl() {
+            StringBuilder url = new StringBuilder(type.getUrlPrefix());
+            
+            // 添加主机和端口
+            url.append(host);
+            if (port != null) {
+                url.append(":").append(port);
+            }
+            
+            // 添加数据库名
+            if (database != null && !database.isEmpty()) {
+                if (type == DatabaseType.ORACLE) {
+                    url.append(":").append(database);
+                } else {
+                    url.append("/").append(database);
+                }
+            }
+            
+            // 添加连接参数
+            if (!params.isEmpty()) {
+                url.append("?");
+                params.forEach((key, value) -> url.append(key).append("=").append(value).append("&"));
+                url.setLength(url.length() - 1); // 删除最后一个&
+            }
+            
+            return url.toString();
+        }
+
+        /**
+         * 获取驱动类名
+         */
+        public String getDriverClassName() {
+            return type.getDriverClassName();
+        }
+    }
 
     /**
      * MyBatis-Plus 配置
@@ -204,413 +460,151 @@ public class SynapseDataSourceProperties {
     }
 
     /**
-     * 动态数据源配置
+     * HikariCP配置
      */
     @Data
-    public static class DynamicDataSource {
+    public static class HikariConfig {
         /**
-         * 是否启用严格模式
+         * 最小空闲连接数
          */
-        private boolean strict = false;
+        private Integer minimumIdle = 5;
         
         /**
-         * 是否启用Seata分布式事务
+         * 最大连接池大小
          */
-        private boolean seata = false;
+        private Integer maximumPoolSize = 15;
         
         /**
-         * 是否启用P6Spy
+         * 空闲超时时间(毫秒)
          */
-        private boolean p6spy = false;
+        private Long idleTimeout = 30000L;
         
         /**
-         * 数据源配置
+         * 最大生命周期(毫秒)
          */
-        private Map<String, DataSourceConfig> datasource = new LinkedHashMap<>();
+        private Long maxLifetime = 1800000L;
         
         /**
-         * 数据源配置
+         * 连接超时时间(毫秒)
          */
-        @Data
-        public static class DataSourceConfig {
-            /**
-             * 数据库类型
-             */
-            private DatabaseType type = DatabaseType.MYSQL;
-            
-            /**
-             * 主机地址
-             */
-            private String host = "localhost";
-            
-            /**
-             * 端口号
-             */
-            private Integer port = 3306;
-            
-            /**
-             * 数据库名
-             */
-            private String database;
-            
-            /**
-             * 用户名
-             */
-            private String username;
-            
-            /**
-             * 密码
-             */
-            private String password;
-            
-            /**
-             * 连接池类型
-             */
-            private PoolType poolType = PoolType.HIKARI;
-            
-            /**
-             * 连接参数
-             */
-            private Map<String, String> params = new LinkedHashMap<>();
-            
-            /**
-             * HikariCP连接池配置
-             */
-            private HikariConfig hikari = new HikariConfig();
-            
-            /**
-             * Druid连接池配置
-             */
-            private DruidConfig druid = new DruidConfig();
-            
-            /**
-             * 获取JDBC URL
-             */
-            public String getUrl() {
-                StringBuilder url = new StringBuilder(type.getUrlPrefix());
-                
-                // 添加主机和端口
-                url.append(host);
-                if (port != null) {
-                    url.append(":").append(port);
-                }
-                
-                // 添加数据库名
-                if (database != null && !database.isEmpty()) {
-                    if (type == DatabaseType.ORACLE) {
-                        url.append(":").append(database);
-                    } else {
-                        url.append("/").append(database);
-                    }
-                }
-                
-                // 添加连接参数
-                if (!params.isEmpty()) {
-                    url.append("?");
-                    params.forEach((key, value) -> url.append(key).append("=").append(value).append("&"));
-                    url.setLength(url.length() - 1); // 删除最后一个&
-                }
-                
-                return url.toString();
-            }
-            
-            /**
-             * 获取驱动类名
-             */
-            public String getDriverClassName() {
-                return type.getDriverClassName();
-            }
-        }
+        private Long connectionTimeout = 30000L;
         
         /**
-         * HikariCP配置
+         * 连接测试查询
          */
-        @Data
-        public static class HikariConfig {
-            /**
-             * 最小空闲连接数
-             */
-            private Integer minimumIdle = 5;
-            
-            /**
-             * 最大连接池大小
-             */
-            private Integer maximumPoolSize = 15;
-            
-            /**
-             * 空闲超时时间(毫秒)
-             */
-            private Long idleTimeout = 30000L;
-            
-            /**
-             * 最大生命周期(毫秒)
-             */
-            private Long maxLifetime = 1800000L;
-            
-            /**
-             * 连接超时时间(毫秒)
-             */
-            private Long connectionTimeout = 30000L;
-            
-            /**
-             * 连接测试查询
-             */
-            private String connectionTestQuery = "SELECT 1";
-            
-            /**
-             * 连接初始化SQL
-             */
-            private String connectionInitSql;
-            
-            /**
-             * 验证超时时间(毫秒)
-             */
-            private Long validationTimeout = 5000L;
-            
-            /**
-             * 泄漏检测阈值(毫秒)
-             */
-            private Long leakDetectionThreshold = 0L;
-            
-            /**
-             * 是否启用JMX
-             */
-            private boolean registerMbeans = false;
-        }
+        private String connectionTestQuery = "SELECT 1";
         
         /**
-         * Druid配置
+         * 连接初始化SQL
          */
-        @Data
-        public static class DruidConfig {
-            /**
-             * 初始连接数
-             */
-            private Integer initialSize = 5;
-            
-            /**
-             * 最小空闲连接数
-             */
-            private Integer minIdle = 5;
-            
-            /**
-             * 最大活跃连接数
-             */
-            private Integer maxActive = 20;
-            
-            /**
-             * 最大等待时间(毫秒)
-             */
-            private Long maxWait = 60000L;
-            
-            /**
-             * 空闲连接检测间隔(毫秒)
-             */
-            private Long timeBetweenEvictionRunsMillis = 60000L;
-            
-            /**
-             * 最小可驱逐空闲时间(毫秒)
-             */
-            private Long minEvictableIdleTimeMillis = 300000L;
-            
-            /**
-             * 最大可驱逐空闲时间(毫秒)
-             */
-            private Long maxEvictableIdleTimeMillis = 900000L;
-            
-            /**
-             * 验证查询
-             */
-            private String validationQuery = "SELECT 1";
-            
-            /**
-             * 空闲时是否测试连接
-             */
-            private boolean testWhileIdle = true;
-            
-            /**
-             * 借用时是否测试连接
-             */
-            private boolean testOnBorrow = false;
-            
-            /**
-             * 归还时是否测试连接
-             */
-            private boolean testOnReturn = false;
-            
-            /**
-             * 是否缓存预处理语句
-             */
-            private boolean poolPreparedStatements = true;
-            
-            /**
-             * 每个连接最大预处理语句数
-             */
-            private Integer maxPoolPreparedStatementPerConnectionSize = 20;
-            
-            /**
-             * 过滤器
-             */
-            private String filters = "stat,wall";
-            
-            // 手动添加 getter 方法，因为 Lombok 可能没有正确工作
-            public boolean getTestWhileIdle() {
-                return testWhileIdle;
-            }
-            
-            public boolean getTestOnBorrow() {
-                return testOnBorrow;
-            }
-            
-            public boolean getTestOnReturn() {
-                return testOnReturn;
-            }
-            
-            public boolean getPoolPreparedStatements() {
-                return poolPreparedStatements;
-            }
-        }
+        private String connectionInitSql;
+        
+        /**
+         * 验证超时时间(毫秒)
+         */
+        private Long validationTimeout = 5000L;
+        
+        /**
+         * 泄漏检测阈值(毫秒)
+         */
+        private Long leakDetectionThreshold = 0L;
+        
+        /**
+         * 是否启用JMX
+         */
+        private boolean registerMbeans = false;
     }
     
     /**
-     * 兼容标准Spring Boot配置
-     * 支持 spring.datasource.dynamic 配置格式
+     * Druid配置
      */
     @Data
-    public static class SpringDatasource {
+    public static class DruidConfig {
         /**
-         * 动态数据源配置
+         * 初始连接数
          */
-        private Dynamic springDynamic = new Dynamic();
+        private Integer initialSize = 5;
         
         /**
-         * 动态数据源配置
+         * 最小空闲连接数
          */
-        @Data
-        public static class Dynamic {
-            /**
-             * 主数据源名称
-             */
-            private String primary = "master1";
-            
-            /**
-             * 是否启用严格模式
-             */
-            private boolean strict = false;
-            
-            /**
-             * 数据源配置
-             */
-            private Map<String, SpringDataSourceConfig> datasource = new LinkedHashMap<>();
+        private Integer minIdle = 5;
+        
+        /**
+         * 最大活跃连接数
+         */
+        private Integer maxActive = 20;
+        
+        /**
+         * 最大等待时间(毫秒)
+         */
+        private Long maxWait = 60000L;
+        
+        /**
+         * 空闲连接检测间隔(毫秒)
+         */
+        private Long timeBetweenEvictionRunsMillis = 60000L;
+        
+        /**
+         * 最小可驱逐空闲时间(毫秒)
+         */
+        private Long minEvictableIdleTimeMillis = 300000L;
+        
+        /**
+         * 最大可驱逐空闲时间(毫秒)
+         */
+        private Long maxEvictableIdleTimeMillis = 900000L;
+        
+        /**
+         * 验证查询
+         */
+        private String validationQuery = "SELECT 1";
+        
+        /**
+         * 空闲时是否测试连接
+         */
+        private boolean testWhileIdle = true;
+        
+        /**
+         * 借用时是否测试连接
+         */
+        private boolean testOnBorrow = false;
+        
+        /**
+         * 归还时是否测试连接
+         */
+        private boolean testOnReturn = false;
+        
+        /**
+         * 是否缓存预处理语句
+         */
+        private boolean poolPreparedStatements = true;
+        
+        /**
+         * 每个连接最大预处理语句数
+         */
+        private Integer maxPoolPreparedStatementPerConnectionSize = 20;
+        
+        /**
+         * 过滤器
+         */
+        private String filters = "stat,wall";
+        
+        // 手动添加 getter 方法，因为 Lombok 可能没有正确工作
+        public boolean getTestWhileIdle() {
+            return testWhileIdle;
         }
         
-        /**
-         * Spring Boot标准数据源配置
-         */
-        @Data
-        public static class SpringDataSourceConfig {
-            /**
-             * 数据库类型
-             */
-            private String type = "MYSQL";
-            
-            /**
-             * 主机地址
-             */
-            private String host = "localhost";
-            
-            /**
-             * 端口号
-             */
-            private Integer port = 3306;
-            
-            /**
-             * 数据库名
-             */
-            private String database;
-            
-            /**
-             * 用户名
-             */
-            private String username;
-            
-            /**
-             * 密码
-             */
-            private String password;
-            
-            /**
-             * 连接池类型
-             */
-            private String poolType = "HIKARI";
-            
-            /**
-             * 连接参数
-             */
-            private Map<String, String> params = new LinkedHashMap<>();
-            
-            /**
-             * HikariCP连接池配置
-             */
-            private SpringHikariConfig hikari = new SpringHikariConfig();
-            
-            /**
-             * 获取JDBC URL
-             */
-            public String getUrl() {
-                return String.format("jdbc:%s://%s:%d/%s", 
-                    type.toLowerCase(), host, port, database);
-            }
-            
-            /**
-             * 获取驱动类名
-             */
-            public String getDriverClassName() {
-                return switch (type.toUpperCase()) {
-                    case "MYSQL" -> "com.mysql.cj.jdbc.Driver";
-                    case "POSTGRESQL" -> "org.postgresql.Driver";
-                    case "ORACLE" -> "oracle.jdbc.OracleDriver";
-                    case "SQLSERVER" -> "com.microsoft.sqlserver.jdbc.SQLServerDriver";
-                    case "H2" -> "org.h2.Driver";
-                    default -> "com.mysql.cj.jdbc.Driver";
-                };
-            }
+        public boolean getTestOnBorrow() {
+            return testOnBorrow;
         }
         
-        /**
-         * Spring Boot标准HikariCP配置
-         */
-        @Data
-        public static class SpringHikariConfig {
-            /**
-             * 最小空闲连接数
-             */
-            private Integer minimumIdle = 5;
-            
-            /**
-             * 最大连接池大小
-             */
-            private Integer maximumPoolSize = 15;
-            
-            /**
-             * 空闲超时时间(毫秒)
-             */
-            private Long idleTimeout = 30000L;
-            
-            /**
-             * 最大生命周期(毫秒)
-             */
-            private Long maxLifetime = 1800000L;
-            
-            /**
-             * 连接超时时间(毫秒)
-             */
-            private Long connectionTimeout = 30000L;
-            
-            /**
-             * 连接测试查询
-             */
-            private String connectionTestQuery = "SELECT 1";
+        public boolean getTestOnReturn() {
+            return testOnReturn;
+        }
+        
+        public boolean getPoolPreparedStatements() {
+            return poolPreparedStatements;
         }
     }
 } 

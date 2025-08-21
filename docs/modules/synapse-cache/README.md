@@ -6,9 +6,9 @@ Synapse Cache 模块是 Synapse Framework 的缓存管理模块，提供了统�
 
 ## 主要特性
 
-- 🚀 **多种缓存实现**：Redis、Caffeine、EhCache、Hazelcast
-- 🔄 **缓存策略**：TTL、LRU、LFU、FIFO 等
-- 🎯 **注解驱动**：基于注解的缓存操作
+- 🚀 **多种缓存实现**：Redis、Caffeine本地缓存
+- 🔄 **缓存策略**：TTL、LRU等策略支持
+- 🎯 **注解驱动**：基于Spring Cache注解的缓存操作
 - 🔒 **分布式锁**：基于缓存的分布式锁实现
 - 📊 **缓存监控**：缓存命中率、性能统计
 - 🧠 **智能缓存**：自动缓存预热、失效策略
@@ -22,35 +22,33 @@ Synapse Cache 模块是 Synapse Framework 的缓存管理模块，提供了统�
 <dependency>
     <groupId>com.indigo</groupId>
     <artifactId>synapse-cache</artifactId>
-    <version>${synapse.version}</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
 ### 2. 基础配置
 
 ```yaml
+spring:
+  redis:
+    host: localhost
+    port: 6379
+    password: 
+    database: 0
+    timeout: 3000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+        max-wait: -1ms
+
 synapse:
   cache:
-    # 默认缓存类型
-    default-type: REDIS
     # 缓存前缀
     key-prefix: "synapse:"
     # 默认过期时间（秒）
     default-ttl: 3600
-    
-    # Redis 配置
-    redis:
-      host: localhost
-      port: 6379
-      password: 
-      database: 0
-      timeout: 3000
-      lettuce:
-        pool:
-          max-active: 8
-          max-idle: 8
-          min-idle: 0
-          max-wait: -1ms
     
     # Caffeine 配置
     caffeine:
@@ -101,24 +99,19 @@ public class UserService {
 
 **Redis 缓存**
 ```yaml
-synapse:
-  cache:
-    redis:
-      host: localhost
-      port: 6379
-      password: your-password
-      database: 0
-      timeout: 3000
-      lettuce:
-        pool:
-          max-active: 8
-          max-idle: 8
-          min-idle: 0
-          max-wait: -1ms
-      # 序列化配置
-      serializer: JACKSON
-      # 压缩配置
-      compression: true
+spring:
+  redis:
+    host: localhost
+    port: 6379
+    password: your-password
+    database: 0
+    timeout: 3000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+        max-wait: -1ms
 ```
 
 **Caffeine 本地缓存**
@@ -132,23 +125,8 @@ synapse:
       expire-after-write: 1h
       # 访问后过期时间
       expire-after-access: 30m
-      # 最大权重
-      maximum-weight: 10000
       # 统计信息
       record-stats: true
-```
-
-**EhCache 配置**
-```yaml
-synapse:
-  cache:
-    ehcache:
-      # 配置文件路径
-      config-location: classpath:ehcache.xml
-      # 最大堆内存
-      max-heap-size: 100MB
-      # 最大堆外内存
-      max-off-heap-size: 200MB
 ```
 
 ### 2. 缓存策略配置
@@ -175,23 +153,6 @@ synapse:
     eviction-policy: LRU
 ```
 
-### 3. 分布式锁配置
-
-```yaml
-synapse:
-  cache:
-    # 分布式锁配置
-    distributed-lock:
-      # 锁超时时间
-      timeout: 30000
-      # 重试次数
-      retry-times: 3
-      # 重试间隔
-      retry-interval: 1000
-      # 锁前缀
-      key-prefix: "lock:"
-```
-
 ## 高级功能
 
 ### 1. 缓存注解
@@ -211,31 +172,7 @@ synapse:
 @Cacheable(value = "user", condition = "#id > 0", unless = "#result == null")
 ```
 
-**自定义缓存注解**
-```java
-@Target({ElementType.METHOD})
-@Retention(RetentionPolicy.RUNTIME)
-@Cacheable(value = "user", key = "#id", unless = "#result == null")
-public @interface UserCache {
-    String value() default "user";
-    String key() default "#id";
-}
-```
-
 ### 2. 分布式锁
-
-**注解方式使用**
-```java
-@Service
-public class OrderService {
-    
-    @DistributedLock(key = "order:#{#orderId}", timeout = 30000)
-    public void processOrder(Long orderId) {
-        // 处理订单逻辑
-        // 分布式锁会自动管理
-    }
-}
-```
 
 **编程方式使用**
 ```java
@@ -243,20 +180,20 @@ public class OrderService {
 public class OrderService {
     
     @Autowired
-    private DistributedLockManager lockManager;
+    private CacheService cacheService;
     
     public void processOrder(Long orderId) {
         String lockKey = "order:" + orderId;
         
         try {
             // 获取锁
-            if (lockManager.tryLock(lockKey, 30000)) {
+            if (cacheService.tryLock(lockKey, 30000)) {
                 try {
                     // 处理订单逻辑
                     processOrderLogic(orderId);
                 } finally {
                     // 释放锁
-                    lockManager.unlock(lockKey);
+                    cacheService.releaseLock(lockKey);
                 }
             } else {
                 throw new RuntimeException("获取锁失败");
@@ -277,54 +214,14 @@ public class OrderService {
 public class CacheStatisticsService {
     
     @Autowired
-    private CacheManager cacheManager;
+    private CacheService cacheService;
     
-    public CacheStatistics getStatistics(String cacheName) {
-        Cache cache = cacheManager.getCache(cacheName);
-        if (cache instanceof CacheStatistics) {
-            return (CacheStatistics) cache;
-        }
-        return null;
+    public Map<String, Object> getCacheInfo() {
+        return cacheService.getCacheInfo();
     }
     
-    public Map<String, CacheStatistics> getAllStatistics() {
-        Map<String, CacheStatistics> statistics = new HashMap<>();
-        
-        cacheManager.getCacheNames().forEach(cacheName -> {
-            Cache cache = cacheManager.getCache(cacheName);
-            if (cache instanceof CacheStatistics) {
-                statistics.put(cacheName, (CacheStatistics) cache);
-            }
-        });
-        
-        return statistics;
-    }
-}
-```
-
-**缓存预热**
-```java
-@Component
-public class CacheWarmupService {
-    
-    @Autowired
-    private UserService userService;
-    
-    @EventListener(ApplicationReadyEvent.class)
-    public void warmupCache() {
-        log.info("开始缓存预热...");
-        
-        // 预热用户缓存
-        List<Long> userIds = Arrays.asList(1L, 2L, 3L, 4L, 5L);
-        userIds.forEach(id -> {
-            try {
-                userService.getUserById(id);
-            } catch (Exception e) {
-                log.warn("预热用户缓存失败: {}", id, e);
-            }
-        });
-        
-        log.info("缓存预热完成");
+    public void clearCache(String cacheName) {
+        cacheService.clearCache(cacheName);
     }
 }
 ```
@@ -389,9 +286,8 @@ logging:
 |------|----------|
 | 1.0.0 | 初始版本，基础缓存功能 |
 | 1.1.0 | 添加分布式锁功能 |
-| 1.2.0 | 集成多种缓存实现 |
+| 1.2.0 | 集成Redis和Caffeine缓存 |
 | 1.3.0 | 优化缓存策略和性能 |
-| 1.4.0 | 添加缓存监控和统计 |
 
 ## 贡献
 

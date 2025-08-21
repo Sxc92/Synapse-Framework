@@ -1,4 +1,4 @@
-package com.indigo.databases.dto;
+package com.indigo.databases.dto.result;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;

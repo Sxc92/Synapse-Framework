@@ -457,7 +457,7 @@ public class DatabaseMessageProvider implements MessageProvider {
 
 - [Synapse Framework 架构设计](../../ARCHITECTURE.md)
 - [Synapse Framework 使用指南](../../USAGE_GUIDE.md)
-- [Synapse Framework 性能调优指南](../../PERFORMANCE_TUNING.md)
+- [Synapse Framework 配置参考](../../CONFIGURATION_REFERENCE.md)
 - [Synapse Framework 开发笔记](../../DEVELOPMENT_NOTES.md)
 
 ## 🔗 相关链接

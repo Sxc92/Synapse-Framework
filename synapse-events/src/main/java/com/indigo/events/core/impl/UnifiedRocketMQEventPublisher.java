@@ -13,8 +13,8 @@ import org.apache.rocketmq.common.message.Message;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.InitializingBean;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 @Slf4j
 @Component
-public class UnifiedRocketMQEventPublisher implements EventPublisher {
+public class UnifiedRocketMQEventPublisher implements EventPublisher, InitializingBean, DisposableBean {
     
     private final EventsProperties properties;
     private final MessageSerializer messageSerializer;
@@ -48,8 +48,8 @@ public class UnifiedRocketMQEventPublisher implements EventPublisher {
         this.cacheService = cacheService;
     }
     
-    @PostConstruct
-    public void init() {
+    @Override
+    public void afterPropertiesSet() {
         try {
             // 创建生产者
             producer = new DefaultMQProducer(properties.getRocketmq().getProducerGroup());
@@ -74,7 +74,7 @@ public class UnifiedRocketMQEventPublisher implements EventPublisher {
         }
     }
     
-    @PreDestroy
+    @Override
     public void destroy() {
         if (producer != null) {
             producer.shutdown();

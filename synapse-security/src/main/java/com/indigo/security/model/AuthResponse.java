@@ -4,23 +4,18 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
 
 /**
  * 认证响应模型
+ * 专注于认证成功后的Token返回
+ * 用户信息通过UserSession存储到Redis
  *
  * @author 史偕成
- * @date 2025/12/19
+ * @date 2025/08/11 12:41:56
  */
 @Data
 @Builder
 public class AuthResponse {
-
-    /**
-     * 认证是否成功
-     */
-    private Boolean success;
 
     /**
      * 访问令牌
@@ -33,34 +28,9 @@ public class AuthResponse {
     private String refreshToken;
 
     /**
-     * 令牌类型（通常是 Bearer）
-     */
-    private String tokenType;
-
-    /**
      * 令牌过期时间（秒）
      */
     private Long expiresIn;
-
-    /**
-     * 授权范围
-     */
-    private String scope;
-
-    /**
-     * 用户信息
-     */
-    private UserPrincipal userPrincipal;
-
-    /**
-     * 用户角色列表
-     */
-    private List<String> roles;
-
-    /**
-     * 用户权限列表
-     */
-    private List<String> permissions;
 
     /**
      * 令牌创建时间
@@ -73,30 +43,15 @@ public class AuthResponse {
     private LocalDateTime tokenExpiresAt;
 
     /**
-     * 扩展信息
+     * 创建认证响应
      */
-    private Map<String, Object> extraInfo;
-
-    /**
-     * 创建成功响应
-     */
-    public static AuthResponse success(String accessToken, String refreshToken, UserPrincipal userPrincipal) {
+    public static AuthResponse of(String accessToken, String refreshToken, Long expiresIn) {
         return AuthResponse.builder()
-                .success(true)
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
-                .tokenType("Bearer")
-                .userPrincipal(userPrincipal)
+                .expiresIn(expiresIn)
                 .tokenCreatedAt(LocalDateTime.now())
-                .build();
-    }
-
-    /**
-     * 创建失败响应
-     */
-    public static AuthResponse failure() {
-        return AuthResponse.builder()
-                .success(false)
+                .tokenExpiresAt(LocalDateTime.now().plusSeconds(expiresIn))
                 .build();
     }
 } 

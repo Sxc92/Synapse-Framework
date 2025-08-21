@@ -1,218 +1,454 @@
 # Synapse Framework API 参考文档
 
-## 📚 概述
+> 完整的 API 参考，包含所有模块的接口、类和方法说明
 
-本文档提供了 Synapse Framework 各模块的 API 接口参考，包括核心功能、配置选项、注解说明等。开发者可以通过本文档快速了解框架提供的各种功能和接口。
+## 📚 模块概览
 
-## 🏗️ 核心模块 API
+### Core 模块
+- **配置管理** - 统一的配置管理接口
+- **异常处理** - 标准化的异常体系
+- **工具类** - 常用工具方法集合
+- **国际化** - 多语言支持
 
-### Synapse Core 模块
+### Databases 模块
+- **BaseRepository** - 增强的数据访问接口
+- **DTO 体系** - 查询和分页数据传输对象
+- **动态数据源** - 多数据源管理和切换
+- **MyBatis-Plus 集成** - ORM 框架增强
 
-#### 配置管理 API
-- **ConfigurationManager**: 统一的配置管理接口，支持多环境配置、配置验证、配置热更新
-- **ConfigurationSource**: 自定义配置源接口，支持从外部系统加载配置
-- **ConfigurationValidator**: 配置验证器接口，提供配置项的自动验证
+### Security 模块
+- **认证授权** - 用户认证和权限控制
+- **JWT 支持** - 无状态认证令牌
+- **安全拦截器** - 请求安全过滤
+- **权限注解** - 声明式权限控制
 
-#### 异常处理 API
-- **BusinessException**: 业务异常基类，包含错误码、错误消息、错误详情
-- **SystemException**: 系统异常基类，用于系统级别的异常处理
-- **ExceptionHandler**: 异常处理器接口，支持自定义异常处理逻辑
-- **ErrorResponse**: 统一错误响应格式，包含错误码、消息、时间戳等
+### Cache 模块
+- **缓存管理** - 统一的缓存接口
+- **Redis 集成** - 分布式缓存支持
+- **缓存注解** - 声明式缓存操作
+- **分布式锁** - 并发控制支持
 
-#### 国际化 API
-- **MessageProvider**: 消息提供者接口，支持多语言消息获取
-- **MessageManager**: 消息管理器，负责消息的加载、缓存、更新
-- **LocaleResolver**: 语言解析器，支持多种语言切换策略
+### Events 模块
+- **事件发布** - 异步事件处理
+- **事务事件** - 事务相关事件管理
+- **事件监听器** - 事件响应处理
 
-#### 上下文管理 API
-- **ContextManager**: 上下文管理器，管理请求、用户、业务上下文
-- **RequestContext**: 请求上下文，包含请求ID、时间戳、用户信息等
-- **UserContext**: 用户上下文，包含用户ID、角色、权限等
-- **BusinessContext**: 业务上下文，包含业务ID、业务类型等
+## 🗄️ Databases 模块 API
 
-### Synapse Databases 模块
+### BaseRepository 接口
 
-#### 数据源管理 API
-- **DynamicDataSourceManager**: 动态数据源管理器，支持运行时数据源切换
-- **DataSourceRouter**: 数据源路由器，根据SQL类型自动选择读写数据源
-- **ConnectionPoolManager**: 连接池管理器，管理多种连接池类型
+#### 基础 CRUD 方法
 
-#### MyBatis-Plus 集成 API
-- **BaseMapper**: 基础映射器接口，提供通用CRUD操作
-- **BaseService**: 基础服务接口，封装常用业务操作
-- **PaginationInterceptor**: 分页拦截器，支持多种分页方式
+```java
+public interface BaseRepository<T, M extends BaseMapper<T>> extends IService<T> {
+    
+    // 分页查询 - 支持条件查询
+    PageResult<T> pageWithCondition(PageDTO pageDTO);
+    
+    // 列表查询 - 支持条件查询
+    List<T> listWithDTO(PageDTO pageDTO);
+    
+    // 单条查询 - 支持条件查询
+    T getOneWithDTO(PageDTO pageDTO);
+    
+    // 多表关联分页查询
+    PageResult<T> pageWithJoin(JoinPageDTO joinPageDTO);
+    
+    // 多表关联列表查询
+    List<T> listWithJoin(JoinPageDTO joinPageDTO);
+}
+```
 
-#### 事务管理 API
-- **TransactionManager**: 事务管理器，支持分布式事务
-- **TransactionTemplate**: 事务模板，简化事务操作
-- **TransactionInterceptor**: 事务拦截器，自动事务管理
+#### 方法说明
 
-### Synapse Cache 模块
+| 方法 | 参数 | 返回值 | 说明 |
+|------|------|--------|------|
+| `pageWithCondition` | `PageDTO` | `PageResult<T>` | 单表条件分页查询 |
+| `listWithDTO` | `PageDTO` | `List<T>` | 单表条件列表查询 |
+| `getOneWithDTO` | `PageDTO` | `T` | 单表条件单条查询 |
+| `pageWithJoin` | `JoinPageDTO` | `PageResult<T>` | 多表关联分页查询 |
+| `listWithJoin` | `JoinPageDTO` | `List<T>` | 多表关联列表查询 |
 
-#### 缓存管理 API
-- **CacheManager**: 缓存管理器，统一管理多种缓存实现
-- **Cache**: 缓存接口，定义缓存的基本操作
-- **CacheStatistics**: 缓存统计接口，提供缓存性能指标
+### DTO 体系
 
-#### 分布式锁 API
-- **DistributedLockManager**: 分布式锁管理器，支持多种锁策略
-- **LockProvider**: 锁提供者接口，支持Redis、Zookeeper等实现
-- **LockStrategy**: 锁策略接口，支持可重入锁、公平锁等
+#### PageDTO - 基础分页 DTO
 
-#### 缓存注解 API
-- **@Cacheable**: 缓存查询结果，支持条件缓存和键生成策略
-- **@CachePut**: 更新缓存，支持条件更新和键生成策略
-- **@CacheEvict**: 删除缓存，支持条件删除和批量删除
-- **@DistributedLock**: 分布式锁注解，支持超时和重试配置
+```java
+public class PageDTO {
+    private Integer pageNo = 1;           // 页码
+    private Integer pageSize = 10;        // 页大小
+    private List<OrderBy> orderByList;    // 排序列表
+    
+    // 分页相关方法
+    public boolean needPagination();      // 是否需要分页
+    public boolean needOrderBy();         // 是否需要排序
+    public long getOffset();              // 获取偏移量
+}
+```
 
-### Synapse Events 模块
+#### JoinPageDTO - 多表关联分页 DTO
 
-#### 事件发布 API
-- **EventPublisher**: 事件发布器，支持同步和异步发布
-- **EventDispatcher**: 事件分发器，负责事件的路由和分发
-- **EventRouter**: 事件路由器，支持条件路由和优先级路由
+```java
+public class JoinPageDTO extends PageDTO {
+    private List<TableJoin> tableJoins;   // 表关联配置
+    private JoinType joinType;            // 关联类型
+    private String joinCondition;         // 关联条件
+    private List<String> selectFields;    // 选择字段
+}
+```
 
-#### 事件订阅 API
-- **EventSubscriber**: 事件订阅器接口，定义事件处理方法
-- **EventListener**: 事件监听器注解，支持条件订阅和异步处理
-- **EventFilter**: 事件过滤器接口，支持自定义过滤逻辑
+#### TableJoin - 表关联配置
 
-#### 事件存储 API
-- **EventStore**: 事件存储接口，支持事件持久化和查询
-- **EventRepository**: 事件仓库，提供事件CRUD操作
-- **EventQuery**: 事件查询接口，支持复杂查询条件
+```java
+public class TableJoin {
+    private String tableName;             // 关联表名
+    private String alias;                 // 表别名
+    private JoinType joinType;            // 关联类型
+    private String joinCondition;         // 关联条件
+    private List<String> selectFields;    // 选择字段
+}
+```
 
-### Synapse Security 模块
+#### JoinType - 关联类型枚举
 
-#### 认证 API
-- **AuthenticationManager**: 认证管理器，支持多种认证方式
-- **LoginService**: 登录服务，处理用户登录逻辑
-- **TokenManager**: Token管理器，管理JWT和Session Token
+```java
+public enum JoinType {
+    INNER,      // 内连接
+    LEFT,       // 左连接
+    RIGHT,      // 右连接
+    FULL        // 全连接
+}
+```
 
-#### 权限控制 API
-- **PermissionManager**: 权限管理器，验证用户权限
-- **RoleManager**: 角色管理器，管理用户角色和权限
-- **AccessControl**: 访问控制接口，实现细粒度权限控制
+### 配置类
 
-#### 安全防护 API
-- **XssFilter**: XSS防护过滤器，防止跨站脚本攻击
-- **CsrfProtection**: CSRF防护，防止跨站请求伪造
-- **SecurityInterceptor**: 安全拦截器，统一安全验证
+#### MybatisPlusProperties
 
-## 🔧 配置 API
+```java
+@ConfigurationProperties(prefix = "synapse.datasource.mybatis-plus")
+public class MybatisPlusProperties {
+    private Configuration configuration;    // MyBatis 配置
+    private GlobalConfig globalConfig;     // 全局配置
+    private String typeAliasesPackage;     // 类型别名包
+    private String mapperLocations;        // Mapper 位置
+}
+```
 
-### 基础配置
-- **synapse.core**: 核心模块配置，包含国际化、异常处理、上下文等配置
-- **synapse.datasource**: 数据源配置，包含主从配置、连接池配置等
-- **synapse.cache**: 缓存配置，包含缓存类型、策略、分布式锁等配置
-- **synapse.events**: 事件配置，包含异步处理、分布式事件等配置
-- **synapse.security**: 安全配置，包含认证、权限、防护等配置
+#### DynamicDataSourceProperties
 
-### 环境配置
-- **application.yml**: 主配置文件，包含所有模块的基础配置
-- **application-{profile}.yml**: 环境特定配置，支持dev、test、prod等环境
-- **bootstrap.yml**: 启动配置，包含配置中心、注册中心等配置
+```java
+@ConfigurationProperties(prefix = "synapse.datasource.dynamic-data-source")
+public class DynamicDataSourceProperties {
+    private String primary;               // 主数据源
+    private boolean strict;               // 严格模式
+    private boolean seata;                // Seata 支持
+    private boolean p6spy;                // P6Spy 支持
+    private Map<String, DataSourceConfig> datasource; // 数据源配置
+}
+```
 
-## 📝 注解参考
+## 🔐 Security 模块 API
 
-### 核心注解
-- **@EnableSynapse**: 启用Synapse Framework，自动配置所有模块
-- **@SynapseConfiguration**: 自定义配置类注解，支持自定义配置逻辑
+### 认证接口
 
-### 缓存注解
-- **@Cacheable**: 缓存查询结果，支持条件缓存
-- **@CachePut**: 更新缓存，支持条件更新
-- **@CacheEvict**: 删除缓存，支持条件删除
-- **@DistributedLock**: 分布式锁，支持超时和重试
+```java
+public interface AuthenticationService {
+    // 用户登录
+    LoginResult login(LoginRequest request);
+    
+    // 用户登出
+    void logout(String token);
+    
+    // 刷新令牌
+    String refreshToken(String token);
+    
+    // 验证令牌
+    boolean validateToken(String token);
+}
+```
+
+### 权限接口
+
+```java
+public interface PermissionService {
+    // 检查用户权限
+    boolean hasPermission(String userId, String permission);
+    
+    // 获取用户角色
+    List<String> getUserRoles(String userId);
+    
+    // 获取角色权限
+    List<String> getRolePermissions(String roleId);
+}
+```
 
 ### 安全注解
-- **@SaCheckLogin**: 登录验证，检查用户是否已登录
-- **@SaCheckPermission**: 权限验证，检查用户是否有指定权限
-- **@SaCheckRole**: 角色验证，检查用户是否有指定角色
-- **@SaCheckSafe**: 安全验证，检查操作是否安全
 
-### 事件注解
-- **@EventListener**: 事件监听，处理指定类型的事件
-- **@AsyncEventListener**: 异步事件监听，异步处理事件
-- **@TransactionalEventListener**: 事务事件监听，支持事务绑定
+```java
+// 需要认证
+@RequiresAuthentication
 
-## 🚀 扩展 API
+// 需要角色
+@RequiresRoles("admin")
 
-### 自定义扩展点
-- **ExtensionPoint**: 扩展点接口，定义扩展的标准接口
-- **ExtensionRegistry**: 扩展注册器，管理所有扩展实现
-- **ExtensionLoader**: 扩展加载器，动态加载扩展实现
+// 需要权限
+@RequiresPermissions("user:read")
 
-### 插件系统
-- **PluginManager**: 插件管理器，管理框架插件
-- **PluginInterface**: 插件接口，定义插件的标准接口
-- **PluginRegistry**: 插件注册器，注册和管理插件
+// 需要登录
+@RequiresLogin
+```
 
-### 监控 API
-- **MetricsCollector**: 指标收集器，收集性能指标
-- **HealthChecker**: 健康检查器，检查系统健康状态
-- **PerformanceMonitor**: 性能监控器，监控系统性能
+## 🗃️ Cache 模块 API
 
-## 📊 错误码参考
+### 缓存接口
 
-### 系统错误码
-- **SYS_001**: 系统内部错误
-- **SYS_002**: 配置错误
-- **SYS_003**: 网络错误
-- **SYS_004**: 超时错误
+```java
+public interface CacheService {
+    // 设置缓存
+    void set(String key, Object value, long timeout);
+    
+    // 获取缓存
+    <T> T get(String key, Class<T> clazz);
+    
+    // 删除缓存
+    void delete(String key);
+    
+    // 清空缓存
+    void clear();
+}
+```
 
-### 业务错误码
-- **BIZ_001**: 业务逻辑错误
-- **BIZ_002**: 数据验证错误
-- **BIZ_003**: 权限不足
-- **BIZ_004**: 资源不存在
+### 缓存注解
 
-### 缓存错误码
-- **CACHE_001**: 缓存连接失败
-- **CACHE_002**: 缓存操作超时
-- **CACHE_003**: 缓存键不存在
-- **CACHE_004**: 缓存序列化失败
+```java
+// 缓存查询结果
+@Cacheable(value = "users", key = "#id")
 
-### 数据库错误码
-- **DB_001**: 数据库连接失败
-- **DB_002**: SQL执行错误
-- **DB_003**: 事务回滚
-- **DB_004**: 数据源切换失败
+// 更新缓存
+@CachePut(value = "users", key = "#user.id")
 
-## 🔍 最佳实践
+// 删除缓存
+@CacheEvict(value = "users", key = "#id")
 
-### API 设计原则
-- **一致性**: 保持API接口的一致性和可预测性
-- **简洁性**: 设计简洁明了的API接口
-- **可扩展性**: 支持API的向后兼容和扩展
-- **安全性**: 内置安全验证和防护机制
+// 条件缓存
+@Cacheable(value = "users", condition = "#id > 0")
+```
 
-### 性能优化
-- **缓存策略**: 合理使用缓存提高性能
-- **异步处理**: 使用异步处理提高响应速度
-- **批量操作**: 支持批量操作减少网络开销
-- **连接池**: 优化连接池配置提高资源利用率
+### 分布式锁
 
-### 监控和调试
-- **日志记录**: 完整的操作日志和错误日志
-- **性能指标**: 详细的性能监控指标
-- **健康检查**: 系统健康状态检查
-- **调试工具**: 丰富的调试和诊断工具
+```java
+public interface DistributedLockService {
+    // 获取锁
+    boolean tryLock(String key, long timeout);
+    
+    // 释放锁
+    void releaseLock(String key);
+    
+    // 检查锁状态
+    boolean isLocked(String key);
+}
+```
 
-## 📚 相关文档
+## 📡 Events 模块 API
 
-- [Synapse Framework 架构设计](ARCHITECTURE.md)
-- [Synapse Framework 使用指南](USAGE_GUIDE.md)
-- [Synapse Framework 配置参考](CONFIGURATION_REFERENCE.md)
-- [Synapse Framework 开发笔记](DEVELOPMENT_NOTES.md)
+### 事件发布
 
-## 🔗 相关链接
+```java
+public interface EventPublisher {
+    // 发布事件
+    void publishEvent(Object event);
+    
+    // 发布事务事件
+    void publishTransactionEvent(Object event);
+    
+    // 异步发布事件
+    void publishEventAsync(Object event);
+}
+```
 
-- [Spring Boot 官方文档](https://spring.io/projects/spring-boot)
-- [MyBatis-Plus 官方文档](https://baomidou.com/)
-- [Sa-Token 官方文档](https://sa-token.dev33.cn/)
-- [Redis 官方文档](https://redis.io/documentation)
+### 事件监听器
 
----
+```java
+// 事件监听器注解
+@EventListener
 
-*最后更新时间：2025年08月11日 12:41:56* 
+// 事务事件监听器
+@TransactionalEventListener
+
+// 异步事件监听器
+@AsyncEventListener
+```
+
+## 🛠️ Core 模块 API
+
+### 配置管理
+
+```java
+public interface ConfigurationService {
+    // 获取配置值
+    String getProperty(String key);
+    
+    // 获取配置值（带默认值）
+    String getProperty(String key, String defaultValue);
+    
+    // 获取配置值（类型转换）
+    <T> T getProperty(String key, Class<T> clazz);
+}
+```
+
+### 异常处理
+
+```java
+// 基础异常
+public abstract class BaseException extends RuntimeException
+
+// 业务异常
+public class BusinessException extends BaseException
+
+// 系统异常
+public class SystemException extends BaseException
+
+// 验证异常
+public class ValidationException extends BaseException
+```
+
+### 工具类
+
+```java
+// 字符串工具
+public class StringUtils
+
+// 日期工具
+public class DateUtils
+
+// 加密工具
+public class CryptoUtils
+
+// JSON 工具
+public class JsonUtils
+```
+
+## 📖 使用示例
+
+### 基础查询示例
+
+```java
+@Service
+public class UserService {
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    // 分页查询用户
+    public PageResult<User> pageUsers(UserQueryDTO queryDTO) {
+        return userRepository.pageWithCondition(queryDTO);
+    }
+    
+    // 多表关联查询
+    public PageResult<User> pageUsersWithJoin(UserJoinQueryDTO queryDTO) {
+        return userRepository.pageWithJoin(queryDTO);
+    }
+}
+```
+
+### 缓存使用示例
+
+```java
+@Service
+public class UserService {
+    
+    @Cacheable(value = "users", key = "#id")
+    public User getUserById(Long id) {
+        return userRepository.getById(id);
+    }
+    
+    @CachePut(value = "users", key = "#user.id")
+    public User saveUser(User user) {
+        return userRepository.save(user);
+    }
+}
+```
+
+### 安全使用示例
+
+```java
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+    
+    @RequiresAuthentication
+    @GetMapping("/{id}")
+    public User getUser(@PathVariable Long id) {
+        return userService.getUserById(id);
+    }
+    
+    @RequiresPermissions("user:write")
+    @PostMapping
+    public User createUser(@RequestBody User user) {
+        return userService.saveUser(user);
+    }
+}
+```
+
+## 🔧 配置参考
+
+### 完整配置示例
+
+```yaml
+synapse:
+  datasource:
+    mybatis-plus:
+      configuration:
+        map-underscore-to-camel-case: true
+        log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+      global-config:
+        banner: false
+        enable-pagination: true
+      type-aliases-package: com.indigo.**.entity
+      mapper-locations: "classpath*:mapper/**/*.xml"
+    
+    dynamic-data-source:
+      primary: master
+      strict: false
+      seata: false
+      p6spy: false
+      datasource:
+        master:
+          type: MYSQL
+          host: localhost
+          port: 3306
+          database: synapse_iam
+          username: root
+          password: your_password
+          pool-type: HIKARI
+          hikari:
+            minimum-idle: 5
+            maximum-pool-size: 15
+            connection-timeout: 30000
+
+  security:
+    jwt:
+      secret: your-secret-key
+      expiration: 86400000
+      header: Authorization
+    
+  cache:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      timeout: 3000
+```
+
+## 📝 注意事项
+
+1. **配置前缀**: 使用 `synapse` 作为配置前缀
+2. **依赖管理**: 通过 `synapse-bom` 管理版本
+3. **自动配置**: 大部分功能支持自动配置
+4. **向后兼容**: 保持与标准 Spring Boot 配置的兼容性
+
+## 🚀 下一步
+
+- 查看 [使用指南](USAGE_GUIDE.md) 了解详细用法
+- 参考 [快速开始](QUICKSTART.md) 快速上手
+- 探索 [最佳实践](BEST_PRACTICES.md) 学习最佳实践 

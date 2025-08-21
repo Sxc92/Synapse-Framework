@@ -136,8 +136,9 @@ public class MessageSerializer {
             // 获取消息体
             String json = new String(message.getBody(), StandardCharsets.UTF_8);
             
-            // 反序列化为 Map
-            Map<String, Object> data = jsonUtils.fromJsonToObject(json, Map.class);
+                    // 反序列化为 Map
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = jsonUtils.fromJsonToObject(json, Map.class);
             
             log.info("Deserialized message to map: topic={}", 
                      message.getTopic());

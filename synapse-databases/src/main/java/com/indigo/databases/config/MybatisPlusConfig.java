@@ -78,7 +78,7 @@ public class MybatisPlusConfig {
             currentDataSource = synapseDataSourceProperties.getPrimary();
         }
 
-        DatabaseType databaseType = synapseDataSourceProperties.getDynamicDataSource().getDatasource()
+        DatabaseType databaseType = synapseDataSourceProperties.getDatasources()
                 .get(currentDataSource)
                 .getType();
 

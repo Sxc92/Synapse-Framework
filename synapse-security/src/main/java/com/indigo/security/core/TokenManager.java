@@ -59,9 +59,17 @@ public class TokenManager {
                 try {
                     userSessionService.storeUserSession(token, userContext, tokenTimeout);
                     userSessionService.storeUserPermissions(token, userContext.getPermissions(), tokenTimeout);
+                    
+                    // TODO: 操作审计 - 记录用户登录成功事件
+                    // auditService.logUserAction(userId.toString(), "LOGIN_SUCCESS", "token_manager", "SUCCESS");
+                    
                     log.info("用户登录成功: userId={}, token={}, timeout={}", userId, token, tokenTimeout);
                 } catch (Exception e) {
                     log.error("存储用户会话失败，执行登出操作: userId={}, token={}", userId, token, e);
+                    
+                    // TODO: 操作审计 - 记录会话存储失败事件
+                    // auditService.logUserAction(userId.toString(), "SESSION_STORE_FAILED", "token_manager", "FAILED: " + e.getMessage());
+                    
                     try {
                         StpUtil.logout(userId);
                     } catch (Exception logoutEx) {
@@ -71,6 +79,9 @@ public class TokenManager {
                 }
             } else {
                 log.warn("用户登录成功但无上下文信息: userId={}, token={}", userId, token);
+                
+                // TODO: 操作审计 - 记录登录成功但无上下文事件
+                // auditService.logUserAction(userId.toString(), "LOGIN_SUCCESS_NO_CONTEXT", "token_manager", "WARNING");
             }
 
             return token;
@@ -100,12 +111,22 @@ public class TokenManager {
                 userSessionService.removeUserSession(token);
                 // 然后执行Sa-Token登出
                 StpUtil.logout(userId);
+                
+                // TODO: 操作审计 - 记录Token撤销事件
+                // auditService.logUserAction(userId, "TOKEN_REVOKED", "token_manager", "SUCCESS");
+                
                 log.info("Token撤销成功: userId={}, token={}", userId, token);
             } else {
                 log.warn("Token撤销失败: 无法获取用户信息, token={}", token);
+                
+                // TODO: 操作审计 - 记录Token撤销失败事件
+                // auditService.logUserAction("UNKNOWN", "TOKEN_REVOKE_FAILED", "token_manager", "FAILED: 无法获取用户信息");
             }
         } catch (Exception e) {
             log.error("撤销Token异常: token={}", token, e);
+            
+            // TODO: 操作审计 - 记录Token撤销异常事件
+            // auditService.logUserAction("UNKNOWN", "TOKEN_REVOKE_EXCEPTION", "token_manager", "EXCEPTION: " + e.getMessage());
         }
     }
 

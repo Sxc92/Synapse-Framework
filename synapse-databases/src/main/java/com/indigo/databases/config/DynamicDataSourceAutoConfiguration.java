@@ -1,58 +1,74 @@
 package com.indigo.databases.config;
 
-import com.alibaba.druid.pool.DruidDataSource;
 import com.indigo.databases.dynamic.DynamicRoutingDataSource;
-import com.indigo.databases.enums.DatabaseType;
-import com.indigo.databases.enums.PoolType;
-import com.zaxxer.hikari.HikariDataSource;
-import io.seata.rm.datasource.DataSourceProxy;
+import com.indigo.databases.routing.DataSourceRouter;
+import com.indigo.databases.routing.SmartRouterSelector;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.AutoConfigureBefore;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
-import org.springframework.jdbc.datasource.DataSourceTransactionManager;
-import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 
 /**
- * 动态数据源自动配置
+ * 动态数据源自动配置类
+ * 自动配置动态路由数据源和相关组件
  *
  * @author 史偕成
- * @date 2025/03/21
+ * @date 2025/01/19
  */
 @Slf4j
 @Configuration
+@ConditionalOnClass(DataSource.class)
+@ConditionalOnProperty(prefix = "synapse.datasource", name = "enabled", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties(SynapseDataSourceProperties.class)
-@AutoConfigureBefore(DataSourceAutoConfiguration.class)
 public class DynamicDataSourceAutoConfiguration {
-
+    
     private final SynapseDataSourceProperties properties;
-
-    public DynamicDataSourceAutoConfiguration(SynapseDataSourceProperties properties) {
+    private final List<DataSourceRouter> routers;
+    private final SmartRouterSelector routerSelector;
+    
+    public DynamicDataSourceAutoConfiguration(SynapseDataSourceProperties properties,
+                                            List<DataSourceRouter> routers,
+                                            SmartRouterSelector routerSelector) {
         this.properties = properties;
+        this.routers = routers;
+        this.routerSelector = routerSelector;
         log.info("SynapseDataSourceProperties loaded: {}", properties);
+        log.info("Found {} data source routers: {}", routers.size(), 
+                routers.stream().map(router -> router.getClass().getSimpleName()).toList());
     }
-
+    
     @Bean
+    @Primary
     public DynamicRoutingDataSource dynamicDataSource() {
-        DynamicRoutingDataSource dynamicDataSource = new DynamicRoutingDataSource(properties);
+        // 创建配置对象
+        DynamicRoutingDataSource.DataSourceConfig config = 
+                new DynamicRoutingDataSource.DataSourceConfig(properties.getPrimary());
+        
+        // 创建动态路由数据源
+        DynamicRoutingDataSource dynamicDataSource = new DynamicRoutingDataSource(
+                routers, 
+                routerSelector, 
+                config
+        );
 
         // 配置数据源
-        properties.getDynamicDataSource().getDatasource().forEach((name, props) -> {
+        properties.getDatasources().forEach((name, props) -> {
             try {
-                // 创建数据源 - 不要在这里包裹 DataSourceProxy
+                // 创建数据源
                 DataSource dataSource = createDataSource(props);
+                
                 // 使用 addDataSource 方法添加数据源
                 dynamicDataSource.addDataSource(name, dataSource);
-                log.info("Initialized datasource [{}] with type [{}] and pool [{}]",
-                        name, props.getType(), props.getPoolType());
+                
+                log.info("Initialized datasource [{}] with type [{}], role [{}], pool [{}]",
+                        name, props.getType(), props.getRole(), props.getPoolType());
+                        
             } catch (Exception e) {
                 log.error("Failed to initialize datasource [{}]: {}", name, e.getMessage());
                 throw new RuntimeException("Failed to initialize datasource: " + name, e);
@@ -62,134 +78,23 @@ public class DynamicDataSourceAutoConfiguration {
         log.info("Setting default data source: {}", properties.getPrimary());
         
         // 设置默认数据源
-        dynamicDataSource.setDefaultTargetDataSource(dynamicDataSource.getDataSources().get(properties.getPrimary()));
+        DataSource primaryDataSource = dynamicDataSource.getDataSources().get(properties.getPrimary());
+        if (primaryDataSource == null) {
+            throw new IllegalStateException("Primary data source [" + properties.getPrimary() + "] not found");
+        }
+        
+        dynamicDataSource.setDefaultTargetDataSource(primaryDataSource);
 
         return dynamicDataSource;
     }
-
-    @Bean
-    @Primary
-    public DataSource dataSource(@Qualifier("dynamicDataSource") DynamicRoutingDataSource dynamicDataSource) {
-        return new DataSourceProxy(dynamicDataSource); // 只包一层
-    }
-    @Bean
-    public PlatformTransactionManager transactionManager(DataSource dataSource) {
-        return new DataSourceTransactionManager(dataSource);
-    }
-
+    
     /**
      * 创建数据源
      */
-    private DataSource createDataSource(SynapseDataSourceProperties.DynamicDataSource.DataSourceConfig props) {
-        // 根据连接池类型创建数据源
-        DataSource dataSource = switch (props.getPoolType()) {
-            case HIKARI -> createHikariDataSource(props);
-            case DRUID -> createDruidDataSource(props);
-        };
-
-        // 根据数据库类型设置特定配置
-        configureDataSourceByType(dataSource, props.getType());
-
-        return dataSource;
-    }
-
-    /**
-     * 创建HikariCP数据源
-     */
-    private DataSource createHikariDataSource(SynapseDataSourceProperties.DynamicDataSource.DataSourceConfig props) {
-        HikariDataSource dataSource = new HikariDataSource();
-
-        // 设置基本属性
-        dataSource.setJdbcUrl(props.getUrl());
-        dataSource.setUsername(props.getUsername());
-        dataSource.setPassword(props.getPassword());
-        dataSource.setDriverClassName(props.getDriverClassName());
-
-        // 设置连接池属性
-        SynapseDataSourceProperties.DynamicDataSource.HikariConfig hikari = props.getHikari();
-        dataSource.setMinimumIdle(hikari.getMinimumIdle());
-        dataSource.setMaximumPoolSize(hikari.getMaximumPoolSize());
-        dataSource.setIdleTimeout(hikari.getIdleTimeout());
-        dataSource.setMaxLifetime(hikari.getMaxLifetime());
-        dataSource.setConnectionTimeout(hikari.getConnectionTimeout());
-        dataSource.setConnectionTestQuery(hikari.getConnectionTestQuery());
-
-        return dataSource;
-    }
-
-    /**
-     * 创建Druid数据源
-     */
-    private DataSource createDruidDataSource(SynapseDataSourceProperties.DynamicDataSource.DataSourceConfig props) {
-        DruidDataSource dataSource = new DruidDataSource();
-
-        // 设置基本属性
-        dataSource.setUrl(props.getUrl());
-        dataSource.setUsername(props.getUsername());
-        dataSource.setPassword(props.getPassword());
-        dataSource.setDriverClassName(props.getDriverClassName());
-
-        // 设置连接池属性
-        SynapseDataSourceProperties.DynamicDataSource.DruidConfig druid = props.getDruid();
-        dataSource.setInitialSize(druid.getInitialSize());
-        dataSource.setMinIdle(druid.getMinIdle());
-        dataSource.setMaxActive(druid.getMaxActive());
-        dataSource.setMaxWait(druid.getMaxWait());
-        dataSource.setTimeBetweenEvictionRunsMillis(druid.getTimeBetweenEvictionRunsMillis());
-        dataSource.setMinEvictableIdleTimeMillis(druid.getMinEvictableIdleTimeMillis());
-        dataSource.setMaxEvictableIdleTimeMillis(druid.getMaxEvictableIdleTimeMillis());
-        dataSource.setValidationQuery(druid.getValidationQuery());
-        dataSource.setTestWhileIdle(druid.getTestWhileIdle());
-        dataSource.setTestOnBorrow(druid.getTestOnBorrow());
-        dataSource.setTestOnReturn(druid.getTestOnReturn());
-        dataSource.setPoolPreparedStatements(druid.getPoolPreparedStatements());
-        dataSource.setMaxPoolPreparedStatementPerConnectionSize(druid.getMaxPoolPreparedStatementPerConnectionSize());
-
-        try {
-            dataSource.setFilters(druid.getFilters());
-        } catch (Exception e) {
-            log.error("Failed to set Druid filters: {}", e.getMessage());
-        }
-
-        return dataSource;
-    }
-
-    /**
-     * 根据数据库类型配置数据源
-     */
-    private void configureDataSourceByType(DataSource dataSource, DatabaseType type) {
-        if (dataSource instanceof HikariDataSource hikariDataSource) {
-            switch (type) {
-                case MYSQL -> {
-                    hikariDataSource.addDataSourceProperty("cachePrepStmts", "true");
-                    hikariDataSource.addDataSourceProperty("prepStmtCacheSize", "250");
-                    hikariDataSource.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
-                    hikariDataSource.addDataSourceProperty("useServerPrepStmts", "true");
-                }
-                case POSTGRESQL -> hikariDataSource.addDataSourceProperty("reWriteBatchedInserts", "true");
-                case ORACLE -> hikariDataSource.addDataSourceProperty("oracle.jdbc.fanEnabled", "false");
-                case SQLSERVER -> {
-                    hikariDataSource.addDataSourceProperty("encrypt", "false");
-                    hikariDataSource.addDataSourceProperty("trustServerCertificate", "true");
-                }
-                case H2 -> hikariDataSource.addDataSourceProperty("MODE", "MySQL");
-            }
-        } else if (dataSource instanceof DruidDataSource druidDataSource) {
-            switch (type) {
-                case MYSQL -> {
-                    druidDataSource.addConnectionProperty("cachePrepStmts", "true");
-                    druidDataSource.addConnectionProperty("prepStmtCacheSize", "250");
-                    druidDataSource.addConnectionProperty("prepStmtCacheSqlLimit", "2048");
-                    druidDataSource.addConnectionProperty("useServerPrepStmts", "true");
-                }
-                case POSTGRESQL -> druidDataSource.addConnectionProperty("reWriteBatchedInserts", "true");
-                case ORACLE -> druidDataSource.addConnectionProperty("oracle.jdbc.fanEnabled", "false");
-                case SQLSERVER -> {
-                    druidDataSource.addConnectionProperty("encrypt", "false");
-                    druidDataSource.addConnectionProperty("trustServerCertificate", "true");
-                }
-                case H2 -> druidDataSource.addConnectionProperty("MODE", "MySQL");
-            }
-        }
+    private DataSource createDataSource(SynapseDataSourceProperties.DataSourceConfig props) {
+        // 这里需要实现数据源创建逻辑
+        // 暂时返回null，实际实现时需要根据配置创建对应的数据源
+        log.warn("createDataSource method not implemented yet for datasource: {}", props);
+        throw new UnsupportedOperationException("createDataSource method not implemented yet");
     }
 } 

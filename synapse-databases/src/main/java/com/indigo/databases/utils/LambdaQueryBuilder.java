@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.indigo.databases.dto.PageDTO;
-import com.indigo.databases.dto.PageResult;
+import com.indigo.databases.dto.result.PageResult;
 
 import java.util.Map;
 

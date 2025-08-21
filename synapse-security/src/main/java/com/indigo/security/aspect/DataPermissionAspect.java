@@ -4,7 +4,6 @@ import com.indigo.core.context.UserContext;
 import com.indigo.core.exception.SecurityException;
 import com.indigo.security.annotation.DataPermission;
 import com.indigo.security.model.DataPermissionRule;
-import com.indigo.security.model.UserPrincipal;
 import com.indigo.security.service.DataPermissionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,9 +40,6 @@ public class DataPermissionAspect {
                 throw new SecurityException("未获取到用户上下文");
             }
 
-            // 转换为UserPrincipal
-            UserPrincipal user = convertToUserPrincipal(userContext);
-
             // 获取方法签名
             MethodSignature signature = (MethodSignature) joinPoint.getSignature();
             String methodName = signature.getMethod().getName();
@@ -54,20 +50,20 @@ public class DataPermissionAspect {
             DataPermissionRule.PermissionType permissionType = dataPermission.permissionType();
 
             log.info("检查数据权限: user={}, resource={}, permission={}, method={}.{}",
-                user.getUsername(), resourceType, permissionType, className, methodName);
+                userContext.getUsername(), resourceType, permissionType, className, methodName);
 
-            boolean hasPermission = dataPermissionService.hasPermission(user, resourceType, permissionType);
+            boolean hasPermission = dataPermissionService.hasPermission(userContext, resourceType, permissionType);
             if (!hasPermission) {
                 throw new SecurityException("没有访问权限: " + resourceType);
             }
 
             // 获取数据范围条件
-            String dataScope = dataPermissionService.getDataScope(user, resourceType);
+            String dataScope = dataPermissionService.getDataScope(userContext, resourceType);
             // 将数据范围条件设置到ThreadLocal中，供后续SQL拦截器使用
             DataPermissionContext.setDataScope(dataScope);
 
             log.info("数据权限检查通过: user={}, resource={}, dataScope={}",
-                user.getUsername(), resourceType, dataScope);
+                userContext.getUsername(), resourceType, dataScope);
 
         } catch (SecurityException e) {
             log.error("数据权限检查失败", e);
@@ -78,16 +74,5 @@ public class DataPermissionAspect {
         }
     }
 
-    /**
-     * 将UserContext转换为UserPrincipal
-     */
-    private UserPrincipal convertToUserPrincipal(UserContext userContext) {
-        return UserPrincipal.builder()
-            .userId(userContext.getUserId())
-            .username(userContext.getUsername())
-            .deptId(userContext.getDeptId())
-            .roles(userContext.getRoles())
-            .permissions(userContext.getPermissions())
-            .build();
-    }
+
 } 

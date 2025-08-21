@@ -21,6 +21,7 @@ import java.util.function.Supplier;
  **/
 @Slf4j
 @Component
+@SuppressWarnings("unchecked")
 public class ThreadUtils {
 
     private final ThreadPoolTaskExecutor ioThreadPool;
@@ -54,7 +55,20 @@ public class ThreadUtils {
             throw new ThreadException("Task cannot be null");
         }
         // IO任务使用虚拟线程，避免阻塞平台线程
-        Thread.startVirtualThread(wrapRunnable(task));
+        if (isVirtualThreadSupported()) {
+            try {
+                // 使用反射调用Java 19+的startVirtualThread方法
+                java.lang.reflect.Method startVirtualThreadMethod = Thread.class.getMethod("startVirtualThread", Runnable.class);
+                startVirtualThreadMethod.invoke(null, wrapRunnable(task));
+            } catch (Exception e) {
+                log.debug("Virtual threads not supported, falling back to platform threads", e);
+                // 回退到平台线程
+                new Thread(wrapRunnable(task), "io-task-" + System.currentTimeMillis()).start();
+            }
+        } else {
+            // 回退到平台线程
+            new Thread(wrapRunnable(task), "io-task-" + System.currentTimeMillis()).start();
+        }
     }
 
     /**
@@ -71,22 +85,45 @@ public class ThreadUtils {
             } catch (Exception e) {
                 throw new CompletionException(e);
             }
-        }, ThreadFactory.ofVirtual().build());
+        }, createVirtualThreadExecutor());
     }
 
     /**
-     * 批量执行IO任务（使用结构化并发）
+     * 批量执行IO任务（使用结构化并发或回退到CompletableFuture）
      */
     public <T> CompletableFuture<Void> executeIoTasks(Iterable<Callable<T>> tasks) {
         if (tasks == null) {
             throw new ThreadException("Tasks cannot be null");
         }
         
-        try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
+        // 尝试使用Java 19+的结构化并发
+        if (isStructuredConcurrencySupported()) {
+            try {
+                return executeWithStructuredConcurrency(tasks);
+            } catch (Exception e) {
+                log.debug("Structured concurrency not supported, falling back to CompletableFuture", e);
+            }
+        }
+        
+        // 回退到CompletableFuture
+        return executeWithCompletableFuture(tasks);
+    }
+    
+    /**
+     * 使用结构化并发执行任务（Java 19+）
+     */
+    private <T> CompletableFuture<Void> executeWithStructuredConcurrency(Iterable<Callable<T>> tasks) throws Exception {
+        // 使用反射调用StructuredTaskScope
+        Class<?> scopeClass = Class.forName("java.util.concurrent.StructuredTaskScope");
+        Class<?> shutdownOnFailureClass = Class.forName("java.util.concurrent.StructuredTaskScope$ShutdownOnFailure");
+        
+        try (var scope = (AutoCloseable) shutdownOnFailureClass.getConstructor().newInstance()) {
             var futures = new java.util.ArrayList<Future<T>>();
             
             for (Callable<T> task : tasks) {
-                futures.add(scope.fork(() -> {
+                // 调用scope.fork方法
+                java.lang.reflect.Method forkMethod = scopeClass.getMethod("fork", Callable.class);
+                futures.add((Future<T>) forkMethod.invoke(scope, (Callable<T>) () -> {
                     try {
                         return task.call();
                     } catch (Exception e) {
@@ -96,16 +133,37 @@ public class ThreadUtils {
                 }));
             }
             
-            scope.join();
-            scope.throwIfFailed();
+            // 调用scope.join方法
+            java.lang.reflect.Method joinMethod = scopeClass.getMethod("join");
+            joinMethod.invoke(scope);
+            
+            // 调用scope.throwIfFailed方法
+            java.lang.reflect.Method throwIfFailedMethod = scopeClass.getMethod("throwIfFailed");
+            throwIfFailedMethod.invoke(scope);
             
             return CompletableFuture.completedFuture(null);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new ThreadException("IO tasks execution interrupted", e);
-        } catch (Exception e) {
-            throw new ThreadException("IO tasks execution failed", e);
         }
+    }
+    
+    /**
+     * 使用CompletableFuture执行任务（Java 17兼容）
+     */
+    private <T> CompletableFuture<Void> executeWithCompletableFuture(Iterable<Callable<T>> tasks) {
+        var futures = new java.util.ArrayList<CompletableFuture<T>>();
+        
+        for (Callable<T> task : tasks) {
+            var future = CompletableFuture.supplyAsync(() -> {
+                try {
+                    return task.call();
+                } catch (Exception e) {
+                    log.error("IO task execution failed", e);
+                    throw new CompletionException(e);
+                }
+            }, createVirtualThreadExecutor());
+            futures.add(future);
+        }
+        
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
     }
 
     // ==================== CPU密集型任务 ====================
@@ -279,7 +337,7 @@ public class ThreadUtils {
             throw new ThreadException("Supplier cannot be null");
         }
         // 优先使用虚拟线程，提高并发性能
-        return CompletableFuture.supplyAsync(supplier, ThreadFactory.ofVirtual().build());
+        return CompletableFuture.supplyAsync(supplier, createVirtualThreadExecutor());
     }
 
     /**
@@ -289,7 +347,7 @@ public class ThreadUtils {
         if (runnable == null) {
             throw new ThreadException("Runnable cannot be null");
         }
-        return CompletableFuture.runAsync(runnable, ThreadFactory.ofVirtual().build());
+        return CompletableFuture.runAsync(runnable, createVirtualThreadExecutor());
     }
 
     /**
@@ -481,5 +539,93 @@ public class ThreadUtils {
         private final int queueSize;
         private final long completedTasks;
         private final long totalTasks;
+    }
+
+    // ==================== 虚拟线程支持 ====================
+    
+    /**
+     * 创建虚拟线程执行器（兼容Java 17）
+     * 如果Java版本支持虚拟线程，则使用虚拟线程
+     * 否则回退到平台线程池
+     */
+    private Executor createVirtualThreadExecutor() {
+        try {
+            // 尝试使用Java 19+的虚拟线程
+            if (isVirtualThreadSupported()) {
+                // 使用反射调用newVirtualThreadPerTaskExecutor方法
+                @SuppressWarnings("unchecked")
+                java.lang.reflect.Method method = Executors.class.getMethod("newVirtualThreadPerTaskExecutor");
+                return (Executor) method.invoke(null);
+            }
+        } catch (Exception e) {
+            log.debug("Virtual threads not supported, falling back to platform threads", e);
+        }
+        
+        // 回退到平台线程池
+        return Executors.newCachedThreadPool(r -> {
+            Thread t = new Thread(r);
+            t.setDaemon(true);
+            t.setName("fallback-virtual-" + t.getId());
+            return t;
+        });
+    }
+    
+    /**
+     * 检查是否支持虚拟线程
+     */
+    private boolean isVirtualThreadSupported() {
+        try {
+            // 检查Java版本
+            String version = System.getProperty("java.version");
+            if (version != null && version.startsWith("1.")) {
+                // Java 8-10
+                int majorVersion = Integer.parseInt(version.split("\\.")[1]);
+                return majorVersion >= 9;
+            } else if (version != null && version.matches("\\d+")) {
+                // Java 11+
+                int majorVersion = Integer.parseInt(version);
+                return majorVersion >= 19;
+            }
+        } catch (Exception e) {
+            log.debug("Could not determine Java version", e);
+        }
+        
+        // 尝试反射调用虚拟线程相关方法
+        try {
+            Class.forName("java.util.concurrent.Executors");
+            Executors.class.getMethod("newVirtualThreadPerTaskExecutor");
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    
+    /**
+     * 检查是否支持结构化并发
+     */
+    private boolean isStructuredConcurrencySupported() {
+        try {
+            // 检查Java版本
+            String version = System.getProperty("java.version");
+            if (version != null && version.startsWith("1.")) {
+                // Java 8-10
+                int majorVersion = Integer.parseInt(version.split("\\.")[1]);
+                return majorVersion >= 9;
+            } else if (version != null && version.matches("\\d+")) {
+                // Java 11+
+                int majorVersion = Integer.parseInt(version);
+                return majorVersion >= 19;
+            }
+        } catch (Exception e) {
+            log.debug("Could not determine Java version", e);
+        }
+        
+        // 尝试反射调用StructuredTaskScope相关方法
+        try {
+            Class.forName("java.util.concurrent.StructuredTaskScope");
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 } 

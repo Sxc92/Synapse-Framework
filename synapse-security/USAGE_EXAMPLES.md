@@ -2,258 +2,260 @@
 
 ## 概述
 
-本文档说明如何在业务模块中使用 Synapse Security 模块进行用户认证和权限管理。
+本文档提供了 Synapse Security 模块的使用示例，包括认证、权限控制、数据权限等功能的使用方法。
 
-## 认证流程
+## 认证服务使用
 
-### 1. 登录认证
+### 1. 基础认证
 
-业务模块需要先查询用户的完整信息，然后调用认证策略进行认证。
-
-#### 步骤1: 查询用户信息
 ```java
 @Service
 @RequiredArgsConstructor
-public class UserAuthService {
+public class UserService {
     
-    private final UserRepository userRepository;
-    private final RoleService roleService;
-    private final PermissionService permissionService;
+    private final AuthenticationService authenticationService;
     
-    public Result<AuthResponse> login(String username, String password, String clientIp) {
-        // 1. 查询用户基本信息
+    public Result<AuthResponse> login(String username, String password) {
+        // 查询用户信息
         User user = userRepository.findByUsername(username);
-        if (user == null) {
-            return Result.error("用户不存在");
+        if (user == null || !passwordEncoder.matches(password, user.getPassword())) {
+            return Result.error("用户名或密码错误");
         }
         
-        // 2. 验证密码
-        if (!passwordEncoder.matches(password, user.getPassword())) {
-            return Result.error("密码错误");
-        }
-        
-        // 3. 检查用户状态
-        if (user.getStatus() == UserStatus.LOCKED) {
-            return Result.error("用户账号被锁定");
-        }
-        
-        if (user.getStatus() == UserStatus.DISABLED) {
-            return Result.error("用户账号被禁用");
-        }
-        
-        // 4. 查询用户角色
+        // 获取用户角色和权限
         List<String> roles = roleService.getUserRoles(user.getId());
-        
-        // 5. 查询用户权限
         List<String> permissions = permissionService.getUserPermissions(user.getId());
         
-        // 6. 构建认证请求
-        AuthRequest authRequest = AuthRequest.builder()
-            .username(username)
-            .password(password)
+        // 构建认证请求
+        AuthRequest request = AuthRequest.builder()
+            .authType(AuthRequest.AuthType.USERNAME_PASSWORD)
+            .usernamePasswordAuth(UsernamePasswordAuth.builder()
+                .username(username)
+                .password(password)
+                .build())
             .userId(user.getId().toString())
             .roles(roles)
             .permissions(permissions)
-            .clientIp(clientIp)
             .build();
         
-        // 7. 调用认证策略
-        AuthenticationStrategy strategy = authenticationStrategyFactory.getStrategy("satoken");
-        Result<AuthResponse> result = strategy.authenticate(authRequest);
-        
-        if (result.isSuccess()) {
-            // 8. 更新用户最后登录时间
-            user.setLastLoginTime(LocalDateTime.now());
-            user.setLastLoginIp(clientIp);
-            userRepository.save(user);
-        }
-        
-        return result;
+        // 调用认证服务
+        return authenticationService.authenticate(request);
     }
 }
 ```
-
-#### 步骤2: 认证策略处理
-认证策略会：
-1. 验证传入的角色和权限信息
-2. 创建用户上下文
-3. 通过TokenManager生成token
-4. 通过UserSessionService存储到缓存
 
 ### 2. OAuth2.0认证
 
-#### 步骤1: 处理OAuth2.0回调
 ```java
 @Service
 @RequiredArgsConstructor
-public class OAuth2AuthService {
+public class OAuth2Service {
     
-    private final OAuth2Client oAuth2Client;
-    private final UserRepository userRepository;
-    private final RoleService roleService;
-    private final PermissionService permissionService;
+    private final AuthenticationService authenticationService;
     
-    public Result<AuthResponse> handleOAuth2Callback(String code, String provider) {
-        // 1. 通过授权码获取用户信息
-        OAuth2UserInfo oauth2User = oAuth2Client.getUserInfo(code, provider);
+    public Result<AuthResponse> oauth2Login(String code, String state) {
+        // OAuth2.0授权码验证逻辑
+        OAuth2UserInfo oauth2User = validateOAuth2Code(code, state);
         
-        // 2. 查找或创建本地用户
-        User user = findOrCreateUser(oauth2User);
+        // 获取或创建本地用户
+        User user = getOrCreateUser(oauth2User);
         
-        // 3. 查询用户角色和权限
+        // 获取用户角色和权限
         List<String> roles = roleService.getUserRoles(user.getId());
         List<String> permissions = permissionService.getUserPermissions(user.getId());
         
-        // 4. 构建认证请求
-        AuthRequest authRequest = AuthRequest.builder()
-            .username(user.getUsername())
+        // 构建OAuth2认证请求
+        AuthRequest request = AuthRequest.builder()
+            .authType(AuthRequest.AuthType.OAUTH2_AUTHORIZATION_CODE)
+            .oauth2Auth(OAuth2Auth.builder()
+                .clientId("oauth2_client_id")
+                .clientSecret("oauth2_client_secret")
+                .code(code)
+                .redirectUri("http://localhost:8080/callback")
+                .provider("github")
+                .build())
             .userId(user.getId().toString())
-            .provider(provider)
             .roles(roles)
             .permissions(permissions)
             .build();
         
-        // 5. 调用OAuth2认证策略
-        AuthenticationStrategy strategy = authenticationStrategyFactory.getStrategy("oauth2");
-        return strategy.authenticate(authRequest);
-    }
-    
-    private User findOrCreateUser(OAuth2UserInfo oauth2User) {
-        // 根据OAuth2用户信息查找或创建本地用户
-        // 这里省略具体实现
-        return user;
+        // 调用认证服务
+        return authenticationService.authenticate(request);
     }
 }
 ```
 
-## 权限检查
+### 3. Token续期
 
-### 1. 从缓存获取权限信息
-```java
-@Service
-@RequiredArgsConstructor
-public class PermissionCheckService {
-    
-    private final UserSessionService userSessionService;
-    
-    public boolean hasPermission(String token, String permission) {
-        return userSessionService.hasPermission(token, permission);
-    }
-    
-    public boolean hasRole(String token, String role) {
-        return userSessionService.hasRole(token, role);
-    }
-    
-    public List<String> getUserPermissions(String token) {
-        return userSessionService.getUserPermissions(token);
-    }
-    
-    public List<String> getUserRoles(String token) {
-        return userSessionService.getUserRoles(token);
-    }
-}
-```
-
-### 2. 在Controller中使用
-```java
-@RestController
-@RequestMapping("/api/users")
-@RequiredArgsConstructor
-public class UserController {
-    
-    private final PermissionCheckService permissionCheckService;
-    
-    @GetMapping("/{id}")
-    public Result<User> getUser(@PathVariable Long id, @RequestHeader("Authorization") String token) {
-        // 检查权限
-        if (!permissionCheckService.hasPermission(token, "user:read")) {
-            return Result.error("权限不足");
-        }
-        
-        // 业务逻辑
-        User user = userService.findById(id);
-        return Result.success(user);
-    }
-    
-    @PostMapping
-    public Result<User> createUser(@RequestBody User user, @RequestHeader("Authorization") String token) {
-        // 检查角色
-        if (!permissionCheckService.hasRole(token, "admin")) {
-            return Result.error("需要管理员权限");
-        }
-        
-        // 业务逻辑
-        User createdUser = userService.createUser(user);
-        return Result.success(createdUser);
-    }
-}
-```
-
-## Token管理
-
-### 1. Token续期
 ```java
 @Service
 @RequiredArgsConstructor
 public class TokenService {
     
-    private final AuthenticationStrategy authenticationStrategy;
+    private final AuthenticationService authenticationService;
     
     public Result<AuthResponse> renewToken(String token) {
-        return authenticationStrategy.renewToken(token);
+        return authenticationService.renewToken(token);
     }
 }
 ```
 
-### 2. Token撤销
+### 4. 用户登出
+
 ```java
 @Service
 @RequiredArgsConstructor
-public class TokenService {
+public class LogoutService {
     
-    private final TokenManager tokenManager;
+    private final AuthenticationService authenticationService;
     
-    public void logout(String token) {
-        tokenManager.revokeToken(token);
+    public Result<Void> logout() {
+        return authenticationService.logout();
+    }
+}
+```
+
+## 权限控制使用
+
+### 1. 注解权限检查
+
+```java
+@RestController
+@RequestMapping("/api/user")
+public class UserController {
+    
+    @SaCheckLogin
+    @GetMapping("/profile")
+    public Result<UserProfile> getProfile() {
+        // 获取当前用户信息
+        UserContext currentUser = authenticationService.getCurrentUser();
+        return Result.success(userService.getProfile(currentUser.getUserId()));
+    }
+    
+    @SaCheckPermission("user:read")
+    @GetMapping("/{userId}")
+    public Result<UserInfo> getUserInfo(@PathVariable String userId) {
+        return Result.success(userService.getUserInfo(userId));
+    }
+    
+    @SaCheckRole("admin")
+    @PostMapping("/create")
+    public Result<UserInfo> createUser(@RequestBody CreateUserRequest request) {
+        return Result.success(userService.createUser(request));
+    }
+}
+```
+
+### 2. 编程式权限检查
+
+```java
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    
+    private final PermissionManager permissionManager;
+    
+    public void updateUser(String userId, UpdateUserRequest request) {
+        // 检查当前用户是否有权限修改指定用户
+        if (!permissionManager.hasPermission("user:update", userId)) {
+            throw new AccessDeniedException("没有权限修改用户信息");
+        }
+        
+        // 执行更新逻辑
+        userRepository.updateUser(userId, request);
+    }
+}
+```
+
+## 数据权限使用
+
+### 1. 数据权限规则配置
+
+```java
+@Service
+@RequiredArgsConstructor
+public class DataPermissionService {
+    
+    private final DataPermissionService dataPermissionService;
+    
+    public List<User> getUsersWithPermission() {
+        UserContext currentUser = authenticationService.getCurrentUser();
+        
+        // 获取数据范围
+        String dataScope = dataPermissionService.getDataScope(currentUser, "user");
+        
+        // 根据数据范围查询用户
+        return userRepository.findByDataScope(dataScope);
+    }
+}
+```
+
+### 2. 自定义数据权限
+
+```java
+@Component
+public class CustomDataPermissionHandler {
+    
+    public String buildDataScope(UserContext user, String resourceType) {
+        switch (resourceType) {
+            case "user":
+                return buildUserDataScope(user);
+            case "order":
+                return buildOrderDataScope(user);
+            default:
+                return "1=1"; // 默认无限制
+        }
+    }
+    
+    private String buildUserDataScope(UserContext user) {
+        if (user.hasRole("SUPER_ADMIN")) {
+            return "1=1"; // 超级管理员可以查看所有用户
+        }
+        
+        if (user.hasRole("ADMIN")) {
+            return "dept_id = " + user.getDeptId(); // 管理员只能查看本部门用户
+        }
+        
+        return "create_user_id = " + user.getUserId(); // 普通用户只能查看自己创建的用户
     }
 }
 ```
 
 ## 配置示例
 
-### 1. 认证策略工厂
-```java
-@Component
-public class AuthenticationStrategyFactory {
-    
-    private final Map<String, AuthenticationStrategy> strategies;
-    
-    public AuthenticationStrategyFactory(List<AuthenticationStrategy> strategyList) {
-        strategies = strategyList.stream()
-            .collect(Collectors.toMap(AuthenticationStrategy::getStrategyType, Function.identity()));
-    }
-    
-    public AuthenticationStrategy getStrategy(String type) {
-        AuthenticationStrategy strategy = strategies.get(type);
-        if (strategy == null) {
-            throw new IllegalArgumentException("不支持的认证策略类型: " + type);
-        }
-        return strategy;
-    }
-}
+### 1. 基础配置
+
+```yaml
+# 安全模块配置
+synapse:
+  security:
+    enabled: true
+    mode: STRICT
+    security-logging: true
+    security-log-level: INFO
+
+# Sa-Token配置
+sa-token:
+  token-name: Authorization
+  timeout: 2592000
+  is-concurrent: true
+  is-share: false
+  token-style: uuid
+  is-log: true
 ```
 
-### 2. 业务模块配置
-```java
-@Configuration
-public class SecurityConfig {
-    
-    @Bean
-    public AuthenticationStrategyFactory authenticationStrategyFactory(
-            List<AuthenticationStrategy> strategies) {
-        return new AuthenticationStrategyFactory(strategies);
-    }
-}
+### 2. OAuth2.0配置
+
+```yaml
+# OAuth2.0配置
+synapse:
+  oauth2:
+    enabled: true
+    providers:
+      github:
+        client-id: ${GITHUB_CLIENT_ID}
+        client-secret: ${GITHUB_CLIENT_SECRET}
+        redirect-uri: http://localhost:8080/oauth2/callback
 ```
 
 ## 注意事项
@@ -271,15 +273,6 @@ public class SecurityConfig {
 - 业务模块需要根据错误信息进行相应处理
 
 ### 4. 安全性
-- 密码验证应该在业务模块进行
-- 认证策略只负责token生成和缓存管理
-- 敏感信息不要记录在日志中
-
-## 总结
-
-通过这种架构设计：
-1. **业务模块**负责用户信息查询和业务逻辑
-2. **Security模块**负责认证流程和权限管理
-3. **UserSessionService**负责用户信息的缓存管理
-
-这样的设计使得职责更加清晰，代码更易维护，也为后续的功能扩展奠定了良好的基础。 
+- 不要在日志中记录敏感信息
+- 使用HTTPS传输Token
+- 定期验证用户权限信息 

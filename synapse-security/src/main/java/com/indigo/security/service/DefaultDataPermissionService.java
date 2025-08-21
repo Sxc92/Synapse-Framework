@@ -2,7 +2,7 @@ package com.indigo.security.service;
 
 import com.indigo.cache.core.CacheService;
 import com.indigo.security.model.DataPermissionRule;
-import com.indigo.security.model.UserPrincipal;
+import com.indigo.core.context.UserContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -75,6 +75,7 @@ public class DefaultDataPermissionService implements DataPermissionService {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public List<DataPermissionRule> getUserRules(String userId) {
         String cacheKey = USER_RULES_CACHE_PREFIX + userId;
         List<DataPermissionRule> rules = cacheService.getObject(cacheKey, List.class);
@@ -82,6 +83,7 @@ public class DefaultDataPermissionService implements DataPermissionService {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public List<DataPermissionRule> getRoleRules(String roleId) {
         String cacheKey = ROLE_RULES_CACHE_PREFIX + roleId;
         List<DataPermissionRule> rules = cacheService.getObject(cacheKey, List.class);
@@ -89,6 +91,7 @@ public class DefaultDataPermissionService implements DataPermissionService {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public List<DataPermissionRule> getDepartmentRules(String deptId) {
         String cacheKey = DEPT_RULES_CACHE_PREFIX + deptId;
         List<DataPermissionRule> rules = cacheService.getObject(cacheKey, List.class);
@@ -96,7 +99,7 @@ public class DefaultDataPermissionService implements DataPermissionService {
     }
 
     @Override
-    public boolean hasPermission(UserPrincipal user, String resourceType, DataPermissionRule.PermissionType permissionType) {
+    public boolean hasPermission(UserContext user, String resourceType, DataPermissionRule.PermissionType permissionType) {
         // 获取用户所有适用的规则
         List<DataPermissionRule> allRules = getAllApplicableRules(user);
 
@@ -113,7 +116,7 @@ public class DefaultDataPermissionService implements DataPermissionService {
     }
 
     @Override
-    public String getDataScope(UserPrincipal user, String resourceType) {
+    public String getDataScope(UserContext user, String resourceType) {
         // 获取用户所有适用的规则
         List<DataPermissionRule> allRules = getAllApplicableRules(user);
 
@@ -147,7 +150,7 @@ public class DefaultDataPermissionService implements DataPermissionService {
     }
 
     @Override
-    public Map<String, Object> getCustomDataScope(UserPrincipal user, String resourceType) {
+    public Map<String, Object> getCustomDataScope(UserContext user, String resourceType) {
         // 获取用户所有适用的规则
         List<DataPermissionRule> allRules = getAllApplicableRules(user);
 
@@ -164,7 +167,7 @@ public class DefaultDataPermissionService implements DataPermissionService {
     }
 
     @Override
-    public Map<String, Boolean> batchCheckPermissions(UserPrincipal user, List<String> resourceTypes,
+    public Map<String, Boolean> batchCheckPermissions(UserContext user, List<String> resourceTypes,
                                                       DataPermissionRule.PermissionType permissionType) {
         return resourceTypes.stream()
                 .collect(Collectors.toMap(
@@ -175,7 +178,7 @@ public class DefaultDataPermissionService implements DataPermissionService {
 
     // 私有辅助方法
 
-    private List<DataPermissionRule> getAllApplicableRules(UserPrincipal user) {
+    private List<DataPermissionRule> getAllApplicableRules(UserContext user) {
 
         // 添加用户特定规则
         List<DataPermissionRule> allRules = new ArrayList<>(getUserRules(user.getUserId()));
@@ -215,6 +218,7 @@ public class DefaultDataPermissionService implements DataPermissionService {
 
         if (cacheKey != null) {
             List<DataPermissionRule> rules = new ArrayList<>();
+            @SuppressWarnings("unchecked")
             List<DataPermissionRule> existingRules = cacheService.getObject(cacheKey, List.class);
             if (existingRules != null) {
                 rules.addAll(existingRules);

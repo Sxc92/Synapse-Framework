@@ -1,10 +1,11 @@
-package com.indigo.databases.dto;
+package com.indigo.databases.dto.page;
 
+import com.indigo.databases.dto.PageDTO;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 多表关联分页DTO
@@ -64,6 +65,7 @@ public class JoinPageDTO extends PageDTO {
     /**
      * 关联类型
      */
+    @Getter
     public enum JoinType {
         INNER("INNER JOIN"),
         LEFT("LEFT JOIN"),
@@ -75,9 +77,6 @@ public class JoinPageDTO extends PageDTO {
         JoinType(String sqlKeyword) {
             this.sqlKeyword = sqlKeyword;
         }
-        
-        public String getSqlKeyword() {
-            return sqlKeyword;
-        }
+
     }
 } 

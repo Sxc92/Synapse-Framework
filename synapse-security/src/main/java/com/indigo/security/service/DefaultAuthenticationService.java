@@ -1,20 +1,20 @@
 package com.indigo.security.service;
 
+import cn.dev33.satoken.stp.StpUtil;
+import com.indigo.cache.session.UserSessionService;
+import com.indigo.core.context.UserContext;
 import com.indigo.core.entity.Result;
 import com.indigo.security.core.AuthenticationService;
-import com.indigo.security.config.SecurityProperties;
-import com.indigo.security.factory.AuthenticationStrategyFactory;
 import com.indigo.security.model.AuthRequest;
 import com.indigo.security.model.AuthResponse;
-import com.indigo.security.strategy.AuthenticationStrategy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 /**
  * 简化的认证服务实现
- * 使用策略模式处理不同类型的认证请求
+ * 直接使用Sa-Token框架处理所有类型的认证请求
+ * 支持用户名密码、OAuth2.0、Token验证等多种认证方式
  *
  * @author 史偕成
  * @date 2025/12/19
@@ -24,24 +24,43 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class DefaultAuthenticationService implements AuthenticationService {
 
-    private final AuthenticationStrategyFactory strategyFactory;
-    private final SecurityProperties securityProperties;
+    private final UserSessionService userSessionService;
 
     @Override
     public Result<AuthResponse> authenticate(AuthRequest request) {
         try {
-            if (request == null || !StringUtils.hasText(request.getUsername())) {
-                return Result.error("用户名不能为空");
+            // 验证请求完整性
+            if (request == null) {
+                return Result.error("认证请求不能为空");
+            }
+            
+            if (!request.isValid()) {
+                return Result.error("认证请求信息不完整");
             }
 
-            // 动态获取策略类型，支持从请求中指定或使用默认策略
-            String strategyType = getStrategyType(request);
-            AuthenticationStrategy strategy = strategyFactory.getStrategy(strategyType);
+            log.info("开始认证: authType={}, username={}", request.getAuthType(), request.getUsername());
             
-            return strategy.authenticate(request);
+            // 通过Sa-Token框架处理认证
+            String token = processWithSaToken(request);
+            
+            // 存储用户会话信息
+            storeUserSession(token, request);
+            
+            log.info("认证成功: username={}, token={}", request.getUsername(), token);
+            
+            // TODO: 操作审计 - 记录登录成功事件
+            // auditService.logUserAction(request.getUserId(), "LOGIN_SUCCESS", "authentication", "SUCCESS");
+            
+            return Result.success(AuthResponse.of(token, null, 7200L));
             
         } catch (Exception e) {
-            log.error("认证失败", e);
+            log.error("认证失败: authType={}", request != null ? request.getAuthType() : "null", e);
+            
+            // TODO: 操作审计 - 记录登录失败事件
+            // if (request != null) {
+            //     auditService.logUserAction(request.getUserId(), "LOGIN_FAILED", "authentication", "FAILED: " + e.getMessage());
+            // }
+            
             return Result.error("认证失败: " + e.getMessage());
         }
     }
@@ -49,16 +68,17 @@ public class DefaultAuthenticationService implements AuthenticationService {
     @Override
     public Result<AuthResponse> renewToken(String token) {
         try {
-            if (!StringUtils.hasText(token)) {
+            if (token == null || token.trim().isEmpty()) {
                 return Result.error("Token不能为空");
             }
 
-            // 对于token续期，需要根据token本身推断策略类型
-            // 这里可以通过token格式或者配置来确定策略类型
-            String strategyType = inferStrategyTypeFromToken(token);
-            AuthenticationStrategy strategy = strategyFactory.getStrategy(strategyType);
+            log.info("开始Token续期");
             
-            return strategy.renewToken(token);
+            // 通过Sa-Token框架续期
+            StpUtil.renewTimeout(7200L);
+            
+            log.info("Token续期成功");
+            return Result.success(AuthResponse.of(token, null, 7200L));
             
         } catch (Exception e) {
             log.error("Token续期失败", e);
@@ -66,91 +86,106 @@ public class DefaultAuthenticationService implements AuthenticationService {
         }
     }
 
+    @Override
+    public UserContext getCurrentUser() {
+        try {
+            String token = StpUtil.getTokenValue();
+            if (token != null) {
+                return userSessionService.getUserSession(token);
+            }
+        } catch (Exception e) {
+            log.warn("获取当前用户信息失败", e);
+        }
+        return null;
+    }
+
+    @Override
+    public Result<Void> logout() {
+        try {
+            StpUtil.logout();
+            log.info("用户登出成功");
+            return Result.success(null);
+        } catch (Exception e) {
+            log.error("用户登出失败", e);
+            return Result.error("登出失败: " + e.getMessage());
+        }
+    }
+
     /**
-     * 获取认证策略类型
-     * 优先使用请求中指定的策略类型，否则使用默认策略
+     * 通过Sa-Token框架处理不同类型的认证
      *
      * @param request 认证请求
-     * @return 策略类型
+     * @return 生成的Token
      */
-    private String getStrategyType(AuthRequest request) {
-        // 优先使用请求中指定的策略类型（如果启用）
-        if (securityProperties.getAuthentication().isEnableRequestStrategyOverride() 
-            && StringUtils.hasText(request.getStrategyType())) {
-            String requestedStrategy = request.getStrategyType();
-            if (strategyFactory.hasStrategy(requestedStrategy)) {
-                log.debug("使用请求指定的认证策略: {}", requestedStrategy);
-                return requestedStrategy;
-            } else {
-                log.warn("请求指定的认证策略不存在: {}, 使用默认策略", requestedStrategy);
-            }
-        }
-        
-        // 根据认证类型推断策略类型（如果启用）
-        if (securityProperties.getAuthentication().isEnableStrategyInference() 
-            && request.getAuthType() != null) {
-            String inferredStrategy = inferStrategyTypeFromAuthType(request.getAuthType());
-            if (strategyFactory.hasStrategy(inferredStrategy)) {
-                log.debug("根据认证类型推断策略: {} -> {}", request.getAuthType(), inferredStrategy);
-                return inferredStrategy;
-            }
-        }
-        
-        // 使用配置的默认策略
-        String defaultStrategy = getDefaultStrategyType();
-        log.debug("使用默认认证策略: {}", defaultStrategy);
-        return defaultStrategy;
-    }
-
-    /**
-     * 根据认证类型推断策略类型
-     *
-     * @param authType 认证类型
-     * @return 策略类型
-     */
-    private String inferStrategyTypeFromAuthType(AuthRequest.AuthType authType) {
-        return switch (authType) {
-            case USERNAME_PASSWORD -> "satoken";
-            case TOKEN_VALIDATION -> "satoken";
-            case OAUTH2_AUTHORIZATION_CODE -> "oauth2";
-            case OAUTH2_CLIENT_CREDENTIALS -> "oauth2";
-            case REFRESH_TOKEN -> "satoken";
-        };
-    }
-
-    /**
-     * 根据token推断策略类型
-     * 这里可以通过token格式、前缀等来推断策略类型
-     *
-     * @param token 访问令牌
-     * @return 策略类型
-     */
-    private String inferStrategyTypeFromToken(String token) {
-        // 这里可以根据token的格式来推断策略类型
-        // 例如：JWT token通常以 "eyJ" 开头，Sa-Token可能有特定格式
-        
-        // 简单实现：检查token格式
-        if (token.startsWith("eyJ")) {
-            // JWT token格式
-            return "jwt";
-        } else if (token.contains(".") && token.length() > 32) {
-            // 可能是Sa-Token格式
-            return "satoken";
-        } else {
-            // 默认使用Sa-Token
-            return "satoken";
+    private String processWithSaToken(AuthRequest request) {
+        switch (request.getAuthType()) {
+            case USERNAME_PASSWORD:
+                // Sa-Token用户名密码登录
+                StpUtil.login(request.getUserId());
+                return StpUtil.getTokenValue();
+                
+            case OAUTH2_AUTHORIZATION_CODE:
+            case OAUTH2_CLIENT_CREDENTIALS:
+                // Sa-Token OAuth2.0登录
+                StpUtil.login(request.getUserId());
+                return StpUtil.getTokenValue();
+                
+            case TOKEN_VALIDATION:
+                // Sa-Token Token验证
+                return validateTokenWithSaToken(request.getTokenAuth().getToken());
+                
+            case REFRESH_TOKEN:
+                // Sa-Token刷新Token
+                return processRefreshToken(request.getRefreshTokenAuth().getRefreshToken());
+                
+            default:
+                throw new IllegalArgumentException("不支持的认证类型: " + request.getAuthType());
         }
     }
 
     /**
-     * 获取默认认证策略类型
-     * 可以通过配置文件或环境变量来配置
+     * 验证Token（通过Sa-Token框架）
      *
-     * @return 默认策略类型
+     * @param token Token值
+     * @return 验证后的Token
      */
-    private String getDefaultStrategyType() {
-        // 这里可以从配置文件、环境变量等获取默认策略类型
-        // 暂时硬编码为 "satoken"，后续可以通过配置注入
-        return "satoken";
+    private String validateTokenWithSaToken(String token) {
+        // 通过Sa-Token验证Token
+        StpUtil.checkLogin();
+        return token;
+    }
+
+    /**
+     * 处理刷新Token（通过Sa-Token框架）
+     *
+     * @param refreshToken 刷新Token
+     * @return 新的访问Token
+     */
+    private String processRefreshToken(String refreshToken) {
+        // 通过Sa-Token处理刷新Token
+        // 这里可以根据需要实现具体的刷新逻辑
+        StpUtil.renewTimeout(7200L);
+        return StpUtil.getTokenValue();
+    }
+
+    /**
+     * 存储用户会话信息
+     *
+     * @param token Token值
+     * @param request 认证请求
+     */
+    private void storeUserSession(String token, AuthRequest request) {
+        UserContext userContext = UserContext.builder()
+            .userId(request.getUserId())
+            .username(request.getUsername())
+            .loginTime(System.currentTimeMillis())
+            .roles(request.getRoles())
+            .permissions(request.getPermissions())
+            .build();
+            
+        long tokenTimeout = 7200L;
+        userSessionService.storeUserSession(token, userContext, tokenTimeout);
+        userSessionService.storeUserRoles(token, request.getRoles(), tokenTimeout);
+        userSessionService.storeUserPermissions(token, request.getPermissions(), tokenTimeout);
     }
 } 

@@ -4,8 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.indigo.databases.dto.PageDTO;
-import com.indigo.databases.dto.PageResult;
+import com.indigo.databases.dto.*;
+import com.indigo.databases.dto.page.*;
 import com.indigo.databases.utils.LambdaQueryBuilder;
 import com.indigo.databases.repository.BaseRepository;
 import com.indigo.databases.utils.QueryConditionBuilder;
@@ -371,58 +371,57 @@ public class SqlMethodInterceptor implements InvocationHandler {
                             break;
                         // 增强查询方法
                         case "pageWithAggregation":
-                            if (args.length == 1 && args[0] instanceof com.indigo.databases.dto.AggregationPageDTO) {
-                                com.indigo.databases.dto.AggregationPageDTO queryDTO = (com.indigo.databases.dto.AggregationPageDTO) args[0];
+                            if (args.length == 1 && args[0] instanceof AggregationPageDTO) {
+                                AggregationPageDTO queryDTO = (AggregationPageDTO) args[0];
                                 // 创建 IService 实例
                                 Object service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), getMapperInstance(method));
                                 return com.indigo.databases.utils.EnhancedQueryBuilder.pageWithAggregation((com.baomidou.mybatisplus.extension.service.IService<?>) service, queryDTO);
                             }
                             break;
                         case "pageWithGroupBy":
-                            if (args.length == 1 && args[0] instanceof com.indigo.databases.dto.AggregationPageDTO) {
-                                com.indigo.databases.dto.AggregationPageDTO queryDTO = (com.indigo.databases.dto.AggregationPageDTO) args[0];
+                            if (args.length == 1 && args[0] instanceof AggregationPageDTO) {
+                                AggregationPageDTO queryDTO = (AggregationPageDTO) args[0];
                                 Object service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), getMapperInstance(method));
                                 return com.indigo.databases.utils.EnhancedQueryBuilder.pageWithGroupBy((com.baomidou.mybatisplus.extension.service.IService<?>) service, queryDTO);
                             }
                             break;
                         case "pageWithPerformance":
-                            if (args.length == 1 && args[0] instanceof com.indigo.databases.dto.PerformancePageDTO) {
-                                com.indigo.databases.dto.PerformancePageDTO queryDTO = (com.indigo.databases.dto.PerformancePageDTO) args[0];
+                            if (args.length == 1 && args[0] instanceof PerformancePageDTO queryDTO) {
                                 Object service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), getMapperInstance(method));
-                                return com.indigo.databases.utils.EnhancedQueryBuilder.pageWithPerformance((com.baomidou.mybatisplus.extension.service.IService<?>) service, queryDTO);
+                                return com.indigo.databases.utils.EnhancedQueryBuilder.pageWithPerformance((IService<?>) service, queryDTO);
                             }
                             break;
                         case "pageWithCache":
-                            if (args.length == 1 && args[0] instanceof com.indigo.databases.dto.PerformancePageDTO) {
-                                com.indigo.databases.dto.PerformancePageDTO queryDTO = (com.indigo.databases.dto.PerformancePageDTO) args[0];
+                            if (args.length == 1 && args[0] instanceof PerformancePageDTO) {
+                                PerformancePageDTO queryDTO = (PerformancePageDTO) args[0];
                                 Object service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), getMapperInstance(method));
                                 return com.indigo.databases.utils.EnhancedQueryBuilder.pageWithCache((com.baomidou.mybatisplus.extension.service.IService<?>) service, queryDTO);
                             }
                             break;
                         case "pageWithSelectFields":
-                            if (args.length == 1 && args[0] instanceof com.indigo.databases.dto.PerformancePageDTO) {
-                                com.indigo.databases.dto.PerformancePageDTO queryDTO = (com.indigo.databases.dto.PerformancePageDTO) args[0];
+                            if (args.length == 1 && args[0] instanceof PerformancePageDTO) {
+                                PerformancePageDTO queryDTO = (PerformancePageDTO) args[0];
                                 Object service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), getMapperInstance(method));
                                 return com.indigo.databases.utils.EnhancedQueryBuilder.pageWithSelectFields((com.baomidou.mybatisplus.extension.service.IService<?>) service, queryDTO);
                             }
                             break;
                         case "pageWithJoin":
-                            if (args.length == 1 && args[0] instanceof com.indigo.databases.dto.JoinPageDTO) {
-                                com.indigo.databases.dto.JoinPageDTO queryDTO = (com.indigo.databases.dto.JoinPageDTO) args[0];
+                            if (args.length == 1 && args[0] instanceof JoinPageDTO) {
+                                JoinPageDTO queryDTO = (JoinPageDTO) args[0];
                                 Object service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), getMapperInstance(method));
                                 return com.indigo.databases.utils.EnhancedQueryBuilder.pageWithJoin((com.baomidou.mybatisplus.extension.service.IService<?>) service, queryDTO);
                             }
                             break;
                         case "pageWithComplexQuery":
-                            if (args.length == 1 && args[0] instanceof com.indigo.databases.dto.ComplexPageDTO) {
-                                com.indigo.databases.dto.ComplexPageDTO queryDTO = (com.indigo.databases.dto.ComplexPageDTO) args[0];
+                            if (args.length == 1 && args[0] instanceof ComplexPageDTO) {
+                                ComplexPageDTO queryDTO = (ComplexPageDTO) args[0];
                                 Object service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), getMapperInstance(method));
                                 return com.indigo.databases.utils.EnhancedQueryBuilder.pageWithComplexQuery((com.baomidou.mybatisplus.extension.service.IService<?>) service, queryDTO);
                             }
                             break;
                         case "pageWithEnhanced":
-                            if (args.length == 1 && args[0] instanceof com.indigo.databases.dto.EnhancedPageDTO) {
-                                com.indigo.databases.dto.EnhancedPageDTO queryDTO = (com.indigo.databases.dto.EnhancedPageDTO) args[0];
+                            if (args.length == 1 && args[0] instanceof EnhancedPageDTO) {
+                                EnhancedPageDTO queryDTO = (EnhancedPageDTO) args[0];
                                 Object service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), getMapperInstance(method));
                                 return com.indigo.databases.utils.EnhancedQueryBuilder.pageWithEnhanced((com.baomidou.mybatisplus.extension.service.IService<?>) service, queryDTO);
                             }

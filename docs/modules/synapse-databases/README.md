@@ -1,8 +1,19 @@
-# Synapse Databases 模块
+# Synapse Framework - 数据库模块
 
 ## 概述
 
-Synapse Databases 模块是 Synapse Framework 的核心数据库访问模块，提供了统一的数据库配置管理、动态数据源路由、MyBatis-Plus 集成以及多种连接池支持。
+Synapse Framework 数据库模块是一个集成了 MyBatis-Plus 和动态数据源的强大数据库解决方案。它提供了灵活的配置选项，支持多种数据库类型和连接池，并且兼容标准的 Spring Boot 配置格式。
+
+## 核心特性
+
+- 🚀 **MyBatis-Plus 集成**: 完整的 MyBatis-Plus 配置支持
+- 🔄 **动态数据源**: 支持多数据源动态切换
+- 🗄️ **多数据库支持**: MySQL, PostgreSQL, Oracle, SQL Server, H2
+- 🏊 **连接池支持**: HikariCP, Druid
+- ⚙️ **灵活配置**: 支持自定义配置和默认值
+- 🔌 **Spring Boot 兼容**: 兼容标准 Spring Boot 配置格式
+- 🎯 **智能查询**: 基于 BaseRepository 的智能查询构建
+- 📊 **多表关联**: 支持复杂的多表关联查询
 
 ## 主要特性
 
@@ -32,14 +43,20 @@ Synapse Databases 模块是 Synapse Framework 的核心数据库访问模块，�
 ```yaml
 synapse:
   datasource:
-    primary: master1
     mybatis-plus:
-      type-aliases-package: com.example.**.entity
-      mapper-locations: "classpath*:mapper/**/*.xml"
       configuration:
-        map-underscore-to-camel-case: true
         log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+        map-underscore-to-camel-case: true
+        # ... 其他 MyBatis-Plus 配置
+      global-config:
+        banner: false
+        enable-pagination: true
+        # ... 其他全局配置
+      type-aliases-package: com.indigo.**.entity
+      mapper-locations: "classpath*:mapper/**/*.xml"
+    
     dynamic-data-source:
+      primary: master1
       strict: false
       seata: false
       p6spy: false
@@ -48,83 +65,228 @@ synapse:
           type: MYSQL
           host: localhost
           port: 3306
-          database: myapp
+          database: synapse_iam
           username: root
-          password: password
+          password: your_password
           pool-type: HIKARI
+          params:
+            useUnicode: "true"
+            characterEncoding: "utf8"
+            useSSL: "false"
+            serverTimezone: "Asia/Shanghai"
+          hikari:
+            minimum-idle: 5
+            maximum-pool-size: 15
+            idle-timeout: 30000
+            max-lifetime: 1800000
+            connection-timeout: 30000
+            connection-test-query: "SELECT 1"
 ```
 
-### 3. 使用示例
+### 3. 创建实体类
 
-**编程式数据源切换**
 ```java
-@Service
-public class UserService {
+@Data
+@TableName("sys_user")
+public class User extends BaseEntity {
     
-    @Autowired
-    private UserMapper userMapper;
+    @TableId(type = IdType.AUTO)
+    private Long id;
     
-    // 使用主数据源进行写操作
-    public User createUser(User user) {
-        // 动态切换到主数据源
-        DynamicDataSourceContextHolder.setDataSource("master1");
-        try {
-            return userMapper.insert(user);
-        } finally {
-            // 清除数据源上下文
-            DynamicDataSourceContextHolder.clearDataSource();
-        }
+    private String username;
+    
+    private String email;
+    
+    private String phone;
+    
+    private Integer status;
+    
+    private Long deptId;
+    
+    private Long roleId;
+}
+```
+
+### 4. 创建 Repository
+
+```java
+public interface UserRepository extends BaseRepository<User, UserMapper> {
+    
+    // 单表查询 - 使用基础DTO + 业务字段
+    default PageResult<User> pageUsers(UserQueryDTO queryDTO) {
+        // 框架自动处理：基础字段 + 业务字段 + 分页 + 排序
+        return pageWithCondition(queryDTO);
     }
     
-    // 使用从数据源进行读操作
-    public User getUserById(Long id) {
-        // 动态切换到从数据源
-        DynamicDataSourceContextHolder.setDataSource("slave1");
-        try {
-            return userMapper.selectById(id);
-        } finally {
-            // 清除数据源上下文
-            DynamicDataSourceContextHolder.clearDataSource();
-        }
+    // 多表关联查询 - 使用JoinPageDTO + 业务字段
+    default PageResult<UserJoinResultDTO> pageUsersWithJoin(UserJoinQueryDTO queryDTO) {
+        // 框架自动处理：多表关联 + 业务字段 + 分页 + 排序
+        PageResult<User> pageResult = pageWithJoin(queryDTO);
+        
+        // 转换为结果DTO
+        List<UserJoinResultDTO> resultList = pageResult.getRecords().stream()
+            .map(this::convertToJoinResult)
+            .collect(Collectors.toList());
+        
+        return new PageResult<>(resultList, pageResult.getTotal(), pageResult.getCurrent(), pageResult.getSize());
     }
 }
 ```
 
-**自动数据源路由（推荐）**
+### 5. 创建查询DTO
+
+```java
+// 用户查询DTO - 单表查询
+public class UserQueryDTO extends PageDTO {
+    // 业务字段
+    private String username;      // 用户名
+    private String email;         // 邮箱
+    private String phone;         // 手机号
+    private Integer userLevel;    // 用户等级
+    private String realName;      // 真实姓名
+    private Long deptId;          // 部门ID
+    private Long roleId;          // 角色ID
+}
+
+// 用户关联查询DTO - 多表查询
+public class UserJoinQueryDTO extends JoinPageDTO {
+    // 业务字段
+    private String username;      // 用户名
+    private String deptName;      // 部门名称
+    private String roleName;      // 角色名称
+    private String realName;      // 真实姓名
+    private Integer userLevel;    // 用户等级
+    
+    public UserJoinQueryDTO() {
+        // 配置多表关联
+        this.setTableJoins(Arrays.asList(
+            new TableJoin("sys_department", "d", JoinType.LEFT, "u.dept_id = d.id"),
+            new TableJoin("sys_role", "r", JoinType.LEFT, "u.role_id = r.id"),
+            new TableJoin("sys_user_profile", "p", JoinType.LEFT, "u.id = p.user_id")
+        ));
+        
+        // 设置选择字段
+        this.getTableJoins().get(0).setSelectFields(Arrays.asList("d.dept_name", "d.dept_code"));
+        this.getTableJoins().get(1).setSelectFields(Arrays.asList("r.role_name", "r.role_code"));
+        this.getTableJoins().get(2).setSelectFields(Arrays.asList("p.real_name", "p.avatar"));
+    }
+}
+```
+
+### 6. 使用示例
+
 ```java
 @Service
 public class UserService {
     
     @Autowired
-    private UserMapper userMapper;
+    private UserRepository userRepository;
     
-    // 系统会自动根据SQL类型选择数据源：
-    // SELECT语句 -> 从库（读操作）
-    // INSERT/UPDATE/DELETE语句 -> 主库（写操作）
-    
-    public User createUser(User user) {
-        // 自动使用主数据源（写操作）
-        return userMapper.insert(user);
+    // 单表分页查询
+    public PageResult<User> pageUsers(UserQueryDTO queryDTO) {
+        return userRepository.pageUsers(queryDTO);
     }
     
-    public User getUserById(Long id) {
-        // 自动使用从数据源（读操作）
-        return userMapper.selectById(id);
+    // 多表关联分页查询
+    public PageResult<UserJoinResultDTO> pageUsersWithJoin(UserJoinQueryDTO queryDTO) {
+        return userRepository.pageUsersWithJoin(queryDTO);
+    }
+    
+    // 动态数据源切换
+    @DS("slave")
+    public List<User> getUsersFromSlave() {
+        return userRepository.list();
+    }
+    
+    @DS("master")
+    public void saveUser(User user) {
+        userRepository.save(user);
     }
 }
 ```
 
 ## 配置说明
 
-### 配置结构
+### 配置前缀
 
-```
+新的配置类使用 `synapse.datasource` 作为配置前缀，替代了之前的 `synapse.databases`。
+
+### 主要配置结构
+
+```yaml
 synapse:
   datasource:
-    primary: String                    # 主数据源名称
-    mybatis-plus: MybatisPlus         # MyBatis-Plus 配置
-    dynamic-data-source: DynamicDataSource # 动态数据源配置
-    spring-datasource: SpringDatasource   # 兼容性配置
+    mybatis-plus:
+      configuration:
+        log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+        map-underscore-to-camel-case: true
+        # ... 其他 MyBatis-Plus 配置
+      global-config:
+        banner: false
+        enable-pagination: true
+        # ... 其他全局配置
+      type-aliases-package: com.indigo.**.entity
+      mapper-locations: "classpath*:mapper/**/*.xml"
+    
+    dynamic-data-source:
+      primary: master1
+      strict: false
+      seata: false
+      p6spy: false
+      datasource:
+        master1:
+          type: MYSQL
+          host: localhost
+          port: 3306
+          database: synapse_iam
+          username: root
+          password: your_password
+          pool-type: HIKARI
+          params:
+            useUnicode: "true"
+            characterEncoding: "utf8"
+            useSSL: "false"
+            serverTimezone: "Asia/Shanghai"
+          hikari:
+            minimum-idle: 5
+            maximum-pool-size: 15
+            idle-timeout: 30000
+            max-lifetime: 1800000
+            connection-timeout: 30000
+            connection-test-query: "SELECT 1"
+```
+
+### 兼容性配置
+
+为了保持向后兼容性，模块仍然支持标准的 Spring Boot 配置格式：
+
+```yaml
+spring:
+  datasource:
+    dynamic:
+      primary: master1
+      strict: false
+      datasource:
+        master1:
+          type: MYSQL
+          host: localhost
+          port: 3306
+          database: synapse_iam
+          username: root
+          password: your_password
+          pool-type: HIKARI
+          params:
+            useUnicode: "true"
+            characterEncoding: "utf8"
+            useSSL: "false"
+            serverTimezone: "Asia/Shanghai"
+          hikari:
+            minimum-idle: 5
+            maximum-pool-size: 15
+            idle-timeout: 30000
+            max-lifetime: 1800000
+            connection-timeout: 30000
+            connection-test-query: "SELECT 1"
 ```
 
 ### 数据源类型
@@ -297,16 +459,21 @@ logging:
     com.alibaba.druid: DEBUG
 ```
 
-## 版本历史
+## 注意事项
 
-| 版本 | 更新内容 |
-|------|----------|
-| 1.0.0 | 初始版本，基础功能 |
-| 1.1.0 | 添加 HikariCP 支持 |
-| 1.2.0 | 添加 Druid 支持 |
-| 1.3.0 | 配置重构，统一管理 |
-| 1.4.0 | 添加 Seata 和 P6Spy 支持 |
-| 1.5.0 | 移除@DS注解依赖，实现智能数据源路由 |
+1. **配置前缀变更**: 从 `synapse.databases` 变更为 `synapse.datasource`
+2. **移除 enabled 属性**: 不再需要 `enabled: true` 配置
+3. **向后兼容**: 仍然支持 `spring.datasource.dynamic` 配置格式
+4. **类型安全**: 使用枚举类型确保配置的正确性
+
+## 迁移指南
+
+如果你正在从旧版本迁移，请按照以下步骤操作：
+
+1. 将配置前缀从 `synapse.databases` 改为 `synapse.datasource`
+2. 移除 `enabled: true` 配置项
+3. 更新代码中的配置类引用（如果直接使用配置类）
+4. 测试配置是否正确加载
 
 ## 贡献
 

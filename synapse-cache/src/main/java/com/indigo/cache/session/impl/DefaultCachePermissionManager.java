@@ -40,12 +40,14 @@ public class DefaultCachePermissionManager implements CachePermissionManager {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public List<String> getUserPermissions(String token) {
         String permissionsKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "permissions", token);
         return cacheService.getObject(permissionsKey, List.class);
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public List<String> getUserRoles(String token) {
         String rolesKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "roles", token);
         return cacheService.getObject(rolesKey, List.class);

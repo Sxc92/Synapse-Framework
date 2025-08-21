@@ -16,8 +16,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.InitializingBean;
 import java.io.Serializable;
 import java.net.InetAddress;
 import java.time.LocalDateTime;
@@ -36,7 +36,8 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 @Slf4j
 @Component
-public class ReliableRocketMQEventConsumer implements EventConsumer {
+@SuppressWarnings("deprecation")
+public class ReliableRocketMQEventConsumer implements EventConsumer, InitializingBean, DisposableBean {
 
     private final EventsProperties properties;
     private final MessageSerializer messageSerializer;
@@ -79,8 +80,8 @@ public class ReliableRocketMQEventConsumer implements EventConsumer {
         this.lockManager = lockManager;
     }
 
-    @PostConstruct
-    public void init() {
+    @Override
+    public void afterPropertiesSet() {
         try {
             // 生成消费者实例ID
             this.consumerInstanceId = generateConsumerInstanceId();
@@ -411,7 +412,7 @@ public class ReliableRocketMQEventConsumer implements EventConsumer {
         cacheService.setObject(statusKey, statusInfo, 300); // 5分钟过期
     }
 
-    @PreDestroy
+    @Override
     public void destroy() {
         stop();
         // 清理消费者状态

@@ -1,132 +1,249 @@
-# Synapse Framework 文档中心
+# Synapse Framework
 
-## 📚 欢迎来到 Synapse Framework 文档中心
+一个基于 Spring Boot 3.x 的企业级微服务框架，专注于简化开发流程、提高代码质量和系统性能。
 
-这里是 Synapse Framework 的完整文档集合，帮助你快速上手、深入学习和解决开发中的问题。
+## 🚀 核心特性
+
+- ✅ **模块化设计** - 高内聚、低耦合的模块架构
+- ✅ **注解驱动** - 通过注解简化开发，减少样板代码
+- ✅ **智能数据源** - 自动读写分离，支持多数据库，智能故障转移
+- ✅ **统一响应** - 标准化的 API 响应格式
+- ✅ **权限控制** - Sa-Token 认证，细粒度权限管理
+- ✅ **缓存支持** - Redis 缓存，分布式锁，会话管理
+- ✅ **事件驱动** - 异步事件处理机制
+- ✅ **性能优化** - 连接池优化，多级缓存，智能路由
+- ✅ **配置验证** - 启动时自动验证配置完整性和数据源连接性
+- ✅ **健康监控** - 集成 Spring Boot 健康检查，实时监控数据源状态
+
+## 📚 快速导航
+
+| 文档 | 描述 | 适用场景 |
+|------|------|----------|
+| **[🚀 快速开始](QUICKSTART.md)** | 5分钟搭建项目 | 新用户入门 |
+| **[🏗️ 架构设计](ARCHITECTURE.md)** | 整体架构和设计模式 | 架构师、技术决策 |
+| **[📖 API 参考](API_REFERENCE.md)** | 详细 API 文档 | 开发人员 |
+| **[⚙️ 配置指南](CONFIGURATION.md)** | 配置参数说明 | 运维人员 |
+| **[🔧 模块文档](MODULES/)** | 各模块详细说明 | 模块开发 |
+| **[📋 配置模板](CONFIGURATION_TEMPLATES.md)** | 常用配置模板 | 快速配置 |
+
+## 🎯 技术栈
+
+- **Spring Boot 3.2.3** - 应用框架
+- **Spring Cloud 2023.0.0** - 微服务生态
+- **MyBatis-Plus 3.5.8** - ORM 框架
+- **Sa-Token 1.38.0** - 认证框架
+- **Redis** - 缓存和会话管理
+- **MySQL/PostgreSQL/Oracle** - 多数据库支持
+- **Java 17** - 运行环境
+
+## 📦 模块说明
+
+| 模块 | 描述 | 主要功能 |
+|------|------|----------|
+| **synapse-core** | 核心模块 | 统一响应、异常处理、工具类、国际化 |
+| **synapse-databases** | 数据库模块 | 增强 Repository、查询构建器、智能数据源路由、读写分离、负载均衡、故障转移 |
+| **synapse-security** | 安全模块 | Sa-Token 认证、权限控制、会话管理 |
+| **synapse-cache** | 缓存模块 | Redis 缓存、分布式锁、会话缓存 |
+| **synapse-events** | 事件模块 | 事件驱动、异步处理、事务事件 |
 
 ## 🚀 快速开始
 
-### 新用户
-如果你是第一次使用 Synapse Framework，建议按以下顺序阅读：
+### 1. 添加依赖
 
-1. **[框架概述](README.md)** - 了解框架的整体架构和设计理念
-2. **[使用指南](USAGE_GUIDE.md)** - 学习如何搭建项目和使用基本功能
-3. **[架构设计](ARCHITECTURE.md)** - 深入理解框架的架构设计
-4. **[模块文档索引](MODULES_INDEX.md)** - 查看各模块的详细文档
+```xml
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>com.indigo</groupId>
+            <artifactId>synapse-bom</artifactId>
+            <version>1.0.0</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
 
-### 开发者
-如果你已经熟悉框架，想要深入了解：
+<dependencies>
+    <!-- 核心模块 -->
+    <dependency>
+        <groupId>com.indigo</groupId>
+        <artifactId>synapse-core</artifactId>
+    </dependency>
+    
+    <!-- 数据库模块 -->
+    <dependency>
+        <groupId>com.indigo</groupId>
+        <artifactId>synapse-databases</artifactId>
+    </dependency>
+    
+    <!-- 安全模块 -->
+    <dependency>
+        <groupId>com.indigo</groupId>
+        <artifactId>synapse-security</artifactId>
+    </dependency>
+    
+    <!-- 缓存模块 -->
+    <dependency>
+        <groupId>com.indigo</groupId>
+        <artifactId>synapse-cache</artifactId>
+    </dependency>
+</dependencies>
+```
 
-1. **[开发笔记](DEVELOPMENT_NOTES.md)** - 了解开发过程中的重要决策和架构演进
-2. **[模块文档](MODULES_INDEX.md)** - 查看各模块的详细实现和使用说明
-3. **[优化总结](OPTIMIZATION_TODO.md)** - 了解性能优化和架构优化方案
+### 2. 基础配置
 
-## 📖 文档分类
+```yaml
+synapse:
+  datasource:
+    primary: master
+    
+    # 读写分离配置
+    read-write:
+      enabled: true
+      read-sources: [slave1, slave2]
+      write-sources: [master]
+    
+    # 负载均衡配置
+    load-balance:
+      strategy: ROUND_ROBIN
+    
+    # 故障转移配置
+    failover:
+      enabled: true
+      timeout: 5000
+      max-retries: 3
+    
+    # 数据源配置
+    datasources:
+      master:
+        type: MYSQL
+        host: localhost
+        port: 3306
+        database: synapse_demo
+        username: root
+        password: 123456
+        role: WRITE
+        
+        pool:
+          type: HIKARI
+          min-idle: 5
+          max-size: 20
+          connection-timeout: 30000
+          idle-timeout: 600000
+          max-lifetime: 1800000
+          connection-test-query: SELECT 1
+          leak-detection-threshold: 60000
+          
+      slave1:
+        type: MYSQL
+        host: localhost
+        port: 3307
+        database: synapse_demo
+        username: root
+        password: 123456
+        role: READ
+        
+        pool:
+          type: HIKARI
+          min-idle: 5
+          max-size: 15
+          
+      slave2:
+        type: MYSQL
+        host: localhost
+        port: 3308
+        database: synapse_demo
+        username: root
+        password: 123456
+        role: READ
+        
+        pool:
+          type: HIKARI
+          min-idle: 5
+          max-size: 15
+```
 
-### 📋 核心文档
-- **[README.md](README.md)** - 框架概述和快速开始
-- **[INDEX.md](INDEX.md)** - 完整文档索引和导航
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - 架构设计详解
-- **[USAGE_GUIDE.md](USAGE_GUIDE.md)** - 详细使用指南
+### 3. 创建实体和 Repository
 
-### 🔧 模块文档
-- **[模块文档索引](MODULES_INDEX.md)** - 所有模块文档的索引
-- **[Security 模块](modules/synapse-security/)** - 认证授权相关文档
-- **[Cache 模块](modules/synapse-cache/)** - 缓存管理相关文档
-- **[Databases 模块](modules/synapse-databases/)** - 数据库操作相关文档
-- **[Core 模块](modules/synapse-core/)** - 核心功能相关文档
-- **[Events 模块](modules/synapse-events/)** - 事件处理相关文档
+```java
+@Data
+@TableName("sys_user")
+public class User extends AuditEntity<Long> {
+    
+    @TableId(type = IdType.ASSIGN_ID)
+    private Long id;
+    
+    private String username;
+    
+    private String email;
+}
 
-### 📝 开发文档
-- **[开发笔记](DEVELOPMENT_NOTES.md)** - 开发过程中的重要决策
-- **[优化总结](OPTIMIZATION_TODO.md)** - 性能优化和架构优化
+@AutoRepository
+public interface UserRepository extends BaseRepository<User> {
+    
+    @QueryCondition
+    List<User> findByUsername(String username);
+}
+```
 
-## 🎯 使用场景
+### 4. 创建 Controller
 
-### 小型项目
-- **推荐模块**: `synapse-core` + `synapse-databases`
-- **文档参考**: [README.md](README.md) 快速开始部分
+```java
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+    
+    @Autowired
+    private UserService userService;
+    
+    @PostMapping
+    public Result<User> createUser(@RequestBody User user) {
+        return Result.success(userService.createUser(user));
+    }
+}
+```
 
-### 中型项目
-- **推荐模块**: `synapse-core` + `synapse-databases` + `synapse-security`
-- **文档参考**: [USAGE_GUIDE.md](USAGE_GUIDE.md) 安全功能部分
+## 🔧 开发环境要求
 
-### 大型项目
-- **推荐模块**: 所有模块
-- **文档参考**: [ARCHITECTURE.md](ARCHITECTURE.md) 架构设计部分
+- **JDK 17+**
+- **Maven 3.6+**
+- **MySQL 8.0+** 或 **PostgreSQL 12+**
+- **Redis 6.0+**
 
-## 🔍 查找文档
+## 🆕 最新优化特性
 
-### 按功能查找
-- **认证授权** → [Security 模块文档](modules/synapse-security/)
-- **缓存管理** → [Cache 模块文档](modules/synapse-cache/)
-- **数据库操作** → [Databases 模块文档](modules/synapse-databases/)
-- **核心功能** → [Core 模块文档](modules/synapse-core/)
-- **事件处理** → [Events 模块文档](modules/synapse-events/)
+### **配置优化**
+- ✅ **统一配置入口** - 消除双配置问题，所有配置集中在 `synapse.datasource` 下
+- ✅ **智能配置验证** - 启动时自动检查配置完整性和数据源连接性
+- ✅ **配置模板化** - 提供开发、生产、高并发等场景的配置模板
 
-### 按文档类型查找
-- **使用指南** → [USAGE_GUIDE.md](USAGE_GUIDE.md)
-- **架构说明** → [ARCHITECTURE.md](ARCHITECTURE.md)
-- **开发笔记** → [DEVELOPMENT_NOTES.md](DEVELOPMENT_NOTES.md)
-- **模块文档** → [MODULES_INDEX.md](MODULES_INDEX.md)
+### **数据源路由优化**
+- ✅ **智能读写分离** - 根据SQL类型自动选择读/写数据源
+- ✅ **多种负载均衡策略** - 支持轮询、权重、随机等策略
+- ✅ **智能故障转移** - 支持多种故障转移策略，自动健康检查
+- ✅ **性能优化** - 减少对象创建，优化路由逻辑
 
-## 💡 最佳实践
+### **监控和运维**
+- ✅ **健康检查集成** - 集成 Spring Boot 健康检查机制
+- ✅ **实时状态监控** - 监控数据源健康状态和性能指标
+- ✅ **故障告警** - 自动检测和报告数据源故障
 
-### 代码规范
-- 遵循框架的设计模式和最佳实践
-- 使用框架提供的注解和工具类
-- 合理使用缓存和事件机制
+## 📖 更多信息
 
-### 性能优化
-- 合理配置缓存策略
-- 使用分页查询处理大量数据
-- 优化数据库查询和索引
+- **[📚 完整文档](docs/)** - 查看详细的使用文档
+- **[🏗️ 架构设计](ARCHITECTURE.md)** - 了解框架架构
+- **[🚀 快速开始](QUICKSTART.md)** - 详细的使用教程
+- **[🔧 模块文档](MODULES/)** - 各模块详细说明
+- **[📋 配置模板](CONFIGURATION_TEMPLATES.md)** - 常用配置模板
 
-### 安全防护
-- 正确配置认证和授权
-- 使用框架提供的安全注解
-- 定期更新依赖版本
+## 🤝 贡献
 
-## 🤝 贡献指南
+欢迎提交 Issue 和 Pull Request！
 
-### 文档贡献
-- 完善现有文档内容
-- 添加更多使用示例
-- 修复文档中的错误
-- 翻译文档到其他语言
+## 📄 许可证
 
-### 代码贡献
-- 开发新功能
-- 修复已知问题
-- 性能优化
-- 代码重构
-
-### 问题反馈
-- 使用过程中遇到的问题
-- 新功能需求建议
-- 文档改进建议
-
-## 📞 联系方式
-
-- **项目维护者**: 史偕成
-- **项目地址**: [GitHub Repository]
-- **问题反馈**: [GitHub Issues]
-- **邮箱联系**: [your-email@example.com]
-
-## 📅 更新日志
-
-### v1.0.0 (2025-12-19)
-- 完成文档整合和重构
-- 添加模块文档索引
-- 优化文档结构和导航
-- 完善使用示例和最佳实践
+本项目采用 MIT 许可证。
 
 ---
 
-**文档版本**: v1.0.0  
-**最后更新**: 2025年08月11日 12:41:56
-
-> 💡 **提示**: 如果你在文档中找不到需要的信息，可以：
-> 1. 查看 [INDEX.md](INDEX.md) 完整索引
-> 2. 查看 [模块文档索引](MODULES_INDEX.md) 各模块详细文档
-> 3. 在 GitHub Issues 中提出文档改进建议 
+*Synapse Framework - 让开发更简单* 

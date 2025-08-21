@@ -1,5 +1,6 @@
-package com.indigo.databases.dto;
+package com.indigo.databases.dto.page;
 
+import com.indigo.databases.dto.page.AggregationPageDTO;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 

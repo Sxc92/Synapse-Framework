@@ -3,16 +3,16 @@ package com.indigo.security.model;
 import lombok.Builder;
 import lombok.Data;
 
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 认证请求模型
  * 支持多种认证方式的统一请求格式
  *
  * @author 史偕成
- * @date 2025/12/19
- */
+ * @date 2025/08/11 12:41:56
+ **/
 @Data
 @Builder
 public class AuthRequest {
@@ -20,79 +20,33 @@ public class AuthRequest {
     /**
      * 认证类型
      */
+    @NotNull(message = "认证类型不能为空")
     private AuthType authType;
 
     /**
-     * 认证策略类型（如：satoken、jwt、oauth2等）
+     * 用户名密码认证信息
      */
-    private String strategyType;
+    private UsernamePasswordAuth usernamePasswordAuth;
 
+    /**
+     * Token认证信息
+     */
+    private TokenAuth tokenAuth;
+
+    /**
+     * OAuth2.0认证信息
+     */
+    private OAuth2Auth oauth2Auth;
+
+    /**
+     * 刷新Token认证信息
+     */
+    private RefreshTokenAuth refreshTokenAuth;
+
+    /**
+     * 用户ID（由业务模块传入）
+     */
     private String userId;
-
-    /**
-     * 用户名（用于用户名密码认证）
-     */
-    private String username;
-
-    /**
-     * 密码（用于用户名密码认证）
-     */
-    private String password;
-
-    /**
-     * 访问令牌（用于Token验证）
-     */
-    private String token;
-
-    /**
-     * 客户端ID（用于OAuth2.0）
-     */
-    private String clientId;
-
-    /**
-     * 客户端密钥（用于OAuth2.0）
-     */
-    private String clientSecret;
-
-    /**
-     * 授权码（用于OAuth2.0）
-     */
-    private String code;
-
-    /**
-     * 重定向URI（用于OAuth2.0）
-     */
-    private String redirectUri;
-
-    /**
-     * 授权范围（用于OAuth2.0）
-     */
-    private String scope;
-
-    /**
-     * OAuth2.0提供商（如：google、github、wechat等）
-     */
-    private String provider;
-
-    /**
-     * 租户ID（多租户支持）
-     */
-    private Long tenantId;
-
-    /**
-     * 客户端IP
-     */
-    private String clientIp;
-
-    /**
-     * 用户代理
-     */
-    private String userAgent;
-
-    /**
-     * 扩展参数
-     */
-    private Map<String, Object> extraParams;
 
     /**
      * 用户角色列表（由业务模块传入）
@@ -132,5 +86,96 @@ public class AuthRequest {
          * 刷新Token
          */
         REFRESH_TOKEN
+    }
+
+    /**
+     * 获取用户名
+     * 根据不同的认证类型从对应的认证信息中提取用户名
+     *
+     * @return 用户名，如果无法获取则返回null
+     */
+    public String getUsername() {
+        return switch (authType) {
+            case USERNAME_PASSWORD -> usernamePasswordAuth != null ? usernamePasswordAuth.getUsername() : null;
+            case TOKEN_VALIDATION -> tokenAuth != null ? tokenAuth.getUsername() : null;
+            case OAUTH2_AUTHORIZATION_CODE, OAUTH2_CLIENT_CREDENTIALS -> oauth2Auth != null ? oauth2Auth.getClientId() : null;
+            case REFRESH_TOKEN -> refreshTokenAuth != null ? refreshTokenAuth.getUsername() : null;
+        };
+    }
+
+    /**
+     * 获取用户名密码认证信息
+     */
+    public UsernamePasswordAuth getUsernamePasswordAuth() {
+        if (authType == AuthType.USERNAME_PASSWORD) {
+            return usernamePasswordAuth;
+        }
+        return null;
+    }
+
+    /**
+     * 获取Token认证信息
+     */
+    public TokenAuth getTokenAuth() {
+        if (authType == AuthType.TOKEN_VALIDATION) {
+            return tokenAuth;
+        }
+        return null;
+    }
+
+    /**
+     * 获取OAuth2认证信息
+     */
+    public OAuth2Auth getOauth2Auth() {
+        if (authType == AuthType.OAUTH2_AUTHORIZATION_CODE || 
+            authType == AuthType.OAUTH2_CLIENT_CREDENTIALS) {
+            return oauth2Auth;
+        }
+        return null;
+    }
+
+    /**
+     * 获取刷新Token认证信息
+     */
+    public RefreshTokenAuth getRefreshTokenAuth() {
+        if (authType == AuthType.REFRESH_TOKEN) {
+            return refreshTokenAuth;
+        }
+        return null;
+    }
+
+    /**
+     * 验证认证请求的完整性
+     * 检查认证类型与对应的认证信息是否匹配
+     *
+     * @return 是否有效
+     */
+    public boolean isValid() {
+        if (authType == null) {
+            return false;
+        }
+        
+        // 验证认证信息完整性
+        boolean authInfoValid = switch (authType) {
+            case USERNAME_PASSWORD -> usernamePasswordAuth != null && usernamePasswordAuth.isValid();
+            case TOKEN_VALIDATION -> tokenAuth != null && tokenAuth.isValid();
+            case OAUTH2_AUTHORIZATION_CODE, OAUTH2_CLIENT_CREDENTIALS -> oauth2Auth != null && oauth2Auth.isValid();
+            case REFRESH_TOKEN -> refreshTokenAuth != null && refreshTokenAuth.isValid();
+        };
+        
+        if (!authInfoValid) {
+            return false;
+        }
+        
+        // 验证用户信息完整性（角色和权限由业务模块传入）
+        if (roles == null || roles.isEmpty()) {
+            return false;
+        }
+        
+        if (permissions == null || permissions.isEmpty()) {
+            return false;
+        }
+        
+        return true;
     }
 } 

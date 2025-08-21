@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
+import org.springframework.beans.factory.InitializingBean;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Component
-public class EventHandlerRegistry {
+public class EventHandlerRegistry implements InitializingBean {
     
     private final Map<String, List<EventHandler>> handlersByEventType = new ConcurrentHashMap<>();
     private final Map<String, EventHandler> handlersByName = new ConcurrentHashMap<>();
@@ -26,8 +26,8 @@ public class EventHandlerRegistry {
     @Autowired(required = false)
     private List<EventHandler> eventHandlers = new ArrayList<>();
     
-    @PostConstruct
-    public void init() {
+    @Override
+    public void afterPropertiesSet() {
         registerHandlers();
     }
     

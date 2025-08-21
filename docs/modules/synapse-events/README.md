@@ -384,7 +384,7 @@ public class EventMonitor {
 
 - [Synapse Framework 架构设计](../../ARCHITECTURE.md)
 - [Synapse Framework 使用指南](../../USAGE_GUIDE.md)
-- [Synapse Framework 开发笔记](../../DEVELOPMENT_NOTES.md)
+- [Synapse Framework 架构设计](../../ARCHITECTURE.md)
 
 ## 🔗 相关链接
 

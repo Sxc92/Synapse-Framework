@@ -7,7 +7,9 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.Executors;
 
 /**
  * Thread pool configuration for different use cases
@@ -159,12 +161,71 @@ public class ThreadPoolConfig {
 
     @Bean("virtualThreadFactory")
     public ThreadFactory virtualThreadFactory() {
-        return ThreadFactory.ofVirtual()
-                .name("virtual-", 0)
-                .uncaughtExceptionHandler((thread, throwable) -> {
+        // 兼容Java 17的虚拟线程工厂
+        if (isVirtualThreadSupported()) {
+            try {
+                // 使用反射调用Java 19+的虚拟线程方法
+                java.lang.reflect.Method ofVirtualMethod = ThreadFactory.class.getMethod("ofVirtual");
+                Object builder = ofVirtualMethod.invoke(null);
+                
+                // 调用name方法
+                java.lang.reflect.Method nameMethod = builder.getClass().getMethod("name", String.class, long.class);
+                builder = nameMethod.invoke(builder, "virtual-", 0L);
+                
+                // 调用uncaughtExceptionHandler方法
+                java.lang.reflect.Method handlerMethod = builder.getClass().getMethod("uncaughtExceptionHandler", Thread.UncaughtExceptionHandler.class);
+                builder = handlerMethod.invoke(builder, (Thread.UncaughtExceptionHandler) (thread, throwable) -> {
                     log.error("Uncaught exception in virtual thread: {}", thread.getName(), throwable);
-                })
-                .build();
+                });
+                
+                // 调用build方法
+                java.lang.reflect.Method buildMethod = builder.getClass().getMethod("build");
+                return (ThreadFactory) buildMethod.invoke(builder);
+            } catch (Exception e) {
+                log.warn("Failed to create virtual thread factory using reflection, falling back to platform threads", e);
+            }
+        }
+        
+        // 回退到平台线程工厂
+        return r -> {
+            Thread t = new Thread(r);
+            t.setName("virtual-fallback-" + t.getId());
+            t.setDaemon(true);
+            t.setUncaughtExceptionHandler((thread, throwable) -> {
+                log.error("Uncaught exception in fallback thread: {}", thread.getName(), throwable);
+            });
+            return t;
+        };
+    }
+    
+    /**
+     * 检查是否支持虚拟线程
+     */
+    private boolean isVirtualThreadSupported() {
+        try {
+            // 检查Java版本
+            String version = System.getProperty("java.version");
+            if (version != null && version.startsWith("1.")) {
+                // Java 8-10
+                int majorVersion = Integer.parseInt(version.split("\\.")[1]);
+                return majorVersion >= 9;
+            } else if (version != null && version.matches("\\d+")) {
+                // Java 11+
+                int majorVersion = Integer.parseInt(version);
+                return majorVersion >= 19;
+            }
+        } catch (Exception e) {
+            log.debug("Could not determine Java version", e);
+        }
+        
+        // 尝试反射调用虚拟线程相关方法
+        try {
+            Class.forName("java.util.concurrent.Executors");
+            Executors.class.getMethod("newVirtualThreadPerTaskExecutor");
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     // ==================== 异步任务执行器 ====================

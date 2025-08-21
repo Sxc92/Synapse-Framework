@@ -28,6 +28,7 @@ import java.util.Arrays;
 @Slf4j
 @Configuration
 @ConditionalOnClass(RedisConnectionFactory.class)
+@SuppressWarnings("deprecation")
 public class RedisConnectionConfiguration {
     
     @Autowired
@@ -60,6 +61,7 @@ public class RedisConnectionConfiguration {
     /**
      * 创建单机Redis连接工厂
      */
+    @SuppressWarnings("deprecation")
     private RedisConnectionFactory createStandaloneConnectionFactory() {
         CacheProperties.RedisCache.Connection conn = cacheProperties.getRedisCache().getConnection();
         CacheProperties.RedisCache.Pool pool = cacheProperties.getRedisCache().getPool();
@@ -130,7 +132,8 @@ public class RedisConnectionConfiguration {
      */
     private LettucePoolingClientConfiguration createLettuceClientConfiguration(CacheProperties.RedisCache.Pool pool) {
         // 创建连接池配置
-        GenericObjectPoolConfig<?> poolConfig = new GenericObjectPoolConfig<>();
+        @SuppressWarnings("rawtypes")
+        GenericObjectPoolConfig poolConfig = new GenericObjectPoolConfig();
         poolConfig.setMaxTotal(pool.getMaxActive());
         poolConfig.setMaxIdle(pool.getMaxIdle());
         poolConfig.setMinIdle(pool.getMinIdle());
