@@ -23,8 +23,6 @@ import java.util.List;
  */
 @Slf4j
 @Configuration
-@ConditionalOnClass(DataSource.class)
-@ConditionalOnProperty(prefix = "synapse.datasource", name = "enabled", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties(SynapseDataSourceProperties.class)
 public class DynamicDataSourceAutoConfiguration {
     
@@ -35,12 +33,10 @@ public class DynamicDataSourceAutoConfiguration {
     public DynamicDataSourceAutoConfiguration(SynapseDataSourceProperties properties,
                                             List<DataSourceRouter> routers,
                                             SmartRouterSelector routerSelector) {
+        log.info("DynamicDataSourceAutoConfiguration 被加载");
         this.properties = properties;
         this.routers = routers;
         this.routerSelector = routerSelector;
-        log.info("SynapseDataSourceProperties loaded: {}", properties);
-        log.info("Found {} data source routers: {}", routers.size(), 
-                routers.stream().map(router -> router.getClass().getSimpleName()).toList());
     }
     
     @Bean
@@ -92,9 +88,91 @@ public class DynamicDataSourceAutoConfiguration {
      * 创建数据源
      */
     private DataSource createDataSource(SynapseDataSourceProperties.DataSourceConfig props) {
-        // 这里需要实现数据源创建逻辑
-        // 暂时返回null，实际实现时需要根据配置创建对应的数据源
-        log.warn("createDataSource method not implemented yet for datasource: {}", props);
-        throw new UnsupportedOperationException("createDataSource method not implemented yet");
+        log.info("创建数据源: {}, 类型: {}, 连接池: {}", props.getDatabase(), props.getType(), props.getPoolType());
+        
+        try {
+            switch (props.getPoolType()) {
+                case HIKARI:
+                    return createHikariDataSource(props);
+                case DRUID:
+                    return createDruidDataSource(props);
+                default:
+                    throw new IllegalArgumentException("不支持的连接池类型: " + props.getPoolType());
+            }
+        } catch (Exception e) {
+            log.error("创建数据源失败: {}", e.getMessage(), e);
+            throw new RuntimeException("创建数据源失败: " + props.getDatabase(), e);
+        }
+    }
+    
+    /**
+     * 创建HikariCP数据源
+     */
+    private DataSource createHikariDataSource(SynapseDataSourceProperties.DataSourceConfig props) {
+        com.zaxxer.hikari.HikariConfig config = new com.zaxxer.hikari.HikariConfig();
+        
+        // 基本配置
+        config.setJdbcUrl(props.getUrl());
+        config.setDriverClassName(props.getDriverClassName());
+        config.setUsername(props.getUsername());
+        config.setPassword(props.getPassword());
+        
+        // HikariCP配置
+        SynapseDataSourceProperties.HikariConfig hikariConfig = props.getHikari();
+        config.setMinimumIdle(hikariConfig.getMinimumIdle());
+        config.setMaximumPoolSize(hikariConfig.getMaximumPoolSize());
+        config.setIdleTimeout(hikariConfig.getIdleTimeout());
+        config.setMaxLifetime(hikariConfig.getMaxLifetime());
+        config.setConnectionTimeout(hikariConfig.getConnectionTimeout());
+        config.setConnectionTestQuery(hikariConfig.getConnectionTestQuery());
+        config.setValidationTimeout(hikariConfig.getValidationTimeout());
+        config.setLeakDetectionThreshold(hikariConfig.getLeakDetectionThreshold());
+        config.setRegisterMbeans(hikariConfig.isRegisterMbeans());
+        
+        if (hikariConfig.getConnectionInitSql() != null && !hikariConfig.getConnectionInitSql().isEmpty()) {
+            config.setConnectionInitSql(hikariConfig.getConnectionInitSql());
+        }
+        
+        // 设置数据源名称
+        config.setPoolName(props.getDatabase() + "-hikari-pool");
+        
+        return new com.zaxxer.hikari.HikariDataSource(config);
+    }
+    
+    /**
+     * 创建Druid数据源
+     */
+    private DataSource createDruidDataSource(SynapseDataSourceProperties.DataSourceConfig props) {
+        com.alibaba.druid.pool.DruidDataSource dataSource = new com.alibaba.druid.pool.DruidDataSource();
+        
+        // 基本配置
+        dataSource.setUrl(props.getUrl());
+        dataSource.setDriverClassName(props.getDriverClassName());
+        dataSource.setUsername(props.getUsername());
+        dataSource.setPassword(props.getPassword());
+        
+        // Druid配置
+        SynapseDataSourceProperties.DruidConfig druidConfig = props.getDruid();
+        dataSource.setInitialSize(druidConfig.getInitialSize());
+        dataSource.setMinIdle(druidConfig.getMinIdle());
+        dataSource.setMaxActive(druidConfig.getMaxActive());
+        dataSource.setMaxWait(druidConfig.getMaxWait());
+        dataSource.setTimeBetweenEvictionRunsMillis(druidConfig.getTimeBetweenEvictionRunsMillis());
+        dataSource.setMinEvictableIdleTimeMillis(druidConfig.getMinEvictableIdleTimeMillis());
+        dataSource.setMaxEvictableIdleTimeMillis(druidConfig.getMaxEvictableIdleTimeMillis());
+        dataSource.setValidationQuery(druidConfig.getValidationQuery());
+        dataSource.setTestWhileIdle(druidConfig.getTestWhileIdle());
+        dataSource.setTestOnBorrow(druidConfig.getTestOnBorrow());
+        dataSource.setTestOnReturn(druidConfig.getTestOnReturn());
+        dataSource.setPoolPreparedStatements(druidConfig.getPoolPreparedStatements());
+        dataSource.setMaxPoolPreparedStatementPerConnectionSize(druidConfig.getMaxPoolPreparedStatementPerConnectionSize());
+        
+        try {
+            dataSource.setFilters(druidConfig.getFilters());
+        } catch (Exception e) {
+            log.warn("设置Druid过滤器失败: {}", e.getMessage());
+        }
+        
+        return dataSource;
     }
 } 

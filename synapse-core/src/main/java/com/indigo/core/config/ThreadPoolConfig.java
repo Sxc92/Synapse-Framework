@@ -10,6 +10,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 /**
  * Thread pool configuration for different use cases
@@ -141,17 +142,15 @@ public class ThreadPoolConfig {
     // 特点：支持定时和周期性任务
 
     @Bean("scheduledThreadPool")
-    public ThreadPoolTaskScheduler scheduledThreadPool() {
-        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+    public ScheduledExecutorService scheduledThreadPool() {
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(10, r -> {
+            Thread t = new Thread(r);
+            t.setName("scheduled-" + t.getId());
+            t.setDaemon(true);
+            return t;
+        });
         
-        // 定时任务线程池配置
-        scheduler.setPoolSize(10);
-        scheduler.setThreadNamePrefix("scheduled-");
-        scheduler.setWaitForTasksToCompleteOnShutdown(true);
-        scheduler.setAwaitTerminationSeconds(60);
-        
-        scheduler.initialize();
-        log.info("Scheduled thread pool initialized: poolSize={}", scheduler.getPoolSize());
+        log.info("Scheduled thread pool initialized: poolSize=10");
         
         return scheduler;
     }

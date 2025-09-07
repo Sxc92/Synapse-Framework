@@ -4,6 +4,7 @@ import com.indigo.cache.core.CacheService;
 import com.indigo.cache.session.UserSessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,6 +19,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@ConditionalOnBean({UserSessionService.class, CacheService.class})
 public class DynamicPermissionService {
 
     private final UserSessionService userSessionService;

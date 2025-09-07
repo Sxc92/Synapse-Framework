@@ -20,11 +20,17 @@ import org.springframework.stereotype.Service;
  * @date 2025/12/19
  */
 @Slf4j
-@Service
-@RequiredArgsConstructor
 public class DefaultAuthenticationService implements AuthenticationService {
 
     private final UserSessionService userSessionService;
+    
+    public DefaultAuthenticationService() {
+        this.userSessionService = null;
+    }
+    
+    public DefaultAuthenticationService(UserSessionService userSessionService) {
+        this.userSessionService = userSessionService;
+    }
 
     @Override
     public Result<AuthResponse> authenticate(AuthRequest request) {
@@ -90,7 +96,7 @@ public class DefaultAuthenticationService implements AuthenticationService {
     public UserContext getCurrentUser() {
         try {
             String token = StpUtil.getTokenValue();
-            if (token != null) {
+            if (token != null && userSessionService != null) {
                 return userSessionService.getUserSession(token);
             }
         } catch (Exception e) {
@@ -175,6 +181,11 @@ public class DefaultAuthenticationService implements AuthenticationService {
      * @param request 认证请求
      */
     private void storeUserSession(String token, AuthRequest request) {
+        if (userSessionService == null) {
+            log.warn("UserSessionService 未配置，跳过会话存储");
+            return;
+        }
+        
         UserContext userContext = UserContext.builder()
             .userId(request.getUserId())
             .username(request.getUsername())
@@ -185,7 +196,6 @@ public class DefaultAuthenticationService implements AuthenticationService {
             
         long tokenTimeout = 7200L;
         userSessionService.storeUserSession(token, userContext, tokenTimeout);
-        userSessionService.storeUserRoles(token, request.getRoles(), tokenTimeout);
-        userSessionService.storeUserPermissions(token, request.getPermissions(), tokenTimeout);
+        // 注意：角色和权限信息已经包含在 UserContext 中，无需单独存储
     }
 } 

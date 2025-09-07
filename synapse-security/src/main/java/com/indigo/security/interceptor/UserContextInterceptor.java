@@ -3,7 +3,8 @@ package com.indigo.security.interceptor;
 import com.indigo.cache.session.UserSessionService;
 import com.indigo.core.context.UserContext;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -23,6 +24,7 @@ import jakarta.servlet.http.HttpServletResponse;
 @Slf4j
 @Component
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@ConditionalOnMissingBean(UserContextInterceptor.class)
 public class UserContextInterceptor implements HandlerInterceptor {
 
     private final UserSessionService userSessionService;

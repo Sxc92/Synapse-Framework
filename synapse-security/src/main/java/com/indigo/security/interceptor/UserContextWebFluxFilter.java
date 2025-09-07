@@ -4,7 +4,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.indigo.cache.session.UserSessionService;
 import com.indigo.core.context.UserContext;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -23,6 +23,7 @@ import reactor.core.publisher.Mono;
 @Slf4j
 @Component
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.REACTIVE)
+@ConditionalOnBean(UserSessionService.class)
 public class UserContextWebFluxFilter implements WebFilter {
 
     private final UserSessionService userSessionService;

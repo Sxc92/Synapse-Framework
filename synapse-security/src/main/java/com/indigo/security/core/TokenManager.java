@@ -5,6 +5,7 @@ import com.indigo.cache.session.UserSessionService;
 import com.indigo.core.context.UserContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
 /**
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@ConditionalOnBean(UserSessionService.class)
 public class TokenManager {
 
     private final UserSessionService userSessionService;

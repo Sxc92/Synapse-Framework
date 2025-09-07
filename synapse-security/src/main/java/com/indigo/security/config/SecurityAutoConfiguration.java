@@ -5,9 +5,9 @@ import cn.dev33.satoken.oauth2.logic.SaOAuth2Template;
 import cn.dev33.satoken.stp.StpInterface;
 import com.indigo.cache.session.UserSessionService;
 import com.indigo.security.core.*;
+import com.indigo.security.service.DefaultAuthenticationService;
 import com.indigo.security.interceptor.UserContextInterceptor;
 import com.indigo.security.interceptor.UserContextWebFluxFilter;
-import com.indigo.security.service.DefaultAuthenticationService;
 import com.indigo.security.view.OAuth2ViewHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -33,7 +33,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  */
 @Slf4j
 @AutoConfiguration
-@ConditionalOnClass({UserSessionService.class})
+@ConditionalOnProperty(prefix = "synapse.security", name = "enabled", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties(SecurityProperties.class)
 @ComponentScan(basePackages = {
     "com.indigo.security.service",
@@ -52,24 +52,37 @@ public class SecurityAutoConfiguration {
     }
 
     /**
-     * Token管理服务
+     * Token管理服务（依赖 UserSessionService）
      */
     @Bean
     @ConditionalOnMissingBean
+    @ConditionalOnBean(UserSessionService.class)
     public TokenManager tokenManager(UserSessionService userSessionService) {
         log.info("初始化Token管理服务");
         return new TokenManager(userSessionService);
     }
 
     /**
-     * 权限管理服务
+     * 权限管理服务（依赖 UserSessionService）
      */
     @Bean
     @Primary
     @ConditionalOnMissingBean(StpInterface.class)
+    @ConditionalOnBean(UserSessionService.class)
     public PermissionManager permissionManager(UserSessionService userSessionService) {
         log.info("初始化权限管理服务");
         return new PermissionManager(userSessionService);
+    }
+
+    /**
+     * 认证服务（默认版本）
+     */
+    @Bean
+    @Primary
+    @ConditionalOnMissingBean(AuthenticationService.class)
+    public AuthenticationService authenticationService() {
+        log.info("初始化认证服务（默认版本）");
+        return new DefaultAuthenticationService();
     }
 
     /**
@@ -96,11 +109,22 @@ public class SecurityAutoConfiguration {
     }
 
     /**
-     * WebMVC环境配置
+     * 用户上下文拦截器Bean
+     */
+    @Bean
+    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+    @ConditionalOnBean(UserSessionService.class)
+    public UserContextInterceptor userContextInterceptor(UserSessionService userSessionService) {
+        return new UserContextInterceptor(userSessionService);
+    }
+
+    /**
+     * WebMVC环境配置（依赖 UserSessionService）
      */
     @Configuration
     @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
     @ConditionalOnMissingClass("org.springframework.web.reactive.config.WebFluxConfigurer")
+    @ConditionalOnBean(UserSessionService.class)
     public static class WebMvcConfiguration implements WebMvcConfigurer {
 
         private final UserContextInterceptor userContextInterceptor;

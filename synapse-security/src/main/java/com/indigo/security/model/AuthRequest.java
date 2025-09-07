@@ -26,22 +26,22 @@ public class AuthRequest {
     /**
      * 用户名密码认证信息
      */
-    private UsernamePasswordAuth usernamePasswordAuth;
+    private com.indigo.security.model.UsernamePasswordAuth usernamePasswordAuth;
 
     /**
      * Token认证信息
      */
-    private TokenAuth tokenAuth;
+    private com.indigo.security.model.TokenAuth tokenAuth;
 
     /**
      * OAuth2.0认证信息
      */
-    private OAuth2Auth oauth2Auth;
+    private com.indigo.security.model.OAuth2Auth oauth2Auth;
 
     /**
      * 刷新Token认证信息
      */
-    private RefreshTokenAuth refreshTokenAuth;
+    private com.indigo.security.model.RefreshTokenAuth refreshTokenAuth;
 
     /**
      * 用户ID（由业务模块传入）
@@ -106,7 +106,7 @@ public class AuthRequest {
     /**
      * 获取用户名密码认证信息
      */
-    public UsernamePasswordAuth getUsernamePasswordAuth() {
+    public com.indigo.security.model.UsernamePasswordAuth getUsernamePasswordAuth() {
         if (authType == AuthType.USERNAME_PASSWORD) {
             return usernamePasswordAuth;
         }
@@ -116,7 +116,7 @@ public class AuthRequest {
     /**
      * 获取Token认证信息
      */
-    public TokenAuth getTokenAuth() {
+    public com.indigo.security.model.TokenAuth getTokenAuth() {
         if (authType == AuthType.TOKEN_VALIDATION) {
             return tokenAuth;
         }
@@ -126,7 +126,7 @@ public class AuthRequest {
     /**
      * 获取OAuth2认证信息
      */
-    public OAuth2Auth getOauth2Auth() {
+    public com.indigo.security.model.OAuth2Auth getOauth2Auth() {
         if (authType == AuthType.OAUTH2_AUTHORIZATION_CODE || 
             authType == AuthType.OAUTH2_CLIENT_CREDENTIALS) {
             return oauth2Auth;
@@ -137,7 +137,7 @@ public class AuthRequest {
     /**
      * 获取刷新Token认证信息
      */
-    public RefreshTokenAuth getRefreshTokenAuth() {
+    public com.indigo.security.model.RefreshTokenAuth getRefreshTokenAuth() {
         if (authType == AuthType.REFRESH_TOKEN) {
             return refreshTokenAuth;
         }

@@ -1,7 +1,5 @@
 package com.indigo.databases.config;
 
-import cn.dev33.satoken.stp.StpUtil;
-import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.IdType;
@@ -11,18 +9,24 @@ import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.BlockAttackInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
-import com.indigo.core.constants.CommonConstants;
 import com.indigo.core.context.UserContext;
 import com.indigo.databases.dynamic.DynamicDataSourceContextHolder;
 import com.indigo.databases.enums.DatabaseType;
 import com.indigo.databases.interceptor.AutoDataSourceInterceptor;
 import lombok.extern.slf4j.Slf4j;
+import org.mybatis.spring.annotation.MapperScan;
 import org.apache.ibatis.reflection.MetaObject;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.mybatis.spring.SqlSessionFactoryBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+import javax.sql.DataSource;
 
 import java.time.LocalDateTime;
 
@@ -35,6 +39,7 @@ import java.time.LocalDateTime;
 @Slf4j
 @Configuration
 @EnableTransactionManagement
+@MapperScan(basePackages = "com.indigo.**.repository.mapper")
 public class MybatisPlusConfig {
 
     private final AutoDataSourceInterceptor autoDataSourceInterceptor;
@@ -118,6 +123,25 @@ public class MybatisPlusConfig {
     }
 
     /**
+     * 配置SqlSessionFactory
+     */
+    @Bean
+    @Primary
+    public SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception {
+        SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
+        factoryBean.setDataSource(dataSource);
+        
+        // 设置MyBatis-Plus插件
+        factoryBean.setPlugins(mybatisPlusInterceptor());
+        
+        // 设置mapper XML文件位置
+        PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+        factoryBean.setMapperLocations(resolver.getResources("classpath*:mapper/**/*.xml"));
+        
+        return factoryBean.getObject();
+    }
+
+    /**
      * 手动注册 MetaObjectHandler Bean
      */
     @Bean
@@ -126,6 +150,7 @@ public class MybatisPlusConfig {
         log.info("手动注册 MetaObjectHandler Bean");
         return new MyMetaObjectHandler();
     }
+
 }
 
 /**

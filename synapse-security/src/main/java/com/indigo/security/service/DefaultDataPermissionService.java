@@ -5,6 +5,7 @@ import com.indigo.security.model.DataPermissionRule;
 import com.indigo.core.context.UserContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@ConditionalOnBean(CacheService.class)
 public class DefaultDataPermissionService implements DataPermissionService {
 
     private static final String RULE_CACHE_PREFIX = "data_permission_rule:";
