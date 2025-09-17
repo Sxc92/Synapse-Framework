@@ -21,6 +21,7 @@
         <jackson.version>2.16.1</jackson.version>
         <slf4j.version>2.0.11</slf4j.version>
         <dynamic-datasource.version>4.3.1</dynamic-datasource.version>
+        <seata.version>1.8.0</seata.version>
     </properties>
 
 
@@ -184,6 +185,25 @@
                 <groupId>com.indigo</groupId>
                 <artifactId>synapse-events</artifactId>
                 <version>1.0.0</version>
+            </dependency>
+
+            <!-- Seata 版本管理 -->
+            <dependency>
+                <groupId>io.seata</groupId>
+                <artifactId>seata-core</artifactId>
+                <version>${seata.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>io.seata</groupId>
+                <artifactId>seata-rm-datasource</artifactId>
+                <version>${seata.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>io.seata</groupId>
+                <artifactId>seata-spring-boot-starter</artifactId>
+                <version>${seata.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

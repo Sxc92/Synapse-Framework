@@ -1,5 +1,4 @@
-package com.indigo.security.model;
-
+package com.indigo.security.model.auth;
 import lombok.Builder;
 import lombok.Data;
 

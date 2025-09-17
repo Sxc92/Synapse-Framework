@@ -76,10 +76,30 @@ public class UserContext {
      */
     private String deptName;
 
-    // /**
-    //  * 角色ID数组
-    //  */
-    // private String[] roleIds;
+    /**
+     * 部门路径
+     */
+    private String deptPath;
+
+    /**
+     * 职级ID
+     */
+    private String positionId;
+
+    /**
+     * 职级名称
+     */
+    private String positionName;
+
+    /**
+     * 职级等级
+     */
+    private Integer positionLevel;
+
+    /**
+     * 用户部门职级信息列表
+     */
+    private List<UserDeptPositionInfo> deptPositions;
 
     /**
      * 角色列表
@@ -174,5 +194,94 @@ public class UserContext {
     public static String getCurrentTenantId() {
         UserContext userContext = getCurrentUser();
         return userContext != null ? userContext.getTenantId() : null;
+    }
+
+    /**
+     * 获取当前用户部门ID
+     *
+     * @return 部门ID，如果没有当前用户则返回null
+     */
+    public static String getCurrentDeptId() {
+        UserContext userContext = getCurrentUser();
+        return userContext != null ? userContext.getDeptId() : null;
+    }
+
+    /**
+     * 获取当前用户职级ID
+     *
+     * @return 职级ID，如果没有当前用户则返回null
+     */
+    public static String getCurrentPositionId() {
+        UserContext userContext = getCurrentUser();
+        return userContext != null ? userContext.getPositionId() : null;
+    }
+
+    /**
+     * 获取当前用户职级等级
+     *
+     * @return 职级等级，如果没有当前用户则返回null
+     */
+    public static Integer getCurrentPositionLevel() {
+        UserContext userContext = getCurrentUser();
+        return userContext != null ? userContext.getPositionLevel() : null;
+    }
+
+    /**
+     * 用户部门职级信息
+     */
+    @Data
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class UserDeptPositionInfo {
+        /**
+         * 部门ID
+         */
+        private String deptId;
+
+        /**
+         * 部门名称
+         */
+        private String deptName;
+
+        /**
+         * 部门路径
+         */
+        private String deptPath;
+
+        /**
+         * 职级ID
+         */
+        private String positionId;
+
+        /**
+         * 职级名称
+         */
+        private String positionName;
+
+        /**
+         * 职级等级
+         */
+        private Integer level;
+
+        /**
+         * 是否为主部门职级
+         */
+        private Boolean isPrimary;
+
+        /**
+         * 开始时间
+         */
+        private String startDate;
+
+        /**
+         * 结束时间
+         */
+        private String endDate;
+
+        /**
+         * 状态
+         */
+        private Integer status;
     }
 }

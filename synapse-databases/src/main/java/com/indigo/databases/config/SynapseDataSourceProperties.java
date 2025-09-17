@@ -48,6 +48,11 @@ public class SynapseDataSourceProperties {
     private FailoverConfig failover = new FailoverConfig();
 
     /**
+     * Seata分布式事务配置
+     */
+    private SeataConfig seata = new SeataConfig();
+
+    /**
      * 数据源配置
      */
     private Map<String, DataSourceConfig> datasources = new LinkedHashMap<>();
@@ -606,5 +611,41 @@ public class SynapseDataSourceProperties {
         public boolean getPoolPreparedStatements() {
             return poolPreparedStatements;
         }
+    }
+
+    /**
+     * Seata分布式事务配置
+     */
+    @Data
+    public static class SeataConfig {
+        /**
+         * 是否启用Seata
+         */
+        private boolean enabled = false;
+        
+        /**
+         * 是否启用数据源代理
+         */
+        private boolean datasourceProxy = true;
+        
+        /**
+         * 是否启用全局事务扫描
+         */
+        private boolean globalTransactionScan = true;
+        
+        /**
+         * 扫描包路径
+         */
+        private List<String> scanPackages = new ArrayList<>();
+        
+        /**
+         * 排除扫描的包路径
+         */
+        private List<String> excludePackages = new ArrayList<>();
+        
+        /**
+         * 延迟初始化时间（毫秒）
+         */
+        private int delayInitMs = 1000;
     }
 } 

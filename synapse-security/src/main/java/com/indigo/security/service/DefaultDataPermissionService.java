@@ -216,6 +216,12 @@ public class DefaultDataPermissionService implements DataPermissionService {
             case DEPARTMENT:
                 cacheKey = DEPT_RULES_CACHE_PREFIX + rule.getSubjectId();
                 break;
+            case POSITION:
+                // TODO: 实现职级权限规则缓存
+                break;
+            case DEPT_POSITION:
+                // TODO: 实现部门职级组合权限规则缓存
+                break;
         }
 
         if (cacheKey != null) {
@@ -241,6 +247,12 @@ public class DefaultDataPermissionService implements DataPermissionService {
                 break;
             case DEPARTMENT:
                 cacheKey = DEPT_RULES_CACHE_PREFIX + rule.getSubjectId();
+                break;
+            case POSITION:
+                // TODO: 实现职级权限规则缓存清理
+                break;
+            case DEPT_POSITION:
+                // TODO: 实现部门职级组合权限规则缓存清理
                 break;
         }
 

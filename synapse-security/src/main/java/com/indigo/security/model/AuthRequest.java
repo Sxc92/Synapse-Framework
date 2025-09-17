@@ -1,8 +1,13 @@
 package com.indigo.security.model;
 
+import com.indigo.security.model.auth.OAuth2Auth;
+import com.indigo.security.model.auth.RefreshTokenAuth;
+import com.indigo.security.model.auth.TokenAuth;
+import com.indigo.security.model.auth.UsernamePasswordAuth;
 import lombok.Builder;
 import lombok.Data;
-
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
@@ -26,22 +31,22 @@ public class AuthRequest {
     /**
      * 用户名密码认证信息
      */
-    private com.indigo.security.model.UsernamePasswordAuth usernamePasswordAuth;
+    private UsernamePasswordAuth usernamePasswordAuth;
 
     /**
      * Token认证信息
      */
-    private com.indigo.security.model.TokenAuth tokenAuth;
+    private TokenAuth tokenAuth;
 
     /**
      * OAuth2.0认证信息
      */
-    private com.indigo.security.model.OAuth2Auth oauth2Auth;
+    private OAuth2Auth oauth2Auth;
 
     /**
      * 刷新Token认证信息
      */
-    private com.indigo.security.model.RefreshTokenAuth refreshTokenAuth;
+    private RefreshTokenAuth refreshTokenAuth;
 
     /**
      * 用户ID（由业务模块传入）
@@ -57,6 +62,11 @@ public class AuthRequest {
      * 用户权限列表（由业务模块传入）
      */
     private List<String> permissions;
+
+    /**
+     * 用户部门职级信息（由业务模块传入）
+     */
+    private List<UserDeptPositionInfo> deptPositions;
 
     /**
      * 认证类型枚举
@@ -106,7 +116,7 @@ public class AuthRequest {
     /**
      * 获取用户名密码认证信息
      */
-    public com.indigo.security.model.UsernamePasswordAuth getUsernamePasswordAuth() {
+    public com.indigo.security.model.auth.UsernamePasswordAuth getUsernamePasswordAuth() {
         if (authType == AuthType.USERNAME_PASSWORD) {
             return usernamePasswordAuth;
         }
@@ -116,7 +126,7 @@ public class AuthRequest {
     /**
      * 获取Token认证信息
      */
-    public com.indigo.security.model.TokenAuth getTokenAuth() {
+    public com.indigo.security.model.auth.TokenAuth getTokenAuth() {
         if (authType == AuthType.TOKEN_VALIDATION) {
             return tokenAuth;
         }
@@ -126,7 +136,7 @@ public class AuthRequest {
     /**
      * 获取OAuth2认证信息
      */
-    public com.indigo.security.model.OAuth2Auth getOauth2Auth() {
+    public com.indigo.security.model.auth.OAuth2Auth getOauth2Auth() {
         if (authType == AuthType.OAUTH2_AUTHORIZATION_CODE || 
             authType == AuthType.OAUTH2_CLIENT_CREDENTIALS) {
             return oauth2Auth;
@@ -137,7 +147,7 @@ public class AuthRequest {
     /**
      * 获取刷新Token认证信息
      */
-    public com.indigo.security.model.RefreshTokenAuth getRefreshTokenAuth() {
+    public com.indigo.security.model.auth.RefreshTokenAuth getRefreshTokenAuth() {
         if (authType == AuthType.REFRESH_TOKEN) {
             return refreshTokenAuth;
         }
@@ -177,5 +187,64 @@ public class AuthRequest {
         }
         
         return true;
+    }
+
+    /**
+     * 用户部门职级信息
+     */
+    @Data
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class UserDeptPositionInfo {
+        /**
+         * 部门ID
+         */
+        private String deptId;
+
+        /**
+         * 部门名称
+         */
+        private String deptName;
+
+        /**
+         * 部门路径
+         */
+        private String deptPath;
+
+        /**
+         * 职级ID
+         */
+        private String positionId;
+
+        /**
+         * 职级名称
+         */
+        private String positionName;
+
+        /**
+         * 职级等级
+         */
+        private Integer level;
+
+        /**
+         * 是否为主部门职级
+         */
+        private Boolean isPrimary;
+
+        /**
+         * 开始时间
+         */
+        private String startDate;
+
+        /**
+         * 结束时间
+         */
+        private String endDate;
+
+        /**
+         * 状态
+         */
+        private Integer status;
     }
 } 

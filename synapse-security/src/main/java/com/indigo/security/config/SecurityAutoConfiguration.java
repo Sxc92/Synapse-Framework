@@ -6,7 +6,6 @@ import cn.dev33.satoken.stp.StpInterface;
 import com.indigo.cache.session.UserSessionService;
 import com.indigo.security.core.*;
 import com.indigo.security.service.DefaultAuthenticationService;
-import com.indigo.security.interceptor.UserContextInterceptor;
 import com.indigo.security.interceptor.UserContextWebFluxFilter;
 import com.indigo.security.view.OAuth2ViewHandler;
 import lombok.extern.slf4j.Slf4j;
@@ -20,8 +19,6 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.web.reactive.config.WebFluxConfigurer;
 
 import jakarta.annotation.PostConstruct;
-import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
  * 安全配置自动装配类
@@ -106,43 +103,6 @@ public class SecurityAutoConfiguration {
     public SaOAuth2Template saOAuth2Template() {
         log.info("初始化OAuth2.0模板");
         return new SaOAuth2Template();
-    }
-
-    /**
-     * 用户上下文拦截器Bean
-     */
-    @Bean
-    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-    @ConditionalOnBean(UserSessionService.class)
-    public UserContextInterceptor userContextInterceptor(UserSessionService userSessionService) {
-        return new UserContextInterceptor(userSessionService);
-    }
-
-    /**
-     * WebMVC环境配置（依赖 UserSessionService）
-     */
-    @Configuration
-    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-    @ConditionalOnMissingClass("org.springframework.web.reactive.config.WebFluxConfigurer")
-    @ConditionalOnBean(UserSessionService.class)
-    public static class WebMvcConfiguration implements WebMvcConfigurer {
-
-        private final UserContextInterceptor userContextInterceptor;
-
-        public WebMvcConfiguration(UserContextInterceptor userContextInterceptor) {
-            this.userContextInterceptor = userContextInterceptor;
-        }
-
-        @Override
-        public void addInterceptors(InterceptorRegistry registry) {
-            // 注册用户上下文拦截器
-            registry.addInterceptor(userContextInterceptor)
-                    .addPathPatterns("/**")
-                    .excludePathPatterns("/login", "/error", "/static/**", "/public/**")
-                    .order(1);
-            
-            log.info("用户上下文拦截器已注册");
-        }
     }
 
     /**

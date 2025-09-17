@@ -28,6 +28,16 @@ public class DataPermissionRule {
     private String ruleName;
 
     /**
+     * 权限编码（支持通配符）
+     * 示例：
+     * - user:*          所有用户权限
+     * - user:read       用户查看权限
+     * - order:approve   订单审批权限
+     * - finance:*       所有财务权限
+     */
+    private String permissionCode;
+
+    /**
      * 规则类型
      */
     private RuleType ruleType;
@@ -63,6 +73,17 @@ public class DataPermissionRule {
     private String customScope;
 
     /**
+     * 数据范围SQL表达式
+     * 支持动态参数：
+     * - #{userId}       当前用户ID
+     * - #{deptId}       当前用户部门ID
+     * - #{positionId}   当前用户职级ID
+     * - #{deptPath}     当前用户部门路径
+     * - #{positionLevel} 当前用户职级等级
+     */
+    private String dataScopeExpression;
+
+    /**
      * 规则条件（JSON格式）
      */
     private Map<String, Object> conditions;
@@ -76,6 +97,11 @@ public class DataPermissionRule {
      * 是否启用
      */
     private Boolean enabled;
+
+    /**
+     * 规则描述
+     */
+    private String description;
 
     /**
      * 规则类型枚举
@@ -106,7 +132,15 @@ public class DataPermissionRule {
         /**
          * 部门
          */
-        DEPARTMENT
+        DEPARTMENT,
+        /**
+         * 职级
+         */
+        POSITION,
+        /**
+         * 部门职级组合
+         */
+        DEPT_POSITION
     }
 
     /**
@@ -147,6 +181,10 @@ public class DataPermissionRule {
          * 本部门及下级部门数据
          */
         DEPARTMENT_AND_BELOW,
+        /**
+         * 本职级及下级职级数据
+         */
+        POSITION_AND_BELOW,
         /**
          * 仅本人数据
          */

@@ -42,7 +42,22 @@ public class SqlMethodInterceptor implements InvocationHandler {
     
     @PostConstruct
     public void init() {
+        // 延迟初始化，避免与Seata扫描冲突
+        try {
+            // 检查是否存在Seata相关类
+            Class.forName("io.seata.spring.annotation.GlobalTransactional");
+            log.info("检测到Seata环境，延迟初始化ApplicationContext");
+            // 延迟1秒初始化，让Seata先完成扫描
+            Thread.sleep(1000);
+        } catch (ClassNotFoundException e) {
+            log.debug("未检测到Seata环境，正常初始化");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("延迟初始化被中断");
+        }
+        
         staticApplicationContext = this.applicationContext;
+        log.info("SqlMethodInterceptor ApplicationContext 初始化完成");
     }
     
     @Override
