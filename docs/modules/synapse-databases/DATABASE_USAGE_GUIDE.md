@@ -1,25 +1,31 @@
-# Synapse Framework 数据库模块使用指南 🚀
+# Synapse Framework 数据库模块使用指�?🚀
 
 > 这不是一个枯燥的API文档，而是一个真正能帮你写出优雅代码的实用指南！
 
 ## 目录
-- [快速开始](#快速开始)
-- [单表操作](#单表操作)
+- [快速开始](#快速开�?
+- [基础配置](#基础配置)
+- [实体类设计](#实体类设�?
+- [Repository层开发](#repository层开�?
+- [查询条件构建](#查询条件构建)
+- [分页查询](#分页查询)
 - [多表关联查询](#多表关联查询)
-- [高级查询技巧](#高级查询技巧)
+- [聚合统计查询](#聚合统计查询)
+- [性能优化查询](#性能优化查询)
+- [动态数据源](#动态数据源)
 - [实际项目示例](#实际项目示例)
-- [性能优化](#性能优化)
+- [最佳实践](#最佳实�?
 - [常见问题](#常见问题)
 
 ---
 
-## 快速开始
+## 快速开�?
 
-### 为什么选择 Synapse Framework？
+### 为什么选择 Synapse Framework�?
 
 想象一下，你不需要写这样的代码：
 ```java
-// 传统方式 - 繁琐且容易出错
+// 传统方式 - 繁琐且容易出�?
 QueryWrapper<User> wrapper = new QueryWrapper<>();
 wrapper.eq("username", username);
 wrapper.eq("status", 1);
@@ -29,34 +35,250 @@ wrapper.orderByDesc("create_time");
 List<User> users = userService.list(wrapper);
 ```
 
-而是这样：
+而是这样�?
 ```java
-// Synapse 方式 - 简洁优雅
+// Synapse 方式 - 简洁优�?
 UserQueryDTO query = new UserQueryDTO();
 query.setUsername(username);
 query.setStatus(1);
 query.setStartTime(startTime);
 query.setEndTime(endTime);
-query.setOrderByList(Arrays.asList(new OrderBy("create_time", "DESC")));
+query.setOrderByList(Arrays.asList(new PageDTO.OrderBy("create_time", "DESC")));
 
 List<User> users = userRepository.listWithDTO(query);
 ```
 
-**这就是 Synapse 的魅力！** 🎯
+**这就�?Synapse 的魅力！** 🎯
+
+### 核心特�?
+
+- 🚀 **开箱即�?* - 继承 `BaseRepository` 即可获得所�?MyBatis-Plus 功能
+- 🎯 **智能查询** - 基于注解的自动查询条件构�?
+- 📊 **多种分页** - 支持基础分页、聚合分页、性能监控分页
+- 🔗 **多表关联** - 支持 INNER、LEFT、RIGHT、FULL JOIN
+- �?**性能优化** - 内置查询性能监控和优化建�?
+- 🛡�?**企业�?* - 动态数据源、审计功能、事务管�?
 
 ---
 
-## 单表操作
+## 基础配置
 
-### 1. 基础 CRUD - 开箱即用
+### 1. Maven 依赖
+
+```xml
+<dependency>
+    <groupId>com.indigo</groupId>
+    <artifactId>synapse-databases</artifactId>
+    <version>1.0.0</version>
+</dependency>
+```
+
+### 2. 配置文件
+
+```yaml
+# application.yml
+synapse:
+  datasource:
+    mybatis-plus:
+      configuration:
+        log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+        map-underscore-to-camel-case: true
+        cache-enabled: true
+        lazy-loading-enabled: true
+      global-config:
+        banner: false
+        enable-sql-runner: false
+        enable-meta-object-handler: true
+        enable-sql-injector: true
+        enable-pagination: true
+        enable-optimistic-locker: true
+        enable-block-attack: true
+      type-aliases-package: com.indigo.**.entity
+      mapper-locations: "classpath*:mapper/**/*.xml"
+    primary: master1
+    dynamic-data-source:
+      strict: false
+      seata: false
+      p6spy: false
+      datasource:
+        master1:
+          type: MYSQL
+          host: localhost
+          port: 3306
+          database: synapse_iam
+          username: root
+          password: your_password
+          pool-type: HIKARI
+          params:
+            useUnicode: "true"
+            characterEncoding: "utf8"
+            useSSL: "false"
+            serverTimezone: "Asia/Shanghai"
+          hikari:
+            minimum-idle: 5
+            maximum-pool-size: 15
+            idle-timeout: 30000
+            max-lifetime: 1800000
+            connection-timeout: 30000
+            connection-test-query: "SELECT 1"
+```
+
+### 3. 启动类配�?
 
 ```java
-// 你的 Repository 接口
-public interface UserRepository extends BaseRepository<User, UserMapper> {
-    // 什么都不用写！所有基础功能都有了
+@SpringBootApplication
+@EnableSynapseDatabases  // 启用 Synapse 数据库模�?
+public class Application {
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
+    }
+}
+```
+
+---
+
+## 实体类设�?
+
+### 1. 基础实体�?
+
+```java
+// 基础实体�?- 包含主键
+@Data
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
+@Accessors(chain = true)
+public class BaseEntity<T> implements Serializable {
+    @TableId(type = IdType.ASSIGN_ID)
+    private T id;
 }
 
-// 使用示例
+// 创建审计实体�?- 包含创建信息
+@Data
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
+@Accessors(chain = true)
+@EqualsAndHashCode(callSuper = true)
+public class CreatedEntity<T> extends BaseEntity<T> {
+    @TableField(fill = FieldFill.INSERT, value = "create_time")
+    private LocalDateTime createTime;
+    
+    @TableField(fill = FieldFill.INSERT_UPDATE, value = "create_user")
+    private T createUser;
+}
+
+// 完整审计实体�?- 包含创建和修改信�?
+@Data
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
+@Accessors(chain = true)
+@EqualsAndHashCode(callSuper = true)
+public class AuditEntity<T> extends CreatedEntity<T> {
+    @Version
+    private Integer revision;
+    
+    @TableLogic(delval = "0", value = "1")
+    private Boolean deleted;
+    
+    @TableField(fill = FieldFill.INSERT, value = "modify_time")
+    private LocalDateTime modifyTime;
+    
+    @TableField(fill = FieldFill.INSERT_UPDATE, value = "modify_user")
+    private T modifyUser;
+}
+```
+
+### 2. 业务实体类示�?
+
+```java
+// 用户实体�?
+@Data
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
+@Accessors(chain = true)
+@EqualsAndHashCode(callSuper = true)
+@TableName("sys_user")
+public class User extends AuditEntity<String> {
+    
+    @QueryCondition(type = QueryCondition.QueryType.LIKE)
+    private String username;
+    
+    private String password;
+    
+    @QueryCondition(type = QueryCondition.QueryType.EQ)
+    private Integer status;
+    
+    @QueryCondition(type = QueryCondition.QueryType.EQ)
+    private Boolean locked;
+    
+    @QueryCondition(type = QueryCondition.QueryType.EQ)
+    private Boolean enabled;
+    
+    @QueryCondition(type = QueryCondition.QueryType.EQ)
+    private Boolean expired;
+    
+    @QueryCondition(type = QueryCondition.QueryType.GE, field = "last_login_time")
+    private LocalDateTime lastLoginTime;
+}
+```
+
+### 3. 查询 DTO 设计
+
+```java
+// 用户查询 DTO
+@Data
+@EqualsAndHashCode(callSuper = true)
+public class UserQueryDTO extends PageDTO {
+    
+    @QueryCondition(type = QueryCondition.QueryType.LIKE)
+    private String username;
+    
+    @QueryCondition(type = QueryCondition.QueryType.EQ)
+    private Integer status;
+    
+    @QueryCondition(type = QueryCondition.QueryType.EQ)
+    private Boolean locked;
+    
+    @QueryCondition(type = QueryCondition.QueryType.EQ)
+    private Boolean enabled;
+    
+    @QueryCondition(type = QueryCondition.QueryType.GE, field = "create_time")
+    private LocalDateTime startTime;
+    
+    @QueryCondition(type = QueryCondition.QueryType.LE, field = "create_time")
+    private LocalDateTime endTime;
+    
+    @QueryCondition(type = QueryCondition.QueryType.IN)
+    private List<Long> deptIds;
+}
+```
+
+---
+
+## Repository层开�?
+
+### 1. 基础 Repository 接口
+
+```java
+// 用户 Repository 接口
+@AutoRepository
+public interface UserRepository extends BaseRepository<User, UserMapper> {
+    // 什么都不用写！所有基础功能都有�?
+    // 继承 BaseRepository 即可获得�?
+    // - 所�?MyBatis-Plus IService 方法
+    // - 自动查询条件构建
+    // - 多种分页查询方式
+    // - 聚合统计查询
+    // - 性能监控查询
+}
+```
+
+### 2. 基础 CRUD 操作
+
+```java
 @Service
 public class UserService {
     
@@ -65,12 +287,12 @@ public class UserService {
     
     // 插入 - 自动填充审计字段
     public void createUser(User user) {
-        userRepository.save(user); // 自动设置 createTime, updateTime, createBy 等
+        userRepository.save(user); // 自动设置 createTime, updateTime, createBy �?
     }
     
     // 批量插入 - 性能优化
     public void batchCreateUsers(List<User> users) {
-        userRepository.saveBatch(users, 1000); // 分批插入，避免内存溢出
+        userRepository.saveBatch(users, 1000); // 分批插入，避免内存溢�?
     }
     
     // 更新 - 自动填充 updateTime
@@ -79,19 +301,86 @@ public class UserService {
     }
     
     // 删除 - 逻辑删除
-    public void deleteUser(Long id) {
+    public void deleteUser(String id) {
         userRepository.removeById(id); // 自动设置 deleted = 1
+    }
+    
+    // 根据ID查询
+    public User getUserById(String id) {
+        return userRepository.getById(id);
+    }
+    
+    // 批量查询
+    public List<User> getUsersByIds(List<String> ids) {
+        return userRepository.listByIds(ids);
     }
 }
 ```
 
-### 2. 智能查询 - 告别 QueryWrapper
+### 3. 自定义查询方�?
+
+```java
+@AutoRepository
+public interface UserRepository extends BaseRepository<User, UserMapper> {
+    
+    // 自定义查询方�?- 使用 @Select 注解
+    @Select("SELECT * FROM sys_user WHERE username = #{username}")
+    User findByUsername(@Param("username") String username);
+    
+    // 动态查�?- 使用 @Select �?<script> 标签
+    @Select("""
+        <script>
+        SELECT * FROM sys_user 
+        <where>
+            deleted = 0
+            <if test="username != null and username != ''">
+                AND username LIKE CONCAT('%', #{username}, '%')
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+        </script>
+        """)
+    List<User> findUsersWithDynamicCondition(@Param("username") String username, 
+                                            @Param("status") Integer status);
+}
+```
+
+---
+
+## 查询条件构建
+
+### 1. @QueryCondition 注解详解
+
+```java
+// 支持的查询类�?
+public enum QueryType {
+    EQ,           // 等于 (=)
+    NE,           // 不等�?(!=)
+    LIKE,         // 模糊查询 (LIKE '%value%')
+    LIKE_LEFT,    // 左模�?(LIKE '%value')
+    LIKE_RIGHT,   // 右模�?(LIKE 'value%')
+    GT,           // 大于 (>)
+    GE,           // 大于等于 (>=)
+    LT,           // 小于 (<)
+    LE,           // 小于等于 (<=)
+    IN,           // IN查询 (IN (...))
+    NOT_IN,       // NOT IN查询 (NOT IN (...))
+    BETWEEN,      // 范围查询 (BETWEEN ... AND ...)
+    IS_NULL,      // IS NULL
+    IS_NOT_NULL   // IS NOT NULL
+}
+```
+
+### 2. 自动查询条件构建
 
 ```java
 // 传统方式 vs Synapse 方式
 public class UserService {
     
-    // ❌ 传统方式 - 手写 QueryWrapper
+    // �?传统方式 - 手写 QueryWrapper
     public List<User> findUsersOld(String username, Integer status, Date startTime) {
         QueryWrapper<User> wrapper = new QueryWrapper<>();
         if (StrUtil.isNotBlank(username)) {
@@ -106,19 +395,23 @@ public class UserService {
         return userRepository.list(wrapper);
     }
     
-    // ✅ Synapse 方式 - 自动构建查询条件
+    // �?Synapse 方式 - 自动构建查询条件
     public List<User> findUsersNew(String username, Integer status, Date startTime) {
         UserQueryDTO query = new UserQueryDTO();
         query.setUsername(username);
         query.setStatus(status);
         query.setStartTime(startTime);
         
-        return userRepository.listWithDTO(query); // 自动构建 QueryWrapper！
+        return userRepository.listWithDTO(query); // 自动构建 QueryWrapper�?
     }
 }
 ```
 
-### 3. 分页查询 - 一行代码搞定
+---
+
+## 分页查询
+
+### 1. 基础分页查询
 
 ```java
 public class UserService {
@@ -140,10 +433,10 @@ public class UserService {
         query.setPageNo(pageNo);
         query.setPageSize(pageSize);
         
-        // 支持多字段排序
+        // 支持多字段排�?
         query.setOrderByList(Arrays.asList(
-            new OrderBy("status", "ASC"),      // 先按状态升序
-            new OrderBy("create_time", "DESC") // 再按创建时间降序
+            new PageDTO.OrderBy("status", "ASC"),      // 先按状态升�?
+            new PageDTO.OrderBy("create_time", "DESC") // 再按创建时间降序
         ));
         
         return userRepository.pageWithCondition(query);
@@ -151,22 +444,38 @@ public class UserService {
 }
 ```
 
+### 2. PageResult 结果对象
+
+```java
+// 分页结果对象
+@Data
+public class PageResult<T> {
+    private List<T> records;     // 数据列表
+    private Long total;          // 总记录数
+    private Long current;        // 当前页码
+    private Long size;           // 每页大小
+    private Long pages;          // 总页�?
+    private Boolean hasNext;      // 是否有下一�?
+    private Boolean hasPrevious; // 是否有上一�?
+}
+```
+
 ---
 
 ## 多表关联查询
 
-### 1. 使用框架提供的多表关联
+### 1. 使用框架提供的多表关�?
 
 ```java
 public interface UserRepository extends BaseRepository<User, UserMapper> {
     
-    // 使用框架的 JoinPageDTO - 简单场景
+    // 使用框架�?JoinPageDTO - 简单场�?
     default PageResult<UserJoinResultDTO> pageUsersWithJoin(UserJoinQueryDTO queryDTO) {
         // 配置多表关联
         queryDTO.setTableJoins(Arrays.asList(
-            new TableJoin("sys_department", "d", JoinType.LEFT, "u.dept_id = d.id"),
-            new TableJoin("sys_role", "r", JoinType.LEFT, "u.role_id = r.id"),
-            new TableJoin("sys_user_profile", "p", JoinType.LEFT, "u.id = p.user_id")
+            new JoinPageDTO.TableJoin("sys_department", "d", JoinPageDTO.JoinType.LEFT, "u.dept_id = d.id"),
+            new JoinPageDTO.TableJoin("sys_role", "r", JoinPageDTO.JoinType.LEFT, "u.role_id = r.id"),
+            new JoinPageDTO.TableJoin("sys_user_profile", "p", JoinPageDTO.JoinType.LEFT, "u.id = p.user_id")
         ));
         
         // 设置选择字段
@@ -187,238 +496,251 @@ public interface UserRepository extends BaseRepository<User, UserMapper> {
 }
 ```
 
-### 2. 手写 SQL - 复杂场景的终极武器
+---
+
+## 聚合统计查询
+
+### 1. 基础聚合查询
 
 ```java
 public interface UserRepository extends BaseRepository<User, UserMapper> {
     
-    // 复杂多表关联查询 - 手写 SQL
-    @Select("""
-        SELECT 
-            u.id, u.username, u.email, u.phone, u.status,
-            u.dept_id, u.role_id, u.create_time, u.update_time,
-            d.dept_name, d.dept_code, d.parent_id as dept_parent_id,
-            r.role_name, r.role_code, r.description as role_description,
-            p.real_name, p.avatar, p.address, p.birthday,
-            -- 统计信息
-            COUNT(ul.id) as login_count,
-            MAX(ul.login_time) as last_login_time,
-            COUNT(ua.id) as action_count
-        FROM sys_user u
-        LEFT JOIN sys_department d ON u.dept_id = d.id
-        LEFT JOIN sys_role r ON u.role_id = r.id
-        LEFT JOIN sys_user_profile p ON u.id = p.user_id
-        LEFT JOIN sys_user_login ul ON u.id = ul.user_id 
-            AND ul.login_time >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-        LEFT JOIN sys_user_action ua ON u.id = ua.user_id 
-            AND ua.action_time >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-        WHERE u.deleted = 0 
-            AND u.status = #{status}
-            AND (#{username} IS NULL OR u.username LIKE CONCAT('%', #{username}, '%'))
-            AND (#{deptName} IS NULL OR d.dept_name LIKE CONCAT('%', #{deptName}, '%'))
-        GROUP BY u.id, u.username, u.email, u.phone, u.status,
-                 u.dept_id, u.role_id, u.create_time, u.update_time,
-                 d.dept_name, d.dept_code, d.parent_id,
-                 r.role_name, r.role_code, r.description,
-                 p.real_name, p.avatar, p.address, p.birthday
-        HAVING login_count > 0 OR action_count > 0
-        ORDER BY u.create_time DESC
-        """)
-    List<UserJoinResultDTO> selectUsersWithComplexJoin(@Param("username") String username, 
-                                                       @Param("status") Integer status,
-                                                       @Param("deptName") String deptName);
-    
-    // 递归查询 - 部门层级结构
-    @Select("""
-        WITH RECURSIVE dept_tree AS (
-            -- 获取根部门
-            SELECT id, dept_name, dept_code, parent_id, 0 as level, sort
-            FROM sys_department 
-            WHERE parent_id IS NULL AND deleted = 0
-            
-            UNION ALL
-            
-            -- 递归查询子部门
-            SELECT d.id, d.dept_name, d.dept_code, d.parent_id, dt.level + 1, d.sort
-            FROM sys_department d
-            INNER JOIN dept_tree dt ON d.parent_id = dt.id
-            WHERE d.deleted = 0
-        )
-        SELECT 
-            dt.*,
-            COUNT(u.id) as user_count,
-            SUM(CASE WHEN u.status = 1 THEN 1 ELSE 0 END) as active_user_count
-        FROM dept_tree dt
-        LEFT JOIN sys_user u ON dt.id = u.dept_id AND u.deleted = 0
-        GROUP BY dt.id, dt.dept_name, dt.dept_code, dt.parent_id, dt.level, dt.sort
-        ORDER BY dt.level, dt.sort
-        """)
-    List<Map<String, Object>> selectDeptHierarchyWithUserCount();
+    // 用户行为分析 - 多维度统�?
+    default AggregationPageResult<User> getUserBehaviorAnalysis() {
+        AggregationPageDTO queryDTO = new AggregationPageDTO();
+        
+        // 设置聚合字段
+        queryDTO.setAggregations(Arrays.asList(
+            new AggregationPageDTO.AggregationField("id", AggregationPageDTO.AggregationType.COUNT, "total_users"),
+            new AggregationPageDTO.AggregationField("status", AggregationPageDTO.AggregationType.COUNT, "active_users"),
+            new AggregationPageDTO.AggregationField("create_time", AggregationPageDTO.AggregationType.MAX, "latest_user_time"),
+            new AggregationPageDTO.AggregationField("create_time", AggregationPageDTO.AggregationType.MIN, "earliest_user_time")
+        ));
+        
+        // 设置分组字段
+        queryDTO.setGroupByFields(Arrays.asList("dept_id", "role_id"));
+        
+        return pageWithAggregation(queryDTO);
+    }
 }
 ```
 
-### 3. 动态 SQL - 灵活的条件构建
+### 2. 聚合查询 DTO
 
 ```java
-public interface UserRepository extends BaseRepository<User, UserMapper> {
+// 聚合查询 DTO
+@Data
+@EqualsAndHashCode(callSuper = true)
+public class AggregationPageDTO extends PageDTO {
     
-    // 动态 SQL - 根据条件动态构建查询
-    @Select("""
-        <script>
-        SELECT 
-            u.id, u.username, u.email, u.phone, u.status,
-            u.dept_id, u.role_id, u.create_time, u.update_time,
-            d.dept_name, d.dept_code,
-            r.role_name, r.role_code
-        FROM sys_user u
-        LEFT JOIN sys_department d ON u.dept_id = d.id
-        LEFT JOIN sys_role r ON u.role_id = r.id
-        <where>
-            u.deleted = 0 AND d.deleted = 0 AND r.deleted = 0
-            
-            <if test="username != null and username != ''">
-                AND u.username LIKE CONCAT('%', #{username}, '%')
-            </if>
-            
-            <if test="email != null and email != ''">
-                AND u.email LIKE CONCAT('%', #{email}, '%')
-            </if>
-            
-            <if test="status != null">
-                AND u.status = #{status}
-            </if>
-            
-            <if test="deptIds != null and deptIds.size() > 0">
-                AND u.dept_id IN
-                <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">
-                    #{deptId}
-                </foreach>
-            </if>
-            
-            <if test="roleIds != null and roleIds.size() > 0">
-                AND u.role_id IN
-                <foreach collection="roleIds" item="roleId" open="(" separator="," close=")">
-                    #{roleId}
-                </foreach>
-            </if>
-            
-            <if test="startTime != null">
-                AND u.create_time >= #{startTime}
-            </if>
-            
-            <if test="endTime != null">
-                AND u.create_time <= #{endTime}
-            </if>
-        </where>
+    // 聚合统计字段
+    private List<AggregationField> aggregations;
+    
+    // 分组字段
+    private List<String> groupByFields;
+    
+    @Data
+    public static class AggregationField {
+        private String field;           // 字段�?
+        private AggregationType type;   // 聚合类型
+        private String alias;           // 别名
         
-        <choose>
-            <when test="orderByList != null and orderByList.size() > 0">
-                ORDER BY
-                <foreach collection="orderByList" item="orderBy" separator=",">
-                    ${orderBy.field} ${orderBy.direction}
-                </foreach>
-            </when>
-            <otherwise>
-                ORDER BY u.create_time DESC
-            </otherwise>
-        </choose>
-        </script>
-        """)
-    List<UserJoinResultDTO> selectUsersWithDynamicCondition(UserQueryDTO queryDTO);
+        public AggregationField(String field, AggregationType type) {
+            this.field = field;
+            this.type = type;
+            this.alias = type.name().toLowerCase() + "_" + field;
+        }
+        
+        public AggregationField(String field, AggregationType type, String alias) {
+            this.field = field;
+            this.type = type;
+            this.alias = alias;
+        }
+    }
+    
+    // 聚合类型枚举
+    public enum AggregationType {
+        COUNT,           // 计数
+        SUM,             // 求和
+        AVG,             // 平均�?
+        MAX,             // 最大�?
+        MIN,             // 最小�?
+        COUNT_DISTINCT   // 去重计数
+    }
+}
+```
+
+### 3. 聚合结果对象
+
+```java
+// 聚合分页结果
+@Data
+@EqualsAndHashCode(callSuper = true)
+public class AggregationPageResult<T> extends PageResult<T> {
+    
+    // 聚合统计结果
+    private Map<String, Object> aggregations;
+    
+    // 分组统计结果
+    private List<Map<String, Object>> groupResults;
+    
+    public static <T> AggregationPageResult<T> withAggregations(
+            List<T> records, Long total, Long current, Long size, 
+            Map<String, Object> aggregations) {
+        AggregationPageResult<T> result = new AggregationPageResult<>(records, total, current, size);
+        result.setAggregations(aggregations);
+        return result;
+    }
 }
 ```
 
 ---
 
-## 高级查询技巧
+## 性能优化查询
 
-### 1. 聚合查询 - 数据分析的利器
+### 1. 性能监控查询
 
 ```java
 public interface UserRepository extends BaseRepository<User, UserMapper> {
     
-    // 用户行为分析 - 多维度统计
-    @Select("""
-        SELECT 
-            d.dept_name,
-            r.role_name,
-            COUNT(u.id) as total_users,
-            SUM(CASE WHEN u.status = 1 THEN 1 ELSE 0 END) as active_users,
-            SUM(CASE WHEN u.status = 0 THEN 1 ELSE 0 END) as inactive_users,
-            ROUND(AVG(CASE WHEN u.status = 1 THEN 1 ELSE 0 END) * 100, 2) as active_rate,
-            SUM(CASE WHEN u.create_time >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) as new_users_30d,
-            MAX(u.create_time) as latest_user_time,
-            MIN(u.create_time) as earliest_user_time,
-            -- 登录统计
-            SUM(ul.login_count) as total_logins,
-            ROUND(AVG(ul.login_count), 2) as avg_logins_per_user,
-            -- 行为统计
-            SUM(ua.action_count) as total_actions,
-            COUNT(DISTINCT ua.action_type) as unique_action_types
-        FROM sys_department d
-        LEFT JOIN sys_user u ON d.id = u.dept_id AND u.deleted = 0
-        LEFT JOIN sys_role r ON u.role_id = r.id AND r.deleted = 0
-        LEFT JOIN (
-            SELECT user_id, COUNT(*) as login_count
-            FROM sys_user_login 
-            WHERE login_time >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-            GROUP BY user_id
-        ) ul ON u.id = ul.user_id
-        LEFT JOIN (
-            SELECT user_id, COUNT(*) as action_count, action_type
-            FROM sys_user_action 
-            WHERE action_time >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-            GROUP BY user_id, action_type
-        ) ua ON u.id = ua.user_id
-        WHERE d.deleted = 0
-        GROUP BY d.id, d.dept_name, r.id, r.role_name
-        HAVING total_users > 0
-        ORDER BY total_users DESC, active_rate DESC
-        """)
-    List<Map<String, Object>> selectUserBehaviorAnalysis();
+    // 性能监控查询 - 返回查询执行时间和执行计�?
+    default PerformancePageResult<User> getUserPerformanceAnalysis(UserQueryDTO queryDTO) {
+        PerformancePageDTO performanceDTO = new PerformancePageDTO();
+        
+        // 设置选择字段 - 只查询需要的字段
+        performanceDTO.setSelectFields(Arrays.asList("id", "username", "email", "status", "create_time"));
+        
+        // 设置查询条件
+        performanceDTO.setUsername(queryDTO.getUsername());
+        performanceDTO.setStatus(queryDTO.getStatus());
+        
+        return pageWithPerformance(performanceDTO);
+    }
 }
 ```
 
-### 2. 性能优化查询 - 让数据库飞起来
+### 2. 字段选择优化
 
 ```java
 public interface UserRepository extends BaseRepository<User, UserMapper> {
     
-    // 分页查询优化 - 使用游标分页避免深度分页问题
-    @Select("""
-        SELECT 
-            u.id, u.username, u.email, u.phone, u.status,
-            u.dept_id, u.role_id, u.create_time, u.update_time,
-            d.dept_name, d.dept_code,
-            r.role_name, r.role_code
-        FROM sys_user u
-        LEFT JOIN sys_department d ON u.dept_id = d.id
-        LEFT JOIN sys_role r ON u.role_id = r.id
-        WHERE u.deleted = 0 
-            AND u.id > #{lastId}  -- 游标分页，避免 OFFSET
-            AND u.create_time >= #{startTime}
-        ORDER BY u.id ASC
-        LIMIT #{pageSize}
-        """)
-    List<UserJoinResultDTO> selectUsersWithCursorPagination(@Param("lastId") Long lastId,
-                                                           @Param("pageSize") Integer pageSize,
-                                                           @Param("startTime") Date startTime);
+    // 字段选择查询 - 只查询需要的字段，提高查询性能
+    default PerformancePageResult<User> getUsersOptimized(Integer status, Integer limit) {
+        PerformancePageDTO queryDTO = new PerformancePageDTO();
+        
+        // 只选择必要字段
+        queryDTO.setSelectFields(Arrays.asList("id", "username", "email", "status"));
+        queryDTO.setStatus(status);
+        queryDTO.setPageSize(limit);
+        
+        return pageWithSelectFields(queryDTO);
+    }
+}
+```
+
+### 3. 缓存查询
+
+```java
+public interface UserRepository extends BaseRepository<User, UserMapper> {
     
-    // 字段选择优化 - 只查询需要的字段
-    @Select("""
-        SELECT 
-            u.id, u.username, u.email, u.status,  -- 只选择必要字段
-            d.dept_name, r.role_name               -- 关联表只选择显示字段
-        FROM sys_user u
-        LEFT JOIN sys_department d ON u.dept_id = d.id
-        LEFT JOIN sys_role r ON u.role_id = r.id
-        WHERE u.deleted = 0 
-            AND u.status = #{status}
-        ORDER BY u.create_time DESC
-        LIMIT #{limit}
-        """)
-    List<UserJoinResultDTO> selectUsersOptimized(@Param("status") Integer status, 
-                                                @Param("limit") Integer limit);
+    // 缓存查询 - 支持查询结果缓存
+    default PerformancePageResult<User> getUsersWithCache(UserQueryDTO queryDTO) {
+        PerformancePageDTO performanceDTO = new PerformancePageDTO();
+        
+        // 设置缓存相关参数
+        performanceDTO.setEnableCache(true);
+        performanceDTO.setCacheKey("users:" + queryDTO.hashCode());
+        performanceDTO.setCacheExpire(300); // 5分钟过期
+        
+        return pageWithCache(performanceDTO);
+    }
+}
+```
+
+---
+
+## 动态数据源
+
+### 1. 数据源配�?
+
+```yaml
+synapse:
+  datasource:
+    primary: master1
+    dynamic-data-source:
+      strict: false
+      seata: false
+      p6spy: false
+      datasource:
+        master1:
+          type: MYSQL
+          host: localhost
+          port: 3306
+          database: synapse_iam
+          username: root
+          password: your_password
+          pool-type: HIKARI
+          role: MASTER
+        slave1:
+          type: MYSQL
+          host: localhost
+          port: 3306
+          database: synapse_iam_slave
+          username: root
+          password: your_password
+          pool-type: HIKARI
+          role: SLAVE
+```
+
+### 2. 数据源切�?
+
+```java
+public interface UserRepository extends BaseRepository<User, UserMapper> {
+    
+    // 从主库查�?
+    @DS("master1")
+    default List<User> getUsersFromMaster() {
+        return list();
+    }
+    
+    // 从从库查�?
+    @DS("slave1")
+    default List<User> getUsersFromSlave() {
+        return list();
+    }
+    
+    // 编程式切换数据源
+    default List<User> getUsersFromSpecificDataSource(String dataSourceName) {
+        DynamicDataSourceContextHolder.setDataSource(dataSourceName);
+        try {
+            return list();
+        } finally {
+            DynamicDataSourceContextHolder.clearDataSource();
+        }
+    }
+}
+```
+
+### 3. 读写分离
+
+```java
+@Service
+public class UserService {
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    // 写操�?- 自动路由到主�?
+    @Transactional
+    public void createUser(User user) {
+        userRepository.save(user); // 自动路由到主�?
+    }
+    
+    // 读操�?- 自动路由到从�?
+    @Transactional(readOnly = true)
+    public List<User> getUsers() {
+        return userRepository.list(); // 自动路由到从�?
+    }
 }
 ```
 
@@ -433,29 +755,47 @@ public interface UserRepository extends BaseRepository<User, UserMapper> {
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class UserQueryDTO extends PageDTO {
+    @QueryCondition(type = QueryCondition.QueryType.LIKE)
     private String username;
+    
+    @QueryCondition(type = QueryCondition.QueryType.EQ)
     private String email;
+    
+    @QueryCondition(type = QueryCondition.QueryType.EQ)
     private String phone;
+    
+    @QueryCondition(type = QueryCondition.QueryType.EQ)
     private Integer status;
+    
+    @QueryCondition(type = QueryCondition.QueryType.EQ)
     private String deptName;
+    
+    @QueryCondition(type = QueryCondition.QueryType.EQ)
     private String roleName;
+    
+    @QueryCondition(type = QueryCondition.QueryType.GE, field = "create_time")
     private Date startTime;
+    
+    @QueryCondition(type = QueryCondition.QueryType.LE, field = "create_time")
     private Date endTime;
+    
+    @QueryCondition(type = QueryCondition.QueryType.IN)
     private List<Long> deptIds;
+    
+    @QueryCondition(type = QueryCondition.QueryType.IN)
     private List<Long> roleIds;
-    private String realName;
-    private String address;
     
     // 业务字段
     private Integer minOrderCount;      // 最小订单数
     private Integer maxOrderCount;      // 最大订单数
-    private BigDecimal minTotalAmount;  // 最小消费金额
-    private BigDecimal maxTotalAmount;  // 最大消费金额
+    private BigDecimal minTotalAmount;  // 最小消费金�?
+    private BigDecimal maxTotalAmount;  // 最大消费金�?
     private String lastLoginIp;         // 最后登录IP
     private String userLevel;           // 用户等级
 }
 
 // 用户 Repository
+@AutoRepository
 public interface UserRepository extends BaseRepository<User, UserMapper> {
     
     // 电商用户综合查询 - 包含订单、消费、行为等数据
@@ -521,343 +861,59 @@ public interface UserRepository extends BaseRepository<User, UserMapper> {
 
 ---
 
-## 性能优化
-
-### 1. 查询优化技巧
-
-```java
-public interface UserRepository extends BaseRepository<User, UserMapper> {
-    
-    // 索引优化 - 确保查询字段有索引
-    @Select("""
-        -- 建议在以下字段上创建索引：
-        -- CREATE INDEX idx_user_status_create_time ON sys_user(status, create_time);
-        -- CREATE INDEX idx_user_dept_id ON sys_user(dept_id);
-        -- CREATE INDEX idx_user_role_id ON sys_user(role_id);
-        -- CREATE INDEX idx_user_username ON sys_user(username);
-        -- CREATE INDEX idx_user_email ON sys_user(email);
-        
-        SELECT 
-            u.id, u.username, u.email, u.status, u.create_time,
-            d.dept_name, r.role_name
-        FROM sys_user u
-        LEFT JOIN sys_department d ON u.dept_id = d.id
-        LEFT JOIN sys_role r ON u.role_id = r.id
-        WHERE u.deleted = 0 
-            AND u.status = #{status}           -- 使用复合索引 (status, create_time)
-            AND u.create_time >= #{startTime}  -- 范围查询
-        ORDER BY u.create_time DESC            -- 避免文件排序
-        LIMIT #{pageSize}
-        """)
-    List<UserJoinResultDTO> selectUsersOptimized(@Param("status") Integer status,
-                                                @Param("startTime") Date startTime,
-                                                @Param("pageSize") Integer pageSize);
-}
-```
-
-### 2. 缓存策略
-
-```java
-public interface UserRepository extends BaseRepository<User, UserMapper> {
-    
-    // 使用 Redis 缓存热点数据
-    @Cacheable(value = "user", key = "#userId", unless = "#result == null")
-    @Select("""
-        SELECT 
-            u.id, u.username, u.email, u.phone, u.status,
-            u.dept_id, u.role_id, u.create_time, u.update_time,
-            d.dept_name, d.dept_code,
-            r.role_name, r.role_code
-        FROM sys_user u
-        LEFT JOIN sys_department d ON u.dept_id = d.id
-        LEFT JOIN sys_role r ON u.role_id = r.id
-        WHERE u.id = #{userId}
-        """)
-    UserJoinResultDTO selectUserById(@Param("userId") Long userId);
-    
-    // 批量查询优化 - 使用 IN 查询避免 N+1 问题
-    @Select("""
-        SELECT 
-            u.id, u.username, u.email, u.phone, u.status,
-            u.dept_id, u.role_id, u.create_time, u.update_time,
-            d.dept_name, d.dept_code,
-            r.role_name, r.role_code
-        FROM sys_user u
-        LEFT JOIN sys_department d ON u.dept_id = d.id
-        LEFT JOIN sys_role r ON u.role_id = r.id
-        WHERE u.deleted = 0 
-            AND u.id IN
-        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
-            #{userId}
-        </foreach>
-        ORDER BY FIELD(u.id, 
-        <foreach collection="userIds" item="userId" separator=",">
-            #{userId}
-        </foreach>
-        )
-        """)
-    List<UserJoinResultDTO> selectUsersByIds(@Param("userIds") List<Long> userIds);
-    
-    // 分页查询优化 - 使用游标分页避免深度分页问题
-    @Select("""
-        SELECT 
-            u.id, u.username, u.email, u.phone, u.status,
-            u.dept_id, u.role_id, u.create_time, u.update_time,
-            d.dept_name, d.dept_code,
-            r.role_name, r.role_code
-        FROM sys_user u
-        LEFT JOIN sys_department d ON u.dept_id = d.id
-        LEFT JOIN sys_role r ON u.role_id = r.id
-        WHERE u.deleted = 0 
-            AND u.id > #{lastId}  -- 游标分页，避免 OFFSET
-            AND u.create_time >= #{startTime}
-        ORDER BY u.id ASC
-        LIMIT #{pageSize}
-        """)
-    List<UserJoinResultDTO> selectUsersWithCursorPagination(@Param("lastId") Long lastId,
-                                                           @Param("pageSize") Integer pageSize,
-                                                           @Param("startTime") Date startTime);
-}
-
----
-
-## 高级特性
-
-### 1. 动态数据源切换
-
-```java
-public interface UserRepository extends BaseRepository<User, UserMapper> {
-    
-    // 从主库查询
-    @DS("master")
-    default List<User> getUsersFromMaster() {
-        return list();
-    }
-    
-    // 从从库查询
-    @DS("slave")
-    default List<User> getUsersFromSlave() {
-        return list();
-    }
-    
-    // 编程式切换数据源
-    default List<User> getUsersFromSpecificDataSource(String dataSourceName) {
-        DynamicDataSourceContextHolder.setDataSource(dataSourceName);
-        try {
-            return list();
-        } finally {
-            DynamicDataSourceContextHolder.clearDataSource();
-        }
-    }
-}
-```
-
-### 2. 事务管理
-
-```java
-public interface UserRepository extends BaseRepository<User, UserMapper> {
-    
-    // 在 Repository 层管理事务
-    @Transactional(rollbackFor = Exception.class)
-    default void createUserWithProfile(User user, UserProfile profile) {
-        // 保存用户
-        save(user);
-        
-        // 保存用户档案
-        profile.setUserId(user.getId());
-        // 这里需要注入 UserProfileRepository 或者通过 Service 层调用
-        
-        // 如果任何一步失败，整个事务回滚
-    }
-    
-    // 只读事务优化
-    @Transactional(readOnly = true)
-    default List<User> getUsersReadOnly() {
-        return list();
-    }
-}
-```
-
-### 3. 审计功能
-
-```java
-public interface UserRepository extends BaseRepository<User, UserMapper> {
-    
-    // 自动审计字段填充
-    default void createUserWithAudit(User user) {
-        // 继承 BaseEntity 的实体会自动填充：
-        // - createTime: 创建时间
-        // - updateTime: 更新时间  
-        // - createBy: 创建人（从 UserContext 获取）
-        // - updateBy: 更新人（从 UserContext 获取）
-        // - deleted: 逻辑删除标记
-        
-        save(user);
-    }
-    
-    // 查询审计日志
-    @Select("""
-        SELECT 
-            u.id, u.username, u.create_time, u.create_by,
-            u.update_time, u.update_by, u.deleted
-        FROM sys_user u
-        WHERE u.id = #{userId}
-        """)
-    Map<String, Object> getUserAuditInfo(@Param("userId") Long userId);
-}
-```
-
----
-
-## 实际应用场景
-
-### 1. 权限管理系统
-
-```java
-public interface PermissionRepository extends BaseRepository<Permission, PermissionMapper> {
-    
-    // 获取用户权限树
-    @Select("""
-        WITH RECURSIVE permission_tree AS (
-            SELECT 
-                p.id, p.permission_name, p.permission_code, p.permission_type,
-                p.parent_id, p.permission_url, p.permission_method,
-                0 as level, p.sort, p.status
-            FROM sys_permission p
-            INNER JOIN sys_role_permission rp ON p.id = rp.permission_id
-            INNER JOIN sys_user u ON rp.role_id = u.role_id
-            WHERE u.id = #{userId} AND u.deleted = 0 AND p.deleted = 0
-            
-            UNION ALL
-            
-            SELECT 
-                cp.id, cp.permission_name, cp.permission_code, cp.permission_type,
-                cp.parent_id, cp.permission_url, cp.permission_method,
-                pt.level + 1, cp.sort, cp.status
-            FROM sys_permission cp
-            INNER JOIN permission_tree pt ON cp.parent_id = pt.id
-            WHERE cp.deleted = 0
-        )
-        SELECT 
-            pt.*,
-            CASE 
-                WHEN pt.level = 0 THEN 'ROOT'
-                WHEN pt.parent_id IS NULL THEN 'ORPHAN'
-                ELSE 'CHILD'
-            END as node_type
-        FROM permission_tree pt
-        ORDER BY pt.level, pt.sort
-        """)
-    List<Map<String, Object>> getUserPermissionTree(@Param("userId") Long userId);
-    
-    // 检查用户是否有特定权限
-    @Select("""
-        SELECT COUNT(*) > 0 as has_permission
-        FROM sys_user u
-        INNER JOIN sys_role_permission rp ON u.role_id = rp.role_id
-        INNER JOIN sys_permission p ON rp.permission_id = p.id
-        WHERE u.id = #{userId} 
-            AND p.permission_code = #{permissionCode}
-            AND u.deleted = 0 AND p.deleted = 0
-        """)
-    boolean hasPermission(@Param("userId") Long userId, @Param("permissionCode") String permissionCode);
-}
-```
-
-### 2. 工作流系统
-
-```java
-public interface WorkflowRepository extends BaseRepository<Workflow, WorkflowMapper> {
-    
-    // 获取用户待办任务
-    @Select("""
-        SELECT 
-            t.id, t.task_name, t.task_type, t.priority, t.create_time,
-            w.workflow_name, w.workflow_type,
-            u.username as assignee_name,
-            d.dept_name as assignee_dept
-        FROM sys_workflow_task t
-        INNER JOIN sys_workflow w ON t.workflow_id = w.id
-        INNER JOIN sys_user u ON t.assignee_id = u.id
-        LEFT JOIN sys_department d ON u.dept_id = d.id
-        WHERE t.assignee_id = #{userId}
-            AND t.status = 'PENDING'
-            AND t.deleted = 0
-        ORDER BY t.priority DESC, t.create_time ASC
-        """)
-    List<Map<String, Object>> getUserPendingTasks(@Param("userId") Long userId);
-    
-    // 获取工作流统计信息
-    @Select("""
-        SELECT 
-            w.workflow_type,
-            COUNT(t.id) as total_tasks,
-            SUM(CASE WHEN t.status = 'PENDING' THEN 1 ELSE 0 END) as pending_tasks,
-            SUM(CASE WHEN t.status = 'COMPLETED' THEN 1 ELSE 0 END) as completed_tasks,
-            AVG(TIMESTAMPDIFF(HOUR, t.create_time, t.complete_time)) as avg_completion_hours
-        FROM sys_workflow w
-        LEFT JOIN sys_workflow_task t ON w.id = t.workflow_id
-        WHERE w.deleted = 0 AND (t.deleted = 0 OR t.deleted IS NULL)
-        GROUP BY w.workflow_type
-        ORDER BY total_tasks DESC
-        """)
-    List<Map<String, Object>> getWorkflowStatistics();
-}
-```
-
----
-
-## 最佳实践
+## 最佳实�?
 
 ### 1. 命名规范
 
 ```java
-// ✅ 好的命名
+// �?好的命名
+@AutoRepository
 public interface UserRepository extends BaseRepository<User, UserMapper> {
-    // 查询方法以 select 开头
+    // 查询方法�?select 开�?
     List<User> selectActiveUsers();
     
-    // 统计方法以 count 开头
+    // 统计方法�?count 开�?
     long countUsersByStatus(Integer status);
     
-    // 检查方法以 has 或 exists 开头
+    // 检查方法以 has �?exists 开�?
     boolean hasUserWithEmail(String email);
     
-    // 更新方法以 update 开头
-    int updateUserStatus(Long userId, Integer status);
+    // 更新方法�?update 开�?
+    int updateUserStatus(String userId, Integer status);
 }
 
-// ❌ 不好的命名
+// �?不好的命�?
 public interface UserRepository extends BaseRepository<User, UserMapper> {
-    List<User> getActiveUsers();        // 应该用 select
-    long getCountByStatus(Integer status); // 应该用 count
-    boolean checkEmail(String email);   // 应该用 has 或 exists
+    List<User> getActiveUsers();        // 应该�?select
+    long getCountByStatus(Integer status); // 应该�?count
+    boolean checkEmail(String email);   // 应该�?has �?exists
 }
 ```
 
 ### 2. 查询优化原则
 
 ```java
+@AutoRepository
 public interface UserRepository extends BaseRepository<User, UserMapper> {
     
-    // ✅ 好的做法
+    // �?好的做法
     @Select("""
         SELECT u.id, u.username, u.email  -- 只选择需要的字段
         FROM sys_user u
         WHERE u.deleted = 0               -- 使用索引字段
-            AND u.status = #{status}      -- 使用索引字段
-        ORDER BY u.create_time DESC       -- 使用索引排序
-        LIMIT #{pageSize}                 -- 限制结果集大小
+            AND u.status = #{status}       -- 使用索引字段
+        ORDER BY u.create_time DESC        -- 使用索引排序
+        LIMIT #{pageSize}                  -- 限制结果集大�?
         """)
     List<User> selectUsersOptimized(@Param("status") Integer status, 
                                    @Param("pageSize") Integer pageSize);
     
-    // ❌ 不好的做法
+    // �?不好的做�?
     @Select("""
-        SELECT *                          -- 选择所有字段
+        SELECT *                          -- 选择所有字�?
         FROM sys_user u
         WHERE u.username LIKE '%admin%'   -- 不使用索引的模糊查询
-        ORDER BY u.email                  -- 不使用索引排序
+        ORDER BY u.email                  -- 不使用索引排�?
         """)
     List<User> selectUsersBad();
 }
@@ -866,10 +922,11 @@ public interface UserRepository extends BaseRepository<User, UserMapper> {
 ### 3. 异常处理
 
 ```java
+@AutoRepository
 public interface UserRepository extends BaseRepository<User, UserMapper> {
     
-    // ✅ 好的异常处理
-    default User getUserByIdSafely(Long userId) {
+    // �?好的异常处理
+    default User getUserByIdSafely(String userId) {
         try {
             return getById(userId);
         } catch (Exception e) {
@@ -878,8 +935,8 @@ public interface UserRepository extends BaseRepository<User, UserMapper> {
         }
     }
     
-    // ✅ 使用 Optional 处理空值
-    default Optional<User> getUserByIdOptional(Long userId) {
+    // �?使用 Optional 处理空�?
+    default Optional<User> getUserByIdOptional(String userId) {
         try {
             User user = getById(userId);
             return Optional.ofNullable(user);
@@ -893,24 +950,24 @@ public interface UserRepository extends BaseRepository<User, UserMapper> {
 
 ---
 
-## 常见问题与解决方案
+## 常见问题
 
 ### 1. N+1 查询问题
 
 ```java
-// ❌ 问题代码 - 会产生 N+1 查询
-public List<UserDetailDTO> getUsersWithDetails(List<Long> userIds) {
+// �?问题代码 - 会产�?N+1 查询
+public List<UserDetailDTO> getUsersWithDetails(List<String> userIds) {
     List<UserDetailDTO> result = new ArrayList<>();
-    for (Long userId : userIds) {
-        User user = getById(userId);                    // 1次查询
-        Department dept = getDeptById(user.getDeptId()); // N次查询
-        Role role = getRoleById(user.getRoleId());       // N次查询
+    for (String userId : userIds) {
+        User user = getById(userId);                    // 1次查�?
+        Department dept = getDeptById(user.getDeptId()); // N次查�?
+        Role role = getRoleById(user.getRoleId());       // N次查�?
         result.add(new UserDetailDTO(user, dept, role));
     }
     return result;
 }
 
-// ✅ 解决方案 - 使用 JOIN 查询
+// �?解决方案 - 使用 JOIN 查询
 @Select("""
     SELECT 
         u.id, u.username, u.email, u.phone, u.status,
@@ -924,13 +981,13 @@ public List<UserDetailDTO> getUsersWithDetails(List<Long> userIds) {
         #{userId}
     </foreach>
     """)
-List<UserDetailDTO> selectUsersWithDetails(@Param("userIds") List<Long> userIds);
+List<UserDetailDTO> selectUsersWithDetails(@Param("userIds") List<String> userIds);
 ```
 
 ### 2. 深度分页问题
 
 ```java
-// ❌ 问题代码 - 深度分页性能差
+// �?问题代码 - 深度分页性能�?
 @Select("""
     SELECT * FROM sys_user 
     ORDER BY create_time DESC 
@@ -939,25 +996,25 @@ List<UserDetailDTO> selectUsersWithDetails(@Param("userIds") List<Long> userIds)
 List<User> selectUsersWithOffset(@Param("offset") Integer offset, 
                                  @Param("pageSize") Integer pageSize);
 
-// ✅ 解决方案 - 使用游标分页
+// �?解决方案 - 使用游标分页
 @Select("""
     SELECT * FROM sys_user 
     WHERE id > #{lastId}  -- 使用 ID 作为游标
-    ORDER BY id ASC        -- 按 ID 排序
+    ORDER BY id ASC        -- �?ID 排序
     LIMIT #{pageSize}
     """)
-List<User> selectUsersWithCursor(@Param("lastId") Long lastId, 
+List<User> selectUsersWithCursor(@Param("lastId") String lastId, 
                                  @Param("pageSize") Integer pageSize);
 ```
 
 ### 3. 大数据量处理
 
 ```java
-// ❌ 问题代码 - 一次性加载所有数据
+// �?问题代码 - 一次性加载所有数�?
 @Select("SELECT * FROM sys_user")
 List<User> selectAllUsers();
 
-// ✅ 解决方案 - 分批处理
+// �?解决方案 - 分批处理
 default void processAllUsersInBatches(Consumer<List<User>> processor) {
     int batchSize = 1000;
     long offset = 0;
@@ -986,14 +1043,14 @@ List<User> selectUsersBatch(@Param("offset") Long offset,
 
 ## 总结
 
-Synapse Framework 数据库模块为你提供了：
+Synapse Framework 数据库模块为你提供了�?
 
-🎯 **开箱即用的基础功能** - 继承 `BaseRepository` 就能获得所有 MyBatis-Plus 功能
-🚀 **智能查询构建** - 告别手写 QueryWrapper，让代码更优雅
-🔗 **灵活的多表关联** - 支持框架方法和手写 SQL 两种方式
-⚡ **性能优化工具** - 内置分页、缓存、索引优化等最佳实践
-🛡️ **企业级特性** - 审计、事务、动态数据源等生产环境必需功能
+🎯 **开箱即用的基础功能** - 继承 `BaseRepository` 就能获得所�?MyBatis-Plus 功能
+🚀 **智能查询构建** - 告别手写 QueryWrapper，让代码更优�?
+🔗 **灵活的多表关�?* - 支持框架方法和手�?SQL 两种方式
+�?**性能优化工具** - 内置分页、缓存、索引优化等最佳实�?
+🛡�?**企业级特�?* - 审计、事务、动态数据源等生产环境必需功能
 
-记住：**好的代码不是写出来的，而是设计出来的**。Synapse Framework 帮你专注于业务逻辑，而不是重复的 CRUD 代码。
+记住�?*好的代码不是写出来的，而是设计出来�?*。Synapse Framework 帮你专注于业务逻辑，而不是重复的 CRUD 代码�?
 
 现在，去写那些真正有价值的业务代码吧！🚀
