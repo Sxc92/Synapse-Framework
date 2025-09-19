@@ -1,0 +1,322 @@
+{
+  "groups": [
+    {
+      "name": "synapse.events",
+      "type": "com.indigo.events.config.EventsProperties",
+      "sourceType": "com.indigo.events.config.EventsProperties"
+    },
+    {
+      "name": "synapse.events.duplicate-check",
+      "type": "com.indigo.events.config.EventsProperties$DuplicateCheck",
+      "sourceType": "com.indigo.events.config.EventsProperties"
+    },
+    {
+      "name": "synapse.events.monitoring",
+      "type": "com.indigo.events.config.EventsProperties$Monitoring",
+      "sourceType": "com.indigo.events.config.EventsProperties"
+    },
+    {
+      "name": "synapse.events.monitoring.alert",
+      "type": "com.indigo.events.config.EventsProperties$Monitoring$Alert",
+      "sourceType": "com.indigo.events.config.EventsProperties$Monitoring"
+    },
+    {
+      "name": "synapse.events.monitoring.alert.thresholds",
+      "type": "com.indigo.events.config.EventsProperties$Monitoring$Alert$Thresholds",
+      "sourceType": "com.indigo.events.config.EventsProperties$Monitoring$Alert"
+    },
+    {
+      "name": "synapse.events.reliable",
+      "type": "com.indigo.events.config.EventsProperties$ReliableConsumer",
+      "sourceType": "com.indigo.events.config.EventsProperties"
+    },
+    {
+      "name": "synapse.events.rocketmq",
+      "type": "com.indigo.events.config.EventsProperties$RocketMQ",
+      "sourceType": "com.indigo.events.config.EventsProperties"
+    }
+  ],
+  "properties": [
+    {
+      "name": "synapse.events.auto-generate-transaction-id",
+      "type": "java.lang.Boolean",
+      "description": "是否自动生成 transactionId",
+      "sourceType": "com.indigo.events.config.EventsProperties",
+      "defaultValue": true
+    },
+    {
+      "name": "synapse.events.duplicate-check.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用消息去重",
+      "sourceType": "com.indigo.events.config.EventsProperties$DuplicateCheck",
+      "defaultValue": true
+    },
+    {
+      "name": "synapse.events.duplicate-check.expire-minutes",
+      "type": "java.lang.Integer",
+      "description": "去重过期时间（分钟）",
+      "sourceType": "com.indigo.events.config.EventsProperties$DuplicateCheck",
+      "defaultValue": 5
+    },
+    {
+      "name": "synapse.events.duplicate-check.local-cache-size",
+      "type": "java.lang.Integer",
+      "description": "本地缓存大小",
+      "sourceType": "com.indigo.events.config.EventsProperties$DuplicateCheck",
+      "defaultValue": 1000
+    },
+    {
+      "name": "synapse.events.duplicate-check.redis-key-prefix",
+      "type": "java.lang.String",
+      "description": "Redis 键前缀",
+      "sourceType": "com.indigo.events.config.EventsProperties$DuplicateCheck",
+      "defaultValue": "synapse:events:duplicate:"
+    },
+    {
+      "name": "synapse.events.duplicate-check.use-redis",
+      "type": "java.lang.Boolean",
+      "description": "是否使用 Redis 进行去重检查",
+      "sourceType": "com.indigo.events.config.EventsProperties$DuplicateCheck",
+      "defaultValue": true
+    },
+    {
+      "name": "synapse.events.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用事件框架",
+      "sourceType": "com.indigo.events.config.EventsProperties",
+      "defaultValue": true
+    },
+    {
+      "name": "synapse.events.monitoring.alert.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用告警",
+      "sourceType": "com.indigo.events.config.EventsProperties$Monitoring$Alert",
+      "defaultValue": true
+    },
+    {
+      "name": "synapse.events.monitoring.alert.notification-type",
+      "type": "java.lang.String",
+      "description": "告警通知方式",
+      "sourceType": "com.indigo.events.config.EventsProperties$Monitoring$Alert",
+      "defaultValue": "log"
+    },
+    {
+      "name": "synapse.events.monitoring.alert.thresholds.error-rate",
+      "type": "java.lang.Double",
+      "description": "错误率阈值（百分比）",
+      "sourceType": "com.indigo.events.config.EventsProperties$Monitoring$Alert$Thresholds",
+      "defaultValue": 5
+    },
+    {
+      "name": "synapse.events.monitoring.alert.thresholds.latency",
+      "type": "java.lang.Long",
+      "description": "延迟阈值（毫秒）",
+      "sourceType": "com.indigo.events.config.EventsProperties$Monitoring$Alert$Thresholds",
+      "defaultValue": 5000
+    },
+    {
+      "name": "synapse.events.monitoring.alert.thresholds.queue-backlog",
+      "type": "java.lang.Integer",
+      "description": "队列积压阈值",
+      "sourceType": "com.indigo.events.config.EventsProperties$Monitoring$Alert$Thresholds",
+      "defaultValue": 1000
+    },
+    {
+      "name": "synapse.events.monitoring.data-retention-hours",
+      "type": "java.lang.Integer",
+      "description": "监控数据保留时间（小时）",
+      "sourceType": "com.indigo.events.config.EventsProperties$Monitoring",
+      "defaultValue": 24
+    },
+    {
+      "name": "synapse.events.monitoring.detailed-logging",
+      "type": "java.lang.Boolean",
+      "description": "是否启用详细日志",
+      "sourceType": "com.indigo.events.config.EventsProperties$Monitoring",
+      "defaultValue": false
+    },
+    {
+      "name": "synapse.events.monitoring.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用监控",
+      "sourceType": "com.indigo.events.config.EventsProperties$Monitoring",
+      "defaultValue": true
+    },
+    {
+      "name": "synapse.events.monitoring.metrics-interval",
+      "type": "java.lang.Integer",
+      "description": "监控数据收集间隔（秒）",
+      "sourceType": "com.indigo.events.config.EventsProperties$Monitoring",
+      "defaultValue": 60
+    },
+    {
+      "name": "synapse.events.reliable.batch-size",
+      "type": "java.lang.Integer",
+      "description": "批量处理大小",
+      "sourceType": "com.indigo.events.config.EventsProperties$ReliableConsumer",
+      "defaultValue": 10
+    },
+    {
+      "name": "synapse.events.reliable.concurrency",
+      "type": "java.lang.Integer",
+      "description": "并发处理线程数",
+      "sourceType": "com.indigo.events.config.EventsProperties$ReliableConsumer",
+      "defaultValue": 4
+    },
+    {
+      "name": "synapse.events.reliable.dedup-expire-seconds",
+      "type": "java.lang.Integer",
+      "description": "去重缓存过期时间（秒）",
+      "sourceType": "com.indigo.events.config.EventsProperties$ReliableConsumer",
+      "defaultValue": 3600
+    },
+    {
+      "name": "synapse.events.reliable.error-rate-threshold",
+      "type": "java.lang.Double",
+      "description": "监控阈值 - 错误率告警（百分比）",
+      "sourceType": "com.indigo.events.config.EventsProperties$ReliableConsumer",
+      "defaultValue": 5
+    },
+    {
+      "name": "synapse.events.reliable.failure-timeout",
+      "type": "java.lang.Integer",
+      "description": "故障超时时间（秒）",
+      "sourceType": "com.indigo.events.config.EventsProperties$ReliableConsumer",
+      "defaultValue": 90
+    },
+    {
+      "name": "synapse.events.reliable.heartbeat-interval",
+      "type": "java.lang.Integer",
+      "description": "心跳间隔（秒）",
+      "sourceType": "com.indigo.events.config.EventsProperties$ReliableConsumer",
+      "defaultValue": 30
+    },
+    {
+      "name": "synapse.events.reliable.latency-threshold",
+      "type": "java.lang.Long",
+      "description": "监控阈值 - 处理延迟告警（毫秒）",
+      "sourceType": "com.indigo.events.config.EventsProperties$ReliableConsumer",
+      "defaultValue": 5000
+    },
+    {
+      "name": "synapse.events.reliable.lock-timeout",
+      "type": "java.lang.Integer",
+      "description": "分布式锁超时时间（秒）",
+      "sourceType": "com.indigo.events.config.EventsProperties$ReliableConsumer",
+      "defaultValue": 30
+    },
+    {
+      "name": "synapse.events.reliable.max-retry-count",
+      "type": "java.lang.Integer",
+      "description": "最大重试次数",
+      "sourceType": "com.indigo.events.config.EventsProperties$ReliableConsumer",
+      "defaultValue": 3
+    },
+    {
+      "name": "synapse.events.reliable.queue-backlog-threshold",
+      "type": "java.lang.Integer",
+      "description": "监控阈值 - 队列积压告警",
+      "sourceType": "com.indigo.events.config.EventsProperties$ReliableConsumer",
+      "defaultValue": 1000
+    },
+    {
+      "name": "synapse.events.reliable.retry-interval",
+      "type": "java.lang.Long",
+      "description": "重试间隔（毫秒）",
+      "sourceType": "com.indigo.events.config.EventsProperties$ReliableConsumer",
+      "defaultValue": 1000
+    },
+    {
+      "name": "synapse.events.rocketmq.compression-level",
+      "type": "java.lang.Integer",
+      "description": "压缩级别 (1-9)",
+      "sourceType": "com.indigo.events.config.EventsProperties$RocketMQ",
+      "defaultValue": 5
+    },
+    {
+      "name": "synapse.events.rocketmq.consumer-group",
+      "type": "java.lang.String",
+      "description": "消费者组名",
+      "sourceType": "com.indigo.events.config.EventsProperties$RocketMQ",
+      "defaultValue": "synapse-events-consumer"
+    },
+    {
+      "name": "synapse.events.rocketmq.consumer-thread-pool-size",
+      "type": "java.lang.Integer",
+      "description": "消费者线程池大小",
+      "sourceType": "com.indigo.events.config.EventsProperties$RocketMQ",
+      "defaultValue": 20
+    },
+    {
+      "name": "synapse.events.rocketmq.enable-compression",
+      "type": "java.lang.Boolean",
+      "description": "是否启用消息压缩",
+      "sourceType": "com.indigo.events.config.EventsProperties$RocketMQ",
+      "defaultValue": true
+    },
+    {
+      "name": "synapse.events.rocketmq.enable-retry",
+      "type": "java.lang.Boolean",
+      "description": "是否启用消息重试",
+      "sourceType": "com.indigo.events.config.EventsProperties$RocketMQ",
+      "defaultValue": true
+    },
+    {
+      "name": "synapse.events.rocketmq.max-retry-times",
+      "type": "java.lang.Integer",
+      "description": "最大重试次数",
+      "sourceType": "com.indigo.events.config.EventsProperties$RocketMQ",
+      "defaultValue": 3
+    },
+    {
+      "name": "synapse.events.rocketmq.name-server",
+      "type": "java.lang.String",
+      "description": "名称服务器地址",
+      "sourceType": "com.indigo.events.config.EventsProperties$RocketMQ",
+      "defaultValue": "localhost:9876"
+    },
+    {
+      "name": "synapse.events.rocketmq.producer-group",
+      "type": "java.lang.String",
+      "description": "生产者组名",
+      "sourceType": "com.indigo.events.config.EventsProperties$RocketMQ",
+      "defaultValue": "synapse-events-producer"
+    },
+    {
+      "name": "synapse.events.rocketmq.pull-batch-size",
+      "type": "java.lang.Integer",
+      "description": "消费者批量拉取消息数量",
+      "sourceType": "com.indigo.events.config.EventsProperties$RocketMQ",
+      "defaultValue": 32
+    },
+    {
+      "name": "synapse.events.rocketmq.pull-timeout",
+      "type": "java.lang.Integer",
+      "description": "消费者拉取超时时间（毫秒）",
+      "sourceType": "com.indigo.events.config.EventsProperties$RocketMQ",
+      "defaultValue": 3000
+    },
+    {
+      "name": "synapse.events.rocketmq.retry-interval",
+      "type": "java.lang.Integer",
+      "description": "重试间隔（毫秒）",
+      "sourceType": "com.indigo.events.config.EventsProperties$RocketMQ",
+      "defaultValue": 1000
+    },
+    {
+      "name": "synapse.events.rocketmq.send-timeout",
+      "type": "java.lang.Integer",
+      "description": "发送超时时间（毫秒）",
+      "sourceType": "com.indigo.events.config.EventsProperties$RocketMQ",
+      "defaultValue": 3000
+    },
+    {
+      "name": "synapse.events.rocketmq.topic-prefix",
+      "type": "java.lang.String",
+      "description": "主题前缀",
+      "sourceType": "com.indigo.events.config.EventsProperties$RocketMQ",
+      "defaultValue": "synapse-events"
+    }
+  ],
+  "hints": []
+}

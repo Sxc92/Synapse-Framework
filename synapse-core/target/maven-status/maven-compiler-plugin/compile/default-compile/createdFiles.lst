@@ -1,0 +1,7 @@
+com\indigo\core\exception\BaseException.class
+com\indigo\core\exception\enums\BaseErrCode.class
+com\indigo\core\i18n\MessageResolver.class
+com\indigo\core\i18n\LocaleContext.class
+com\indigo\core\exception\enums\ErrorCode.class
+com\indigo\core\exception\handler\WebMvcGlobalExceptionHandler.class
+com\indigo\core\exception\SynapseException.class

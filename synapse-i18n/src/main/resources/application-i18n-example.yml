@@ -1,0 +1,19 @@
+# 国际化配置示例
+synapse:
+  i18n:
+    # 是否启用国际化功能
+    enabled: true
+    
+    # 默认语言环境
+    default-locale: zh_CN
+    
+    # 语言环境请求头配置
+    header:
+      # 主要语言环境请求头名称
+      locale-header-name: "X-Locale"
+      
+      # 备用语言环境请求头名称
+      language-header-name: "X-Language"
+      
+      # 是否启用Accept-Language头解析
+      enable-accept-language: true

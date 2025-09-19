@@ -1,0 +1,328 @@
+# Synapse Cache 模块全量配置示例
+# 复制此文件到你的项目中，并根据需要调整配置
+
+synapse:
+  cache:
+    # 是否启用缓存功能
+    enabled: true
+    
+    # 默认缓存策略
+    # 可选值: LOCAL_ONLY, REDIS_ONLY, LOCAL_AND_REDIS, LOCAL_OR_REDIS
+    default-strategy: "LOCAL_AND_REDIS"
+    
+    # Redis缓存配置
+    redis:
+      # 是否启用Redis缓存
+      enabled: true
+      
+      # Redis键前缀
+      key-prefix: "synapse"
+      
+      # 默认过期时间
+      default-expire: "PT1H"  # 1小时
+      
+      # 连接配置
+      connection:
+        # Redis主机地址
+        host: ${REDIS_HOST:localhost}
+        # Redis端口
+        port: ${REDIS_PORT:6379}
+        # Redis数据库索引
+        database: 0
+        # Redis密码
+        password: ${REDIS_PASSWORD:}
+        # 连接超时时间
+        timeout: "PT2S"
+        # 是否启用SSL连接
+        ssl: false
+        # Redis客户端名称
+        client-name: "synapse-cache"
+      
+      # 集群配置
+      cluster:
+        # 是否启用Redis集群模式
+        enabled: false
+        # 集群节点列表
+        nodes:
+          - "redis-cluster-node1:6379"
+          - "redis-cluster-node2:6379"
+          - "redis-cluster-node3:6379"
+        # 集群最大重定向次数
+        max-redirects: 5
+        # 集群刷新周期
+        refresh-period: "PT30S"
+      
+      # 哨兵配置
+      sentinel:
+        # 是否启用Redis哨兵模式
+        enabled: false
+        # 哨兵节点列表
+        nodes:
+          - "sentinel1:26379"
+          - "sentinel2:26379"
+          - "sentinel3:26379"
+        # 主节点名称
+        master: "mymaster"
+        # 哨兵密码
+        password: ${SENTINEL_PASSWORD:}
+      
+      # 连接池配置
+      pool:
+        # 最大活跃连接数
+        max-active: 8
+        # 最大空闲连接数
+        max-idle: 8
+        # 最小空闲连接数
+        min-idle: 0
+        # 最大等待时间 (-1表示无限制)
+        max-wait: "-1ms"
+        # 空闲连接检测间隔
+        time-between-eviction-runs: "PT30S"
+        # 空闲连接最小空闲时间
+        min-evictable-idle-time: "PT10M"
+        # 空闲连接最大空闲时间
+        max-evictable-idle-time: "PT30M"
+        # 连接测试查询
+        test-query: "SELECT 1"
+        # 空闲时是否测试连接
+        test-while-idle: true
+        # 借用时是否测试连接
+        test-on-borrow: false
+        # 归还时是否测试连接
+        test-on-return: false
+      
+      # 性能配置
+      connection-timeout: "PT5S"
+      read-timeout: "PT3S"
+      write-timeout: "PT3S"
+      max-retries: 3
+      retry-interval: "PT0.1S"
+      
+      # 压缩配置
+      enable-compression: false
+      compression-threshold: 1024
+    
+    # 本地缓存配置 (Caffeine)
+    local-cache:
+      # 最大缓存条目数
+      maximum-size: 10000
+      # 写入后过期时间
+      expire-after-write: "PT30M"  # 30分钟
+      # 访问后过期时间
+      expire-after-access: "PT10M"  # 10分钟
+      # 写入后刷新时间
+      refresh-after-write: "PT5M"   # 5分钟
+      # 是否启用统计
+      enable-stats: true
+      # 是否启用记录
+      enable-record: false
+    
+    # 分布式锁配置
+    lock:
+      # 是否启用分布式锁功能
+      enabled: true
+      # 锁键前缀
+      key-prefix: "synapse:lock"
+      # 默认锁超时时间(秒)
+      default-timeout: 30
+      # 重试间隔(毫秒)
+      retry-interval: 100
+      # 最大重试次数
+      max-retries: 3
+      # 自动释放配置
+      auto-release:
+        # 是否启用自动释放
+        enabled: true
+        # 自动释放检查间隔(毫秒)
+        check-interval: 60000  # 1分钟
+        # 核心服务释放阈值(毫秒) - 超过此时间未访问则自动释放
+        core-service-threshold: 1800000  # 30分钟
+        # 业务缓存释放阈值(毫秒) - 超过此时间未访问则自动释放
+        business-cache-threshold: 900000  # 15分钟
+        # 临时资源释放阈值(毫秒) - 超过此时间未访问则自动释放
+        temporary-threshold: 300000  # 5分钟
+    
+    # 缓存预热配置
+    warmup:
+      # 是否启用预热
+      enabled: false
+      # 预热线程池大小
+      thread-pool-size: 5
+      # 预热超时时间
+      timeout: "PT5M"  # 5分钟
+      # 预热批次大小
+      batch-size: 100
+      # 预热间隔
+      interval: "PT1H"  # 1小时
+      # 预热数据源配置
+      data-sources:
+        user: "userService"
+        product: "productService"
+        order: "orderService"
+    
+    # 缓存穿透防护配置
+    penetration-protection:
+      # 是否启用穿透防护
+      enabled: true
+      # 空值缓存过期时间
+      null-value-expire: "PT5M"  # 5分钟
+      # 布隆过滤器大小
+      bloom-filter-size: 1000000
+      # 布隆过滤器误判率
+      bloom-filter-false-positive-rate: 0.01
+      # 是否启用布隆过滤器
+      enable-bloom-filter: false
+      # 限流防护配置
+      rate-limit:
+        # 是否启用限流防护
+        enabled: true
+        # 每秒请求数限制
+        requests-per-second: 100
+        # 突发请求数限制
+        burst-requests: 200
+        # 限流窗口大小
+        window-size: "PT1S"  # 1秒
+    
+    # 异常处理配置
+    exception-handling:
+      # 是否启用异常处理
+      enabled: true
+      # 是否记录异常日志
+      log-exceptions: true
+      # 是否抛出异常
+      throw-exceptions: false
+      # 异常重试次数
+      retry-count: 3
+      # 异常重试间隔
+      retry-interval: "PT0.1S"  # 100毫秒
+      # 异常降级策略
+      # 可选值: RETURN_NULL, RETURN_DEFAULT, FALLBACK_TO_LOCAL, THROW_EXCEPTION
+      fallback-strategy: "RETURN_NULL"
+    
+    # 健康检查配置
+    health-check:
+      # 是否启用健康检查
+      enabled: true
+      # 健康检查间隔
+      interval: "PT30S"  # 30秒
+      # 健康检查超时时间
+      timeout: "PT5S"    # 5秒
+      # 健康检查失败阈值
+      failure-threshold: 3
+      # 健康检查恢复阈值
+      recovery-threshold: 2
+      # 是否启用详细健康检查
+      detailed-check: false
+    
+    # 模块特定配置
+    modules:
+      # 用户模块缓存配置
+      user:
+        strategy: "LOCAL_AND_REDIS"
+        expire: "PT2H"  # 2小时
+        maximum-size: 5000
+        enable-warmup: true
+        enable-penetration-protection: true
+        enable-exception-handling: true
+      
+      # 产品模块缓存配置
+      product:
+        strategy: "REDIS_ONLY"
+        expire: "PT4H"  # 4小时
+        maximum-size: 10000
+        enable-warmup: true
+        enable-penetration-protection: true
+        enable-exception-handling: true
+      
+      # 订单模块缓存配置
+      order:
+        strategy: "LOCAL_ONLY"
+        expire: "PT1H"  # 1小时
+        maximum-size: 2000
+        enable-warmup: false
+        enable-penetration-protection: false
+        enable-exception-handling: true
+
+# 环境特定配置示例
+---
+# 开发环境配置
+spring:
+  config:
+    activate:
+      on-profile: dev
+  # 开发环境可以启用更详细的日志
+  logging:
+    level:
+      com.indigo.cache: DEBUG
+      org.springframework.data.redis: DEBUG
+
+---
+# 测试环境配置
+spring:
+  config:
+    activate:
+      on-profile: test
+  # 测试环境使用内存Redis
+  synapse:
+    cache:
+      redis:
+        connection:
+          host: localhost
+          port: 6379
+        pool:
+          max-active: 4
+          max-idle: 4
+
+---
+# 生产环境配置
+spring:
+  config:
+    activate:
+      on-profile: prod
+  # 生产环境使用哨兵模式
+  synapse:
+    cache:
+      redis:
+        sentinel:
+          enabled: true
+          nodes:
+            - "prod-sentinel1:26379"
+            - "prod-sentinel2:26379"
+            - "prod-sentinel3:26379"
+          master: "prod-master"
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+        lock:
+          auto-release:
+            check-interval: 30000  # 30秒
+            core-service-threshold: 3600000  # 1小时
+            business-cache-threshold: 1800000  # 30分钟
+            temporary-threshold: 600000  # 10分钟
+
+---
+# 集群环境配置
+spring:
+  config:
+    activate:
+      on-profile: cluster
+  # 集群环境使用Redis集群模式
+  synapse:
+    cache:
+      redis:
+        cluster:
+          enabled: true
+          nodes:
+            - "cluster-node1:6379"
+            - "cluster-node2:6379"
+            - "cluster-node3:6379"
+            - "cluster-node4:6379"
+            - "cluster-node5:6379"
+            - "cluster-node6:6379"
+          max-redirects: 10
+          refresh-period: "PT15S"
+        pool:
+          max-active: 24
+          max-idle: 12
+          min-idle: 4 
