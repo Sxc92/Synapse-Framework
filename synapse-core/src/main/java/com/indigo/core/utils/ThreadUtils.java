@@ -465,6 +465,7 @@ public class ThreadUtils {
                     throw e; // 保留原始异常
                 } else {
                     Ex.throwEx(StandardErrorCode.THREAD_ERROR, "Task execution failed: " + e.getMessage(), e);
+                    return null;
                 }
             }
         };
