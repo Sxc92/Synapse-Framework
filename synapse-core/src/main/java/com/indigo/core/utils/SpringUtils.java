@@ -1,6 +1,7 @@
 package com.indigo.core.utils;
 
-import com.indigo.core.exception.SpringException;
+import com.indigo.core.exception.Ex;
+import com.indigo.core.exception.enums.StandardErrorCode;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.ApplicationContext;
@@ -38,7 +39,7 @@ public class SpringUtils implements ApplicationContextAware, DisposableBean {
      */
     public static ApplicationContext getApplicationContext() {
         if (applicationContext == null) {
-            throw new SpringException("system.error.context.null");
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "ApplicationContext is null");
         }
         return applicationContext;
     }
@@ -51,10 +52,10 @@ public class SpringUtils implements ApplicationContextAware, DisposableBean {
      */
     public static Object getBean(String name) {
         if (applicationContext == null) {
-            throw new SpringException("system.error.context.null");
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "ApplicationContext is null");
         }
         if (name == null || name.isEmpty()) {
-            throw new SpringException("system.error.bean.name.empty");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Bean name cannot be empty");
         }
         return applicationContext.getBean(name);
     }
@@ -68,10 +69,10 @@ public class SpringUtils implements ApplicationContextAware, DisposableBean {
      */
     public static <T> T getBean(Class<T> requiredType) {
         if (applicationContext == null) {
-            throw new SpringException("system.error.context.null");
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "ApplicationContext is null");
         }
         if (requiredType == null) {
-            throw new SpringException("system.error.bean.type.null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Bean type cannot be null");
         }
         return applicationContext.getBean(requiredType);
     }
@@ -86,13 +87,13 @@ public class SpringUtils implements ApplicationContextAware, DisposableBean {
      */
     public static <T> T getBean(String name, Class<T> requiredType) {
         if (applicationContext == null) {
-            throw new SpringException("system.error.context.null");
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "ApplicationContext is null");
         }
         if (name == null || name.isEmpty()) {
-            throw new SpringException("system.error.bean.name.empty");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Bean name cannot be empty");
         }
         if (requiredType == null) {
-            throw new SpringException("system.error.bean.type.null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Bean type cannot be null");
         }
         return applicationContext.getBean(name, requiredType);
     }
@@ -104,7 +105,7 @@ public class SpringUtils implements ApplicationContextAware, DisposableBean {
      */
     public static String getActiveProfile() {
         if (applicationContext == null) {
-            throw new SpringException("system.error.context.null");
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "ApplicationContext is null");
         }
         String[] activeProfiles = applicationContext.getEnvironment().getActiveProfiles();
         return activeProfiles.length > 0 ? activeProfiles[0] : null;
@@ -144,10 +145,10 @@ public class SpringUtils implements ApplicationContextAware, DisposableBean {
      */
     public static void publishEvent(ApplicationEvent event) {
         if (applicationContext == null) {
-            throw new SpringException("system.error.context.null");
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "ApplicationContext is null");
         }
         if (event == null) {
-            throw new SpringException("system.error.event.null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Event cannot be null");
         }
         applicationContext.publishEvent(event);
     }
@@ -160,10 +161,10 @@ public class SpringUtils implements ApplicationContextAware, DisposableBean {
      */
     public static String getProperty(String key) {
         if (applicationContext == null) {
-            throw new SpringException("system.error.context.null");
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "ApplicationContext is null");
         }
         if (key == null || key.isEmpty()) {
-            throw new SpringException("system.error.property.key.empty");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Property key cannot be empty");
         }
         return applicationContext.getEnvironment().getProperty(key);
     }
@@ -177,10 +178,10 @@ public class SpringUtils implements ApplicationContextAware, DisposableBean {
      */
     public static String getProperty(String key, String defaultValue) {
         if (applicationContext == null) {
-            throw new SpringException("system.error.context.null");
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "ApplicationContext is null");
         }
         if (key == null || key.isEmpty()) {
-            throw new SpringException("system.error.property.key.empty");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Property key cannot be empty");
         }
         return applicationContext.getEnvironment().getProperty(key, defaultValue);
     }
@@ -195,13 +196,13 @@ public class SpringUtils implements ApplicationContextAware, DisposableBean {
      */
     public static <T> T getProperty(String key, Class<T> targetType) {
         if (applicationContext == null) {
-            throw new SpringException("system.error.context.null");
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "ApplicationContext is null");
         }
         if (key == null || key.isEmpty()) {
-            throw new SpringException("system.error.property.key.empty");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Property key cannot be empty");
         }
         if (targetType == null) {
-            throw new SpringException("system.error.property.type.null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Property type cannot be null");
         }
         return applicationContext.getEnvironment().getProperty(key, targetType);
     }
@@ -217,13 +218,13 @@ public class SpringUtils implements ApplicationContextAware, DisposableBean {
      */
     public static <T> T getProperty(String key, Class<T> targetType, T defaultValue) {
         if (applicationContext == null) {
-            throw new SpringException("system.error.context.null");
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "ApplicationContext is null");
         }
         if (key == null || key.isEmpty()) {
-            throw new SpringException("system.error.property.key.empty");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Property key cannot be empty");
         }
         if (targetType == null) {
-            throw new SpringException("system.error.property.type.null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Property type cannot be null");
         }
         return applicationContext.getEnvironment().getProperty(key, targetType, defaultValue);
     }
@@ -236,10 +237,10 @@ public class SpringUtils implements ApplicationContextAware, DisposableBean {
      */
     public static boolean containsBean(String name) {
         if (applicationContext == null) {
-            throw new SpringException("system.error.context.null");
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "ApplicationContext is null");
         }
         if (name == null || name.isEmpty()) {
-            throw new SpringException("system.error.bean.name.empty");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Bean name cannot be empty");
         }
         return applicationContext.containsBean(name);
     }
@@ -252,10 +253,10 @@ public class SpringUtils implements ApplicationContextAware, DisposableBean {
      */
     public static boolean containsBeanType(Class<?> requiredType) {
         if (applicationContext == null) {
-            throw new SpringException("system.error.context.null");
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "ApplicationContext is null");
         }
         if (requiredType == null) {
-            throw new SpringException("system.error.bean.type.null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Bean type cannot be null");
         }
         return applicationContext.getBeanNamesForType(requiredType).length > 0;
     }
@@ -268,10 +269,10 @@ public class SpringUtils implements ApplicationContextAware, DisposableBean {
      */
     public static boolean isSingleton(String name) {
         if (applicationContext == null) {
-            throw new SpringException("system.error.context.null");
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "ApplicationContext is null");
         }
         if (name == null || name.isEmpty()) {
-            throw new SpringException("system.error.bean.name.empty");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Bean name cannot be empty");
         }
         return applicationContext.isSingleton(name);
     }
@@ -284,10 +285,10 @@ public class SpringUtils implements ApplicationContextAware, DisposableBean {
      */
     public static Class<?> getType(String name) {
         if (applicationContext == null) {
-            throw new SpringException("system.error.context.null");
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "ApplicationContext is null");
         }
         if (name == null || name.isEmpty()) {
-            throw new SpringException("system.error.bean.name.empty");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Bean name cannot be empty");
         }
         return applicationContext.getType(name);
     }
@@ -300,10 +301,10 @@ public class SpringUtils implements ApplicationContextAware, DisposableBean {
      */
     public static String[] getAliases(String name) {
         if (applicationContext == null) {
-            throw new SpringException("system.error.context.null");
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "ApplicationContext is null");
         }
         if (name == null || name.isEmpty()) {
-            throw new SpringException("system.error.bean.name.empty");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Bean name cannot be empty");
         }
         return applicationContext.getAliases(name);
     }

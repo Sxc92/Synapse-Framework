@@ -97,11 +97,11 @@
             <artifactId>jjwt-jackson</artifactId>
         </dependency>
 
-        <!-- Synapse I18n Module -->
-        <dependency>
-            <groupId>com.indigo</groupId>
-            <artifactId>synapse-i18n</artifactId>
-        </dependency>
+<!--        &lt;!&ndash; Synapse I18n Module &ndash;&gt;-->
+<!--        <dependency>-->
+<!--            <groupId>com.indigo</groupId>-->
+<!--            <artifactId>synapse-i18n</artifactId>-->
+<!--        </dependency>-->
 
         <!-- Test Dependencies -->
         <dependency>

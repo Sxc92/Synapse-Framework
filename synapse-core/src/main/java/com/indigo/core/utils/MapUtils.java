@@ -1,6 +1,7 @@
 package com.indigo.core.utils;
 
-import com.indigo.core.exception.MapException;
+import com.indigo.core.exception.Ex;
+import com.indigo.core.exception.enums.StandardErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.CollectionUtils;
 
@@ -120,11 +121,11 @@ public class MapUtils {
      */
     public static <K, V> V getRequired(Map<K, V> map, K key) {
         if (map == null) {
-            throw new MapException("Map cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Map cannot be null");
         }
         V value = map.get(key);
         if (value == null) {
-            throw new MapException("Key not found: " + key);
+            Ex.throwEx(StandardErrorCode.NOT_FOUND, "Key not found: " + key);
         }
         return value;
     }

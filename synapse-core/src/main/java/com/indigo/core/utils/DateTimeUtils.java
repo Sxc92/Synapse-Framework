@@ -1,6 +1,7 @@
 package com.indigo.core.utils;
 
-import com.indigo.core.exception.DateTimeException;
+import com.indigo.core.exception.Ex;
+import com.indigo.core.exception.enums.StandardErrorCode;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.*;
@@ -86,7 +87,8 @@ public class DateTimeUtils {
             return LocalDateTime.parse(dateTimeStr, DateTimeFormatter.ofPattern(pattern));
         } catch (Exception e) {
             log.error("Failed to parse date time: {}", dateTimeStr, e);
-            throw new DateTimeException("Failed to parse date time: " + dateTimeStr, e);
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "Failed to parse date time: " + dateTimeStr, e);
+            return null; // 这行永远不会执行，但满足编译要求
         }
     }
 
@@ -98,7 +100,8 @@ public class DateTimeUtils {
             return LocalDate.parse(dateStr, DateTimeFormatter.ofPattern(pattern));
         } catch (Exception e) {
             log.error("Failed to parse date: {}", dateStr, e);
-            throw new DateTimeException("Failed to parse date: " + dateStr, e);
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "Failed to parse date: " + dateStr, e);
+            return null; // 这行永远不会执行，但满足编译要求
         }
     }
 
@@ -108,7 +111,7 @@ public class DateTimeUtils {
     public static LocalDateTime toLocalDateTime(Date date) {
         return Optional.ofNullable(date)
                 .map(d -> LocalDateTime.ofInstant(d.toInstant(), DEFAULT_ZONE))
-                .orElseThrow(() -> new DateTimeException("Date cannot be null"));
+                .orElseThrow(() -> Ex.of(StandardErrorCode.PARAM_ERROR, "Date cannot be null"));
     }
 
     /**
@@ -117,7 +120,7 @@ public class DateTimeUtils {
     public static Date toDate(LocalDateTime dateTime) {
         return Optional.ofNullable(dateTime)
                 .map(dt -> Date.from(dt.atZone(DEFAULT_ZONE).toInstant()))
-                .orElseThrow(() -> new DateTimeException("LocalDateTime cannot be null"));
+                .orElseThrow(() -> Ex.of(StandardErrorCode.PARAM_ERROR, "LocalDateTime cannot be null"));
     }
 
     /**
@@ -126,7 +129,7 @@ public class DateTimeUtils {
     public static LocalDateTime startOfDay(LocalDate date) {
         return Optional.ofNullable(date)
                 .map(d -> d.atStartOfDay())
-                .orElseThrow(() -> new DateTimeException("Date cannot be null"));
+                .orElseThrow(() -> Ex.of(StandardErrorCode.PARAM_ERROR, "Date cannot be null"));
     }
 
     /**
@@ -135,7 +138,7 @@ public class DateTimeUtils {
     public static LocalDateTime endOfDay(LocalDate date) {
         return Optional.ofNullable(date)
                 .map(d -> d.atTime(23, 59, 59, 999999999))
-                .orElseThrow(() -> new DateTimeException("Date cannot be null"));
+                .orElseThrow(() -> Ex.of(StandardErrorCode.PARAM_ERROR, "Date cannot be null"));
     }
 
     /**

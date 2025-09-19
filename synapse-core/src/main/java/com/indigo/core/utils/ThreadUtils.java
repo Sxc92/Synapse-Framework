@@ -1,6 +1,7 @@
 package com.indigo.core.utils;
 
-import com.indigo.core.exception.ThreadException;
+import com.indigo.core.exception.Ex;
+import com.indigo.core.exception.enums.StandardErrorCode;
 import lombok.Builder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -52,7 +53,7 @@ public class ThreadUtils {
      */
     public void executeIoTask(Runnable task) {
         if (task == null) {
-            throw new ThreadException("Task cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Task cannot be null");
         }
         // IO任务使用虚拟线程，避免阻塞平台线程
         if (isVirtualThreadSupported()) {
@@ -76,7 +77,7 @@ public class ThreadUtils {
      */
     public <T> Future<T> submitIoTask(Callable<T> task) {
         if (task == null) {
-            throw new ThreadException("Task cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Task cannot be null");
         }
         // 使用虚拟线程执行IO任务
         return CompletableFuture.supplyAsync(() -> {
@@ -93,7 +94,7 @@ public class ThreadUtils {
      */
     public <T> CompletableFuture<Void> executeIoTasks(Iterable<Callable<T>> tasks) {
         if (tasks == null) {
-            throw new ThreadException("Tasks cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Tasks cannot be null");
         }
         
         // 尝试使用Java 19+的结构化并发
@@ -175,7 +176,7 @@ public class ThreadUtils {
      */
     public void executeCpuTask(Runnable task) {
         if (task == null) {
-            throw new ThreadException("Task cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Task cannot be null");
         }
         // CPU任务使用平台线程池，避免虚拟线程的上下文切换开销
         cpuThreadPool.execute(wrapRunnable(task));
@@ -186,7 +187,7 @@ public class ThreadUtils {
      */
     public <T> Future<T> submitCpuTask(Callable<T> task) {
         if (task == null) {
-            throw new ThreadException("Task cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Task cannot be null");
         }
         return cpuThreadPool.submit(wrapCallable(task));
     }
@@ -196,7 +197,7 @@ public class ThreadUtils {
      */
     public <T> CompletableFuture<Void> executeCpuTasksParallel(Iterable<Callable<T>> tasks) {
         if (tasks == null) {
-            throw new ThreadException("Tasks cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Tasks cannot be null");
         }
         
         var futures = new java.util.ArrayList<CompletableFuture<T>>();
@@ -225,7 +226,7 @@ public class ThreadUtils {
      */
     public void executeCommonTask(Runnable task) {
         if (task == null) {
-            throw new ThreadException("Task cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Task cannot be null");
         }
         // 通用任务根据任务特性智能选择线程池
         if (isIoBoundTask(task)) {
@@ -242,7 +243,7 @@ public class ThreadUtils {
      */
     public <T> Future<T> submitCommonTask(Callable<T> task) {
         if (task == null) {
-            throw new ThreadException("Task cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Task cannot be null");
         }
         return commonThreadPool.submit(wrapCallable(task));
     }
@@ -255,7 +256,7 @@ public class ThreadUtils {
      */
     public void executeMonitorTask(Runnable task) {
         if (task == null) {
-            throw new ThreadException("Task cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Task cannot be null");
         }
         // 监控任务使用专门的线程池，避免影响主业务
         monitorThreadPool.execute(wrapRunnable(task));
@@ -266,7 +267,7 @@ public class ThreadUtils {
      */
     public <T> Future<T> submitMonitorTask(Callable<T> task) {
         if (task == null) {
-            throw new ThreadException("Task cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Task cannot be null");
         }
         return monitorThreadPool.submit(wrapCallable(task));
     }
@@ -279,10 +280,10 @@ public class ThreadUtils {
      */
     public ScheduledFuture<?> schedule(Runnable task, long delay, TimeUnit unit) {
         if (task == null) {
-            throw new ThreadException("Task cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Task cannot be null");
         }
         if (unit == null) {
-            throw new ThreadException("TimeUnit cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "TimeUnit cannot be null");
         }
         return scheduledThreadPool.schedule(wrapRunnable(task), delay, unit);
     }
@@ -292,10 +293,10 @@ public class ThreadUtils {
      */
     public <T> ScheduledFuture<T> schedule(Callable<T> task, long delay, TimeUnit unit) {
         if (task == null) {
-            throw new ThreadException("Task cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Task cannot be null");
         }
         if (unit == null) {
-            throw new ThreadException("TimeUnit cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "TimeUnit cannot be null");
         }
         return scheduledThreadPool.schedule(wrapCallable(task), delay, unit);
     }
@@ -305,10 +306,10 @@ public class ThreadUtils {
      */
     public ScheduledFuture<?> scheduleAtFixedRate(Runnable task, long initialDelay, long period, TimeUnit unit) {
         if (task == null) {
-            throw new ThreadException("Task cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Task cannot be null");
         }
         if (unit == null) {
-            throw new ThreadException("TimeUnit cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "TimeUnit cannot be null");
         }
         return scheduledThreadPool.scheduleAtFixedRate(wrapRunnable(task), initialDelay, period, unit);
     }
@@ -318,10 +319,10 @@ public class ThreadUtils {
      */
     public ScheduledFuture<?> scheduleWithFixedDelay(Runnable task, long initialDelay, long delay, TimeUnit unit) {
         if (task == null) {
-            throw new ThreadException("Task cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Task cannot be null");
         }
         if (unit == null) {
-            throw new ThreadException("TimeUnit cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "TimeUnit cannot be null");
         }
         return scheduledThreadPool.scheduleWithFixedDelay(wrapRunnable(task), initialDelay, delay, unit);
     }
@@ -334,7 +335,7 @@ public class ThreadUtils {
      */
     public <T> CompletableFuture<T> supplyAsync(Supplier<T> supplier) {
         if (supplier == null) {
-            throw new ThreadException("Supplier cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Supplier cannot be null");
         }
         // 优先使用虚拟线程，提高并发性能
         return CompletableFuture.supplyAsync(supplier, createVirtualThreadExecutor());
@@ -345,7 +346,7 @@ public class ThreadUtils {
      */
     public CompletableFuture<Void> runAsync(Runnable runnable) {
         if (runnable == null) {
-            throw new ThreadException("Runnable cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Runnable cannot be null");
         }
         return CompletableFuture.runAsync(runnable, createVirtualThreadExecutor());
     }
@@ -355,10 +356,10 @@ public class ThreadUtils {
      */
     public <T> CompletableFuture<T> supplyAsyncWithTimeout(Supplier<T> supplier, Duration timeout) {
         if (supplier == null) {
-            throw new ThreadException("Supplier cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Supplier cannot be null");
         }
         if (timeout == null || timeout.isNegative()) {
-            throw new ThreadException("Timeout must be positive");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Timeout must be positive");
         }
         
         var future = supplyAsync(supplier);
@@ -438,7 +439,7 @@ public class ThreadUtils {
                 if (e instanceof RuntimeException) {
                     throw e; // 保留原始异常
                 } else {
-                    throw new ThreadException("Task execution failed: " + e.getMessage(), e);
+                    Ex.throwEx(StandardErrorCode.THREAD_ERROR, "Task execution failed: " + e.getMessage(), e);
                 }
             }
         };
@@ -463,7 +464,7 @@ public class ThreadUtils {
                 if (e instanceof RuntimeException) {
                     throw e; // 保留原始异常
                 } else {
-                    throw new ThreadException("Task execution failed: " + e.getMessage(), e);
+                    Ex.throwEx(StandardErrorCode.THREAD_ERROR, "Task execution failed: " + e.getMessage(), e);
                 }
             }
         };
@@ -505,7 +506,7 @@ public class ThreadUtils {
 
     private ExecutorStatus getExecutorStatus(ThreadPoolTaskExecutor executor) {
         if (executor == null) {
-            throw new ThreadException("Executor cannot be null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Executor cannot be null");
         }
         return ExecutorStatus.builder()
                 .poolSize(executor.getPoolSize())

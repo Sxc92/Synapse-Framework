@@ -23,7 +23,7 @@ public abstract class BaseException extends RuntimeException {
      * @param args 消息参数
      */
     public BaseException(ErrorCode errorCode, Object... args) {
-        super(errorCode.getMessage());
+        super(errorCode.getCode()); // 使用错误码作为默认消息
         this.code = errorCode.getCode();
         this.args = args;
     }
@@ -36,7 +36,7 @@ public abstract class BaseException extends RuntimeException {
      * @param args 消息参数
      */
     public BaseException(ErrorCode errorCode, Throwable cause, Object... args) {
-        super(errorCode.getMessage(), cause);
+        super(errorCode.getCode(), cause); // 使用错误码作为默认消息
         this.code = errorCode.getCode();
         this.args = args;
     }

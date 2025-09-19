@@ -3,7 +3,8 @@ package com.indigo.core.utils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.indigo.core.entity.TreeNode;
-import com.indigo.core.exception.TreeException;
+import com.indigo.core.exception.Ex;
+import com.indigo.core.exception.enums.StandardErrorCode;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -29,7 +30,7 @@ public class TreeUtil<T> {
 
     public TreeUtil(T rootValue) {
         if (rootValue == null) {
-            throw new TreeException("根节点不能为空");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "根节点不能为空");
         }
         this.root = new TreeNode<>(rootValue);
         nodeMap.put(rootValue, root);
@@ -58,13 +59,13 @@ public class TreeUtil<T> {
      */
     public static <T> TreeUtil<T> buildTree(T rootValue, List<T> nodes, Function<T, T> parentExtractor) {
         if (rootValue == null) {
-            throw new TreeException("根节点不能为空");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "根节点不能为空");
         }
         if (nodes == null) {
-            throw new TreeException("节点列表不能为空");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "节点列表不能为空");
         }
         if (parentExtractor == null) {
-            throw new TreeException("父节点映射函数不能为空");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "父节点映射函数不能为空");
         }
 
         // 构建所有节点
@@ -80,7 +81,7 @@ public class TreeUtil<T> {
             T parent = parentExtractor.apply(node);
             if (parent != null) {
                 if (visited.contains(node)) {
-                    throw new TreeException("检测到循环引用: " + node);
+                    Ex.throwEx(StandardErrorCode.DATA_INVALID, "检测到循环引用: " + node);
                 }
                 visited.add(node);
                 nodeMap.getOrDefault(parent, treeUtil.root).addChild(nodeMap.get(node));
@@ -97,7 +98,7 @@ public class TreeUtil<T> {
      */
     public synchronized boolean removeNode(T value) {
         if (value == null || value.equals(root.value())) {
-            throw new TreeException("不能删除根节点");
+            Ex.throwEx(StandardErrorCode.OPERATION_NOT_ALLOWED, "不能删除根节点");
         }
 
         TreeNode<T> toRemove = nodeMap.get(value);
@@ -118,7 +119,7 @@ public class TreeUtil<T> {
      */
     public synchronized List<T> findPath(T target) {
         if (target == null) {
-            throw new TreeException("目标节点不能为空");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "目标节点不能为空");
         }
         
         List<T> path = new ArrayList<>();
@@ -144,7 +145,7 @@ public class TreeUtil<T> {
     /** 📊 统计某个节点的子树大小 */
     public synchronized int countNodes(T value) {
         if (value == null) {
-            throw new TreeException("节点值不能为空");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "节点值不能为空");
         }
         
         TreeNode<T> node = nodeMap.get(value);
@@ -165,17 +166,17 @@ public class TreeUtil<T> {
             return new ObjectMapper().writeValueAsString(root);
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize tree to JSON", e);
-            throw new TreeException("Failed to serialize tree to JSON", e);
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "Failed to serialize tree to JSON", e);
         }
     }
 
     /** 🔄 反序列化 JSON 为 Tree */
     public static <T> TreeUtil<T> fromJson(String json, Class<T> clazz) throws JsonProcessingException {
         if (json == null || json.isEmpty()) {
-            throw new TreeException("JSON 字符串不能为空");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "JSON 字符串不能为空");
         }
         if (clazz == null) {
-            throw new TreeException("节点类型不能为空");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "节点类型不能为空");
         }
         
         try {
@@ -184,7 +185,7 @@ public class TreeUtil<T> {
             return new TreeUtil<>(rootNode.value());
         } catch (JsonProcessingException e) {
             log.error("Failed to deserialize JSON to tree", e);
-            throw new TreeException("Failed to deserialize JSON to tree", e);
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "Failed to deserialize JSON to tree", e);
         }
     }
 }

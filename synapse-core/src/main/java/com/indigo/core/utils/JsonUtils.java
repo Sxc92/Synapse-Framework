@@ -10,7 +10,8 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
-import com.indigo.core.exception.JsonException;
+import com.indigo.core.exception.Ex;
+import com.indigo.core.exception.enums.StandardErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -85,13 +86,14 @@ public class JsonUtils {
      */
     public String toJson(Object obj) {
         if (obj == null) {
-            throw new JsonException("json.error.object.null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Object cannot be null");
         }
         try {
             return objectMapper.writeValueAsString(obj);
         } catch (JsonProcessingException e) {
             log.error("Convert object to JSON string failed", e);
-            throw new JsonException("json.error.serialize", e);
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "JSON serialization failed", e);
+            return null; // 这行永远不会执行，但满足编译要求
         }
     }
     
@@ -103,13 +105,14 @@ public class JsonUtils {
      */
     public String toPrettyJson(Object obj) {
         if (obj == null) {
-            throw new JsonException("json.error.object.null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Object cannot be null");
         }
         try {
             return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(obj);
         } catch (JsonProcessingException e) {
             log.error("Convert object to pretty JSON string failed", e);
-            throw new JsonException("json.error.serialize", e);
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "JSON serialization failed", e);
+            return null; // 这行永远不会执行，但满足编译要求
         }
     }
     
@@ -123,16 +126,17 @@ public class JsonUtils {
      */
     public <T> T fromJsonToObject(String json, Class<T> clazz) {
         if (!StringUtils.hasText(json)) {
-            throw new JsonException("json.error.string.empty");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "JSON string cannot be empty");
         }
         if (clazz == null) {
-            throw new JsonException("json.error.class.null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Class cannot be null");
         }
         try {
             return objectMapper.readValue(json, clazz);
         } catch (JsonProcessingException e) {
             log.error("Convert JSON string to object failed", e);
-            throw new JsonException("json.error.deserialize", e);
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "JSON deserialization failed", e);
+            return null; // 这行永远不会执行，但满足编译要求
         }
     }
     
@@ -146,16 +150,17 @@ public class JsonUtils {
      */
     public <T> T fromJsonToGeneric(String json, TypeReference<T> typeReference) {
         if (!StringUtils.hasText(json)) {
-            throw new JsonException("json.error.string.empty");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "JSON string cannot be empty");
         }
         if (typeReference == null) {
-            throw new JsonException("json.error.type.reference.null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Type reference cannot be null");
         }
         try {
             return objectMapper.readValue(json, typeReference);
         } catch (JsonProcessingException e) {
             log.error("Convert JSON string to object with type reference failed", e);
-            throw new JsonException("json.error.deserialize", e);
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "JSON deserialization failed", e);
+            return null; // 这行永远不会执行，但满足编译要求
         }
     }
     
@@ -169,17 +174,18 @@ public class JsonUtils {
      */
     public <T> List<T> fromJsonToList(String json, Class<T> clazz) {
         if (!StringUtils.hasText(json)) {
-            throw new JsonException("json.error.string.empty");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "JSON string cannot be empty");
         }
         if (clazz == null) {
-            throw new JsonException("json.error.class.null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Class cannot be null");
         }
         try {
             JavaType javaType = objectMapper.getTypeFactory().constructCollectionType(List.class, clazz);
             return objectMapper.readValue(json, javaType);
         } catch (JsonProcessingException e) {
             log.error("Convert JSON string to list failed", e);
-            throw new JsonException("json.error.deserialize", e);
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "JSON deserialization failed", e);
+            return null; // 这行永远不会执行，但满足编译要求
         }
     }
     
@@ -195,20 +201,21 @@ public class JsonUtils {
      */
     public <K, V> Map<K, V> fromJsonToMap(String json, Class<K> keyClass, Class<V> valueClass) {
         if (!StringUtils.hasText(json)) {
-            throw new JsonException("json.error.string.empty");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "JSON string cannot be empty");
         }
         if (keyClass == null) {
-            throw new JsonException("json.error.key.class.null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Key class cannot be null");
         }
         if (valueClass == null) {
-            throw new JsonException("json.error.value.class.null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Value class cannot be null");
         }
         try {
             JavaType javaType = objectMapper.getTypeFactory().constructMapType(Map.class, keyClass, valueClass);
             return objectMapper.readValue(json, javaType);
         } catch (JsonProcessingException e) {
             log.error("Convert JSON string to map failed", e);
-            throw new JsonException("json.error.deserialize", e);
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "JSON deserialization failed", e);
+            return null; // 这行永远不会执行，但满足编译要求
         }
     }
     
@@ -222,16 +229,17 @@ public class JsonUtils {
      */
     public <T> T fromJsonStream(InputStream inputStream, Class<T> clazz) {
         if (inputStream == null) {
-            throw new JsonException("json.error.input.stream.null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Input stream cannot be null");
         }
         if (clazz == null) {
-            throw new JsonException("json.error.class.null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Class cannot be null");
         }
         try {
             return objectMapper.readValue(inputStream, clazz);
         } catch (IOException e) {
             log.error("Convert input stream to object failed", e);
-            throw new JsonException("json.error.deserialize", e);
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "JSON deserialization failed", e);
+            return null; // 这行永远不会执行，但满足编译要求
         }
     }
     
@@ -243,13 +251,14 @@ public class JsonUtils {
      */
     public byte[] toBytes(Object object) {
         if (object == null) {
-            throw new JsonException("json.error.object.null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Object cannot be null");
         }
         try {
             return objectMapper.writeValueAsBytes(object);
         } catch (JsonProcessingException e) {
             log.error("Convert object to bytes error", e);
-            throw new JsonException("json.error.serialize", e);
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "JSON serialization failed", e);
+            return null; // 这行永远不会执行，但满足编译要求
         }
     }
     
@@ -263,16 +272,17 @@ public class JsonUtils {
      */
     public <T> T fromJsonBytes(byte[] bytes, Class<T> clazz) {
         if (bytes == null) {
-            throw new JsonException("json.error.bytes.null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Bytes cannot be null");
         }
         if (clazz == null) {
-            throw new JsonException("json.error.class.null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Class cannot be null");
         }
         try {
             return objectMapper.readValue(bytes, clazz);
         } catch (IOException e) {
             log.error("Convert bytes to object failed", e);
-            throw new JsonException("json.error.deserialize", e);
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "JSON deserialization failed", e);
+            return null; // 这行永远不会执行，但满足编译要求
         }
     }
     
@@ -303,7 +313,7 @@ public class JsonUtils {
     @SuppressWarnings("unchecked")
     public Map<String, Object> toMap(Object object) {
         if (object == null) {
-            throw new JsonException("json.error.object.null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Object cannot be null");
         }
         return objectMapper.convertValue(object, Map.class);
     }
@@ -318,10 +328,10 @@ public class JsonUtils {
      */
     public <T> T fromMap(Map<String, Object> map, Class<T> clazz) {
         if (map == null) {
-            throw new JsonException("json.error.map.null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "json.error.map.null");
         }
         if (clazz == null) {
-            throw new JsonException("json.error.class.null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Class cannot be null");
         }
         return objectMapper.convertValue(map, clazz);
     }
@@ -339,7 +349,7 @@ public class JsonUtils {
             return Optional.empty();
         }
         if (typeReference == null) {
-            throw new JsonException("json.error.type.reference.null");
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "Type reference cannot be null");
         }
         try {
             return Optional.ofNullable(objectMapper.readValue(json, typeReference));
