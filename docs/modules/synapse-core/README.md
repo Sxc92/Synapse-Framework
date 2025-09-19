@@ -13,6 +13,8 @@ Synapse Core 是 Synapse Framework 的核心基础模块，提供了框架的基
 
 ### 2. 异常处理体系
 - **统一异常**：标准化的异常定义和分类
+- **动态异常创建**：通过反射机制动态创建异常实例
+- **自动国际化**：I18nException自动使用当前语言环境
 - **异常转换**：自动异常转换和错误码映射
 - **异常日志**：结构化的异常日志记录
 
@@ -150,12 +152,32 @@ public class AppConfig {
 public class UserService {
     
     public User findUser(Long id) {
+        // 使用动态异常创建
+        User user = ExceptionUtils.requireNonNull(
+            userRepository.findById(id), 
+            BusinessException.class, 
+            ErrorCode.USER_NOT_FOUND, 
+            "用户ID", id
+        );
+        
+        // 条件异常抛出
+        ExceptionUtils.throwIf(
+            user.isDisabled(), 
+            BusinessException.class, 
+            ErrorCode.USER_DISABLED, 
+            "用户ID", id
+        );
+        
+        return user;
+    }
+    
+    public void updateUser(User user) {
         try {
             // 业务逻辑
-            return userRepository.findById(id);
+            userRepository.save(user);
         } catch (Exception e) {
-            // 抛出标准异常
-            throw new BusinessException("USER_NOT_FOUND", "用户不存在: " + id);
+            // 包装原始异常
+            ExceptionUtils.throwIf(true, BusinessException.class, ErrorCode.OPERATION_FAILED, e, "更新用户失败");
         }
     }
 }
@@ -280,20 +302,20 @@ public class CustomConfigurationSource implements ConfigurationSource {
 ### 2. 自定义异常处理器
 ```java
 @Component
-public class CustomExceptionHandler implements ExceptionHandler {
+public class CustomExceptionHandler {
     
-    @Override
-    public boolean canHandle(Throwable exception) {
-        return exception instanceof CustomBusinessException;
+    @ExceptionHandler(CustomBusinessException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Result<?> handleCustomBusinessException(CustomBusinessException e) {
+        log.warn("CustomBusinessException: code={}, message={}", e.getCode(), e.getMessage());
+        return Result.error(e.getCode(), e.getMessage());
     }
     
-    @Override
-    public ErrorResponse handle(Throwable exception) {
-        CustomBusinessException ex = (CustomBusinessException) exception;
-        return ErrorResponse.builder()
-            .code(ex.getErrorCode())
-            .message(ex.getMessage())
-            .build();
+    @ExceptionHandler(I18nException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Result<?> handleI18nException(I18nException e) {
+        log.error("I18nException: code={}, message={}", e.getCode(), e.getMessage(), e);
+        return Result.error(e.getCode(), e.getMessage());
     }
 }
 ```
@@ -394,10 +416,12 @@ public class DatabaseMessageProvider implements MessageProvider {
 - 定期审查和清理无用配置
 
 ### 2. 异常处理
+- 使用动态异常创建，提高代码灵活性
 - 定义清晰的异常层次结构
 - 使用有意义的错误码和消息
 - 避免在异常中暴露敏感信息
 - 记录足够的异常上下文信息
+- 保持异常链，便于问题追踪
 
 ### 3. 国际化
 - 使用统一的消息键命名规范
@@ -428,15 +452,23 @@ public class DatabaseMessageProvider implements MessageProvider {
 - 检查配置键名是否正确
 - 查看启动日志中的错误信息
 
-### 2. 国际化消息缺失
-**问题**：某些语言的消息无法显示
+### 2. 异常创建失败
+**问题**：反射创建异常时失败
 **解决方案**：
-- 检查消息文件是否存在
-- 验证消息键名是否正确
-- 确认语言包是否完整
-- 检查消息文件的编码格式
+- 确保异常类有正确的构造函数
+- 检查异常类是否继承自BaseException
+- 验证ErrorCode是否正确
+- 检查异常创建器配置
 
-### 3. 上下文数据丢失
+### 3. 国际化异常不生效
+**问题**：I18nException没有使用正确的语言环境
+**解决方案**：
+- 检查语言环境获取逻辑
+- 验证MessageUtils配置
+- 确认语言包是否完整
+- 检查国际化上下文设置
+
+### 4. 上下文数据丢失
 **问题**：请求间的上下文数据丢失
 **解决方案**：
 - 检查上下文的作用域设置
@@ -455,10 +487,10 @@ public class DatabaseMessageProvider implements MessageProvider {
 
 ## 📚 相关文档
 
+- [Synapse Core - 异常处理模块](EXCEPTION_HANDLING.md)
 - [Synapse Framework 架构设计](../../ARCHITECTURE.md)
-- [Synapse Framework 使用指南](../../USAGE_GUIDE.md)
-- [Synapse Framework 配置参考](../../CONFIGURATION_REFERENCE.md)
-- [Synapse Framework 开发笔记](../../DEVELOPMENT_NOTES.md)
+- [Synapse Framework 使用指南](../../QUICKSTART.md)
+- [Synapse Framework 配置参考](../../CONFIGURATION.md)
 
 ## 🔗 相关链接
 

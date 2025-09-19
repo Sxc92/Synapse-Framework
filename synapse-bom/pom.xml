@@ -205,6 +205,18 @@
                 <artifactId>seata-spring-boot-starter</artifactId>
                 <version>${seata.version}</version>
             </dependency>
+
+            <dependency>
+                <groupId>com.indigo</groupId>
+                <artifactId>mdm-sdk</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.indigo</groupId>
+                <artifactId>iam-sdk</artifactId>
+                <version>${project.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

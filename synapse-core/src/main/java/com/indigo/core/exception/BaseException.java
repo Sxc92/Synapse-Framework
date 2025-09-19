@@ -1,35 +1,70 @@
 package com.indigo.core.exception;
 
+import com.indigo.core.exception.enums.ErrorCode;
 import lombok.Getter;
 
 /**
+ * 异常基类
+ * 提供统一的异常结构和错误码支持
+ * 
  * @author 史偕成
- * @date 2025/04/24 21:57
- **/
+ * @date 2025/01/27
+ */
+@Getter
 public abstract class BaseException extends RuntimeException {
-    @Getter
+    
     private final String code;
-    private final String message;
-    @Getter
     private final Object[] args;
-
-    public BaseException(String code, String message, Object... args) {
+    
+    /**
+     * 构造函数
+     * 
+     * @param errorCode 错误代码
+     * @param args 消息参数
+     */
+    public BaseException(ErrorCode errorCode, Object... args) {
+        super(errorCode.getMessage());
+        this.code = errorCode.getCode();
+        this.args = args;
+    }
+    
+    /**
+     * 构造函数（带原因）
+     * 
+     * @param errorCode 错误代码
+     * @param cause 异常原因
+     * @param args 消息参数
+     */
+    public BaseException(ErrorCode errorCode, Throwable cause, Object... args) {
+        super(errorCode.getMessage(), cause);
+        this.code = errorCode.getCode();
+        this.args = args;
+    }
+    
+    /**
+     * 构造函数（自定义消息）
+     * 
+     * @param errorCode 错误代码
+     * @param message 自定义消息
+     * @param args 消息参数
+     */
+    public BaseException(ErrorCode errorCode, String message, Object... args) {
         super(message);
-        this.code = code;
-        this.message = message;
+        this.code = errorCode.getCode();
         this.args = args;
     }
-
-    public BaseException(String code, String message, Throwable cause, Object... args) {
+    
+    /**
+     * 构造函数（自定义消息，带原因）
+     * 
+     * @param errorCode 错误代码
+     * @param message 自定义消息
+     * @param cause 异常原因
+     * @param args 消息参数
+     */
+    public BaseException(ErrorCode errorCode, String message, Throwable cause, Object... args) {
         super(message, cause);
-        this.code = code;
-        this.message = message;
+        this.code = errorCode.getCode();
         this.args = args;
     }
-
-    @Override
-    public String getMessage() {
-        return message;
-    }
-
 }

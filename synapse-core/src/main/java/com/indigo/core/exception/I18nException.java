@@ -1,74 +1,102 @@
 package com.indigo.core.exception;
 
 import com.indigo.core.exception.enums.ErrorCode;
-import com.indigo.core.utils.MessageUtils;
+import com.indigo.i18n.utils.MessageUtils;
 
 import java.util.Locale;
 
 /**
- * Exception with internationalization support
+ * 国际化异常
+ * 支持多语言的异常消息
  * 
  * @author 史偕成
- * @date 2025/04/24 21:57
- **/
+ * @date 2025/01/27
+ */
 public class I18nException extends BaseException {
     
     private final Locale locale;
     
-    public I18nException(String code, Locale locale, Object... args) {
-        super(code, MessageUtils.getMessage(code, args, locale), args);
-        this.locale = locale;
-    }
-    
-    public I18nException(String code, String fallbackMessage, Locale locale, Object... args) {
-        super(code, fallbackMessage, args);
-        this.locale = locale;
-    }
-    
-    public I18nException(String code, Locale locale, Throwable cause, Object... args) {
-        super(code, MessageUtils.getMessage(code, args, locale), cause, args);
-        this.locale = locale;
-    }
-    
+    /**
+     * 构造函数
+     * 
+     * @param errorCode 错误代码
+     * @param locale 语言环境
+     * @param args 消息参数
+     */
     public I18nException(ErrorCode errorCode, Locale locale, Object... args) {
-        super(errorCode.getCode(), MessageUtils.getMessage(errorCode.getMessage(), args, locale), args);
-        this.locale = locale;
-    }
-    
-    public I18nException(ErrorCode errorCode, Locale locale, Throwable cause, Object... args) {
-        super(errorCode.getCode(), MessageUtils.getMessage(errorCode.getMessage(), args, locale), cause, args);
+        super(errorCode, MessageUtils.getMessage(errorCode.getMessage(), locale, args), args);
         this.locale = locale;
     }
     
     /**
-     * Get the locale used for this exception
+     * 构造函数（带原因）
      * 
-     * @return the locale
+     * @param errorCode 错误代码
+     * @param locale 语言环境
+     * @param cause 异常原因
+     * @param args 消息参数
+     */
+    public I18nException(ErrorCode errorCode, Locale locale, Throwable cause, Object... args) {
+        super(errorCode, MessageUtils.getMessage(errorCode.getMessage(), locale, args), cause, args);
+        this.locale = locale;
+    }
+    
+    /**
+     * 构造函数（自定义消息）
+     * 
+     * @param errorCode 错误代码
+     * @param locale 语言环境
+     * @param message 自定义消息
+     * @param args 消息参数
+     */
+    public I18nException(ErrorCode errorCode, Locale locale, String message, Object... args) {
+        super(errorCode, message, args);
+        this.locale = locale;
+    }
+    
+    /**
+     * 构造函数（自定义消息，带原因）
+     * 
+     * @param errorCode 错误代码
+     * @param locale 语言环境
+     * @param message 自定义消息
+     * @param cause 异常原因
+     * @param args 消息参数
+     */
+    public I18nException(ErrorCode errorCode, Locale locale, String message, Throwable cause, Object... args) {
+        super(errorCode, message, cause, args);
+        this.locale = locale;
+    }
+    
+    /**
+     * 获取语言环境
+     * 
+     * @return 语言环境
      */
     public Locale getLocale() {
         return locale;
     }
     
     /**
-     * Factory method to create an I18nException with the system default locale
+     * 使用默认语言环境创建I18nException
      * 
-     * @param errorCode the error code
-     * @param args message arguments
-     * @return a new I18nException
+     * @param errorCode 错误代码
+     * @param args 消息参数
+     * @return I18nException实例
      */
     public static I18nException of(ErrorCode errorCode, Object... args) {
         return new I18nException(errorCode, Locale.getDefault(), args);
     }
     
     /**
-     * Factory method to create an I18nException with the system default locale
+     * 使用默认语言环境创建I18nException（带原因）
      * 
-     * @param errorCode the error code
-     * @param cause the cause of the exception
-     * @param args message arguments
-     * @return a new I18nException
+     * @param errorCode 错误代码
+     * @param cause 异常原因
+     * @param args 消息参数
+     * @return I18nException实例
      */
     public static I18nException of(ErrorCode errorCode, Throwable cause, Object... args) {
         return new I18nException(errorCode, Locale.getDefault(), cause, args);
     }
-} 
+}

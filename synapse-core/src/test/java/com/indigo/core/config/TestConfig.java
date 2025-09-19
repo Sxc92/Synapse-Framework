@@ -1,7 +1,7 @@
 package com.indigo.core.config;
 
-import com.indigo.core.utils.MessageUtils;
-import org.springframework.context.MessageSource;
+import com.indigo.i18n.resolver.I18nMessageResolver;
+import com.indigo.i18n.utils.MessageUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.support.ResourceBundleMessageSource;
@@ -16,7 +16,7 @@ import org.springframework.context.support.ResourceBundleMessageSource;
 public class TestConfig {
     
     @Bean
-    public MessageSource messageSource() {
+    public ResourceBundleMessageSource messageSource() {
         ResourceBundleMessageSource messageSource = new ResourceBundleMessageSource();
         messageSource.setBasename("i18n/messages");
         messageSource.setDefaultEncoding("UTF-8");
@@ -24,7 +24,7 @@ public class TestConfig {
     }
 
     @Bean
-    public MessageUtils messageUtils(MessageSource messageSource) {
-        return new MessageUtils(messageSource);
+    public MessageUtils messageUtils(I18nMessageResolver i18nMessageResolver) {
+        return new MessageUtils(i18nMessageResolver);
     }
 } 

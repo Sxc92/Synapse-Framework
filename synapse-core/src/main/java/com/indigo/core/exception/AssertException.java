@@ -1,37 +1,57 @@
 package com.indigo.core.exception;
 
 import com.indigo.core.exception.enums.ErrorCode;
-import com.indigo.core.utils.MessageUtils;
 
 /**
- * 断言异常，用于参数校验和业务断言
+ * 断言异常
+ * 用于参数校验和业务断言
  * 
  * @author 史偕成
- * @date 2025/03/21
- **/
+ * @date 2025/01/27
+ */
 public class AssertException extends BaseException {
     
-    public AssertException(String code) {
-        super(ErrorCode.PARAM_ERROR.getCode(), MessageUtils.getMessage(code));
+    /**
+     * 构造函数
+     * 
+     * @param errorCode 错误代码
+     * @param args 消息参数
+     */
+    public AssertException(ErrorCode errorCode, Object... args) {
+        super(errorCode, args);
     }
     
-    public AssertException(String code, Object... args) {
-        super(ErrorCode.PARAM_ERROR.getCode(), MessageUtils.getMessage(code, args));
+    /**
+     * 构造函数（带原因）
+     * 
+     * @param errorCode 错误代码
+     * @param cause 异常原因
+     * @param args 消息参数
+     */
+    public AssertException(ErrorCode errorCode, Throwable cause, Object... args) {
+        super(errorCode, cause, args);
     }
     
-    public AssertException(ErrorCode errorCode, String code) {
-        super(errorCode.getCode(), MessageUtils.getMessage(code));
+    /**
+     * 构造函数（自定义消息）
+     * 
+     * @param errorCode 错误代码
+     * @param message 自定义消息
+     * @param args 消息参数
+     */
+    public AssertException(ErrorCode errorCode, String message, Object... args) {
+        super(errorCode, message, args);
     }
     
-    public AssertException(ErrorCode errorCode, String code, Object... args) {
-        super(errorCode.getCode(), MessageUtils.getMessage(code, args));
-    }
-    
-    public AssertException(ErrorCode errorCode, Throwable cause, String code) {
-        super(errorCode.getCode(), MessageUtils.getMessage(code), cause);
-    }
-    
-    public AssertException(ErrorCode errorCode, Throwable cause, String code, Object... args) {
-        super(errorCode.getCode(), MessageUtils.getMessage(code, args), cause, args);
+    /**
+     * 构造函数（自定义消息，带原因）
+     * 
+     * @param errorCode 错误代码
+     * @param message 自定义消息
+     * @param cause 异常原因
+     * @param args 消息参数
+     */
+    public AssertException(ErrorCode errorCode, String message, Throwable cause, Object... args) {
+        super(errorCode, message, cause, args);
     }
 } 
