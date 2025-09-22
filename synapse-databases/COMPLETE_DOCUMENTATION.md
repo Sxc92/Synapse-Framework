@@ -6,8 +6,8 @@ Synapse Framework 数据库模块是一个集成了 MyBatis-Plus 和动态数据
 
 ## 🚀 **主要特性**
 
-- 🚀 **MyBatis-Plus 集成**: 完整的 MyBatis-Plus 配置支持
-- 🔄 **动态数据源**: 支持多数据源动态切换
+- 🚀 **MyBatis-Plus 集成**: 完整的 MyBatis-Plus 配置支持，使用 MybatisSqlSessionFactoryBean
+- 🔄 **动态数据源**: 支持多数据源动态切换，带配置验证和健康检查
 - 🗄️ **多数据库支持**: MySQL, PostgreSQL, Oracle, SQL Server, H2
 - 🏊 **连接池支持**: HikariCP, Druid
 - ⚙️ **灵活配置**: 支持自定义配置和默认值
@@ -15,6 +15,9 @@ Synapse Framework 数据库模块是一个集成了 MyBatis-Plus 和动态数据
 - 🎯 **BaseRepository**: 强大的Repository接口，支持VO映射、多表关联查询
 - 🔍 **EnhancedQueryBuilder**: 增强查询构建器，支持聚合查询、性能监控
 - 🤖 **@AutoRepository**: 自动Repository注解，无需手动实现
+- 🔒 **自动字段填充**: 支持审计字段自动填充（创建时间、修改时间、用户信息、乐观锁、逻辑删除）
+- ✅ **配置验证**: 启动时自动验证数据源配置和连接性
+- 🔧 **问题修复**: 修复了MyBatis绑定异常、数据源验证、字段填充等关键问题
 
 ---
 
@@ -26,9 +29,12 @@ Synapse Framework 数据库模块是一个集成了 MyBatis-Plus 和动态数据
 4. [@AutoRepository 使用指南](#autorepository-使用指南)
 5. [多表查询方式对比](#多表查询方式对比)
 6. [配置属性说明](#配置属性说明)
-7. [性能优化建议](#性能优化建议)
-8. [最佳实践](#最佳实践)
-9. [常见问题](#常见问题)
+7. [自动字段填充](#自动字段填充)
+8. [配置验证](#配置验证)
+9. [问题修复记录](#问题修复记录)
+10. [性能优化建议](#性能优化建议)
+11. [最佳实践](#最佳实践)
+12. [常见问题](#常见问题)
 
 ---
 
@@ -1207,6 +1213,170 @@ synapse:
 3. 删除相关的`JoinPageDTO`配置代码
 
 这样就能完美匹配`ProductMultiTableVO`示例的使用方式了！🚀
+
+---
+
+## 🔒 **自动字段填充**
+
+### **概述**
+
+Synapse Framework 提供了强大的自动字段填充功能，支持审计字段的自动填充，包括创建时间、修改时间、用户信息、乐观锁版本号和逻辑删除标记。
+
+### **实体类继承**
+
+```java
+@TableName("users")
+public class Users extends AuditEntity<String> {
+    private String account;
+    private String password;
+    private Boolean locked;
+    private Boolean enabled;
+    private Boolean expired;
+    private LocalDateTime lastLoginTime;
+    
+    // 自动填充字段（继承自AuditEntity）：
+    // - id: 主键（自动生成）
+    // - createTime: 创建时间
+    // - createUser: 创建人
+    // - modifyTime: 修改时间
+    // - modifyUser: 修改人
+    // - revision: 乐观锁版本号（初始值1）
+    // - deleted: 逻辑删除标记（初始值false）
+}
+```
+
+### **字段说明**
+
+| 字段 | 类型 | 说明 | 填充时机 | 默认值 |
+|------|------|------|----------|--------|
+| `id` | T | 主键 | 插入时 | 自动生成 |
+| `createTime` | LocalDateTime | 创建时间 | 插入时 | 当前时间 |
+| `createUser` | T | 创建人 | 插入时 | 当前用户ID |
+| `modifyTime` | LocalDateTime | 修改时间 | 插入/更新时 | 当前时间 |
+| `modifyUser` | T | 修改人 | 插入/更新时 | 当前用户ID |
+| `revision` | Integer | 乐观锁版本号 | 插入时 | 1 |
+| `deleted` | Boolean | 逻辑删除标记 | 插入时 | false |
+
+### **配置要求**
+
+确保在应用启动类中添加必要的包扫描：
+
+```java
+@SpringBootApplication(
+    scanBasePackages = {"com.indigo.iam", "com.indigo.databases", "com.indigo.core"}
+)
+@MapperScan("com.indigo.iam.repository.mapper")
+public class IAMApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(IAMApplication.class, args);
+    }
+}
+```
+
+---
+
+## ✅ **配置验证**
+
+### **概述**
+
+启动时自动验证数据源配置的完整性和连接性，确保应用能够正常启动。
+
+### **验证内容**
+
+1. **主数据源验证**：检查主数据源是否存在
+2. **读写分离配置验证**：验证读写数据源配置
+3. **连接池配置验证**：检查连接池参数合理性
+4. **数据源连接性验证**：测试所有数据源的连接
+5. **配置摘要输出**：显示完整的配置信息
+
+### **启用调试日志**
+
+```yaml
+logging:
+  level:
+    com.indigo.databases: DEBUG
+```
+
+### **验证日志示例**
+
+```
+2025-09-22 16:28:49.569 [main] INFO  [DataSourceConfigurationValidator] - 开始验证数据源配置...
+2025-09-22 16:28:49.570 [pool-6-thread-1] DEBUG [DataSourceHealthChecker] - DataSource [master1] is healthy
+2025-09-22 16:28:49.570 [main] INFO  [DataSourceConfigurationValidator] - ✅ 主数据源验证通过: [master1]
+2025-09-22 16:28:49.570 [main] INFO  [DataSourceConfigurationValidator] - ✅ 数据源 [master1] 连接测试通过
+2025-09-22 16:28:49.570 [main] INFO  [DataSourceConfigurationValidator] - 📊 数据源配置摘要:
+2025-09-22 16:28:49.570 [main] INFO  [DataSourceConfigurationValidator] -    主数据源: [master1]
+2025-09-22 16:28:49.570 [main] INFO  [DataSourceConfigurationValidator] -    总数据源数: [1]
+2025-09-22 16:28:49.570 [main] INFO  [DataSourceConfigurationValidator] -    读写分离: [禁用]
+2025-09-22 16:28:49.570 [main] INFO  [DataSourceConfigurationValidator] -    负载均衡策略: [ROUND_ROBIN]
+2025-09-22 16:28:49.570 [main] INFO  [DataSourceConfigurationValidator] -    故障转移: [启用]
+2025-09-22 16:28:49.570 [main] INFO  [DataSourceConfigurationValidator] - 数据源配置验证完成 ✅
+```
+
+---
+
+## 🔧 **问题修复记录**
+
+### **修复的问题**
+
+#### **1. MyBatis绑定异常**
+**问题**：`Invalid bound statement (not found): com.indigo.iam.repository.mapper.IamUserMapper.selectList`
+
+**原因**：
+- 重复的`@MapperScan`注解配置
+- 错误的`SqlSessionFactory`配置
+
+**解决方案**：
+- 移除`MybatisPlusConfig`中的重复`@MapperScan`注解
+- 使用`MybatisSqlSessionFactoryBean`替代`SqlSessionFactoryBean`
+- 移除XML映射文件配置，使用MyBatis-Plus注解方式
+
+#### **2. 数据源配置验证失败**
+**问题**：`主数据源 [master1] 不存在`
+
+**原因**：`DataSourceConfigurationValidator`依赖注入问题
+
+**解决方案**：
+- 修改构造函数参数，使用`DynamicRoutingDataSource`替代`Map<String, DataSource>`
+- 更新所有相关方法调用
+
+#### **3. 字段自动填充缺失**
+**问题**：`revision`和`deleted`字段没有在插入时自动填充
+
+**原因**：缺少`@TableField(fill = FieldFill.INSERT)`注解和填充逻辑
+
+**解决方案**：
+- 在`AuditEntity`中添加自动填充注解
+- 在`MyMetaObjectHandler`中添加填充逻辑
+
+#### **4. 编译错误**
+**问题**：`找不到符号: 方法 setGlobalConfig`
+
+**原因**：使用了错误的`SqlSessionFactoryBean`类
+
+**解决方案**：
+- 使用`MybatisSqlSessionFactoryBean`替代`SqlSessionFactoryBean`
+- 添加正确的import语句
+
+### **修复后的配置**
+
+```java
+@Bean
+@Primary
+public SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception {
+    MybatisSqlSessionFactoryBean factoryBean = new MybatisSqlSessionFactoryBean();
+    factoryBean.setDataSource(dataSource);
+    factoryBean.setPlugins(mybatisPlusInterceptor());
+    factoryBean.setGlobalConfig(globalConfig());
+    
+    MybatisConfiguration configuration = new MybatisConfiguration();
+    configuration.setMapUnderscoreToCamelCase(true);
+    configuration.setLogImpl(org.apache.ibatis.logging.stdout.StdOutImpl.class);
+    factoryBean.setConfiguration(configuration);
+    
+    return factoryBean.getObject();
+}
+```
 
 ---
 

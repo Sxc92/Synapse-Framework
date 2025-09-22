@@ -2,7 +2,7 @@ package com.indigo.databases.utils;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
-import com.indigo.databases.annotation.QueryCondition;
+import com.indigo.core.annotation.QueryCondition;
 import com.indigo.core.entity.dto.PageDTO;
 import com.indigo.core.entity.dto.QueryDTO;
 import lombok.extern.slf4j.Slf4j;

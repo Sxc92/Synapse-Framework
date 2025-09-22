@@ -8,8 +8,8 @@ Synapse Framework 数据库模块是一个集成了 MyBatis-Plus 和动态数据
 
 ## 🚀 **主要特性**
 
-- 🚀 **MyBatis-Plus 集成**: 完整的 MyBatis-Plus 配置支持
-- 🔄 **动态数据源**: 支持多数据源动态切换
+- 🚀 **MyBatis-Plus 集成**: 完整的 MyBatis-Plus 配置支持，使用 MybatisSqlSessionFactoryBean
+- 🔄 **动态数据源**: 支持多数据源动态切换，带配置验证和健康检查
 - 🗄️ **多数据库支持**: MySQL, PostgreSQL, Oracle, SQL Server, H2
 - 🏊 **连接池支持**: HikariCP, Druid
 - ⚙️ **灵活配置**: 支持自定义配置和默认值
@@ -17,6 +17,8 @@ Synapse Framework 数据库模块是一个集成了 MyBatis-Plus 和动态数据
 - 🎯 **BaseRepository**: 强大的Repository接口，支持VO映射、多表关联查询
 - 🔍 **EnhancedQueryBuilder**: 增强查询构建器，支持聚合查询、性能监控
 - 🤖 **@AutoRepository**: 自动Repository注解，无需手动实现
+- 🔒 **自动字段填充**: 支持审计字段自动填充（创建时间、修改时间、用户信息、乐观锁、逻辑删除）
+- ✅ **配置验证**: 启动时自动验证数据源配置和连接性
 
 ## 🚀 **快速开始**
 
@@ -83,13 +85,44 @@ public class ProductService {
 ```yaml
 synapse:
   databases:
-    auto-repository:
+    sql-annotation:
       enabled: true
       base-packages:
         - com.indigo.repository
         - com.yourcompany.repository
       debug: false
       bean-name-strategy: SIMPLE_NAME
+```
+
+### **5. 审计字段自动填充**
+
+实体类继承 `AuditEntity` 即可自动填充审计字段：
+
+```java
+@TableName("users")
+public class Users extends AuditEntity<String> {
+    private String account;
+    private String password;
+    // 自动填充字段：
+    // - id: 主键（自动生成）
+    // - createTime: 创建时间
+    // - createUser: 创建人
+    // - modifyTime: 修改时间
+    // - modifyUser: 修改人
+    // - revision: 乐观锁版本号（初始值1）
+    // - deleted: 逻辑删除标记（初始值false）
+}
+```
+
+### **6. 配置验证**
+
+启动时自动验证数据源配置：
+
+```yaml
+# 启用调试日志查看验证过程
+logging:
+  level:
+    com.indigo.databases: DEBUG
 ```
 
 ## 📚 **更多信息**
