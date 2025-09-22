@@ -35,7 +35,6 @@ com\indigo\cache\core\CacheService.class
 com\indigo\cache\config\RedisConfiguration.class
 com\indigo\cache\extension\lock\DistributedLockService$ReentrantInfo.class
 com\indigo\cache\extension\lock\LockManager$1.class
-com\indigo\cache\config\DistributedDeadlockProperties.class
 com\indigo\cache\session\StatisticsManager$LoginStats.class
 com\indigo\cache\core\CacheHealthCheckService$HealthCheckResult$Builder.class
 com\indigo\cache\config\CacheProperties$HealthCheck.class
@@ -62,7 +61,6 @@ com\indigo\cache\extension\lock\resource\ResourcePool.class
 com\indigo\cache\config\CacheProperties$Warmup.class
 com\indigo\cache\extension\lock\resource\RecoveryState.class
 com\indigo\cache\config\RedisConnectionConfiguration.class
-com\indigo\cache\extension\lock\DistributedDeadlockDetector.class
 com\indigo\cache\session\StatisticsManager$UserSessionStats.class
 com\indigo\cache\session\SessionManager.class
 com\indigo\cache\annotation\CacheEvict.class
