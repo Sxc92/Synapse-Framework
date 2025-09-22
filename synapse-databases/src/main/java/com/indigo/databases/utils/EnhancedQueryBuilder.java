@@ -190,9 +190,17 @@ public class EnhancedQueryBuilder {
         String fullSql = "SELECT " + String.join(", ", selectFields) + " FROM " + getTableName(service) + " WHERE " + sql;
         
         // 使用EnhancedVoMapper执行查询，实现智能映射
-        @SuppressWarnings("unchecked")
-        EnhancedVoMapper<T, V> mapper = (EnhancedVoMapper<T, V>) service.getBaseMapper();
-        return mapper.selectListAsVo(fullSql);
+        BaseMapper<T> baseMapper = service.getBaseMapper();
+        if (baseMapper instanceof EnhancedVoMapper) {
+            @SuppressWarnings("unchecked")
+            EnhancedVoMapper<T, V> mapper = (EnhancedVoMapper<T, V>) baseMapper;
+            return mapper.selectListAsVo(fullSql);
+        } else {
+            // 如果Mapper没有实现EnhancedVoMapper，使用基础查询
+            log.warn("Mapper {} 没有实现EnhancedVoMapper，使用基础查询", baseMapper.getClass().getSimpleName());
+            List<T> entities = baseMapper.selectList(wrapper);
+            return VoMapper.mapToVoList(entities, voClass);
+        }
     }
     
     /**
@@ -203,11 +211,16 @@ public class EnhancedQueryBuilder {
         String sql = MultiTableQueryBuilder.buildMultiTableSql(queryDTO, voClass);
         
         // 执行查询
-        @SuppressWarnings("unchecked")
-        EnhancedVoMapper<T, V> mapper = (EnhancedVoMapper<T, V>) service.getBaseMapper();
-        List<V> result = mapper.selectListAsVo(sql);
-        
-        return result;
+        BaseMapper<T> baseMapper = service.getBaseMapper();
+        if (baseMapper instanceof EnhancedVoMapper) {
+            @SuppressWarnings("unchecked")
+            EnhancedVoMapper<T, V> mapper = (EnhancedVoMapper<T, V>) baseMapper;
+            return mapper.selectListAsVo(sql);
+        } else {
+            // 如果Mapper没有实现EnhancedVoMapper，使用基础查询
+            log.warn("Mapper {} 没有实现EnhancedVoMapper，多表查询可能无法正常工作", baseMapper.getClass().getSimpleName());
+            throw new UnsupportedOperationException("多表查询需要Mapper实现EnhancedVoMapper接口");
+        }
     }
     
     /**
@@ -779,5 +792,19 @@ public class EnhancedQueryBuilder {
         // 这里应该从实体类注解中获取表名
         // 暂时返回一个默认值，实际应该通过反射获取
         return "t_" + service.getClass().getSimpleName().toLowerCase().replace("service", "");
+    }
+    
+    /**
+     * 安全获取EnhancedVoMapper，如果不存在则使用基础查询
+     */
+    @SuppressWarnings("unchecked")
+    private static <T, V extends BaseVO> EnhancedVoMapper<T, V> getEnhancedVoMapper(IService<T> service) {
+        BaseMapper<T> baseMapper = service.getBaseMapper();
+        if (baseMapper instanceof EnhancedVoMapper) {
+            return (EnhancedVoMapper<T, V>) baseMapper;
+        } else {
+            log.warn("Mapper {} 没有实现EnhancedVoMapper，将使用基础查询", baseMapper.getClass().getSimpleName());
+            return null;
+        }
     }
 } 
