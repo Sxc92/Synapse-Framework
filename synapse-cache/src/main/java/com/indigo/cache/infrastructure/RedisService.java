@@ -9,11 +9,8 @@ import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.HashSet;
 
 /**
  * Redis基础设施服务类
@@ -173,6 +170,17 @@ public class RedisService {
     }
 
     /**
+     * 设置Hash字段（别名方法，用于兼容）
+     *
+     * @param key     键
+     * @param hashKey hash键
+     * @param value   值
+     */
+    public void hset(String key, String hashKey, Object value) {
+        hashSet(key, hashKey, value);
+    }
+
+    /**
      * 获取Hash字段值
      *
      * @param key     键
@@ -184,13 +192,18 @@ public class RedisService {
     }
 
     /**
-     * 获取Hash的所有键值
+     * 获取Hash的所有键值（别名方法，用于兼容）
      *
      * @param key 键
      * @return 所有键值
      */
-    public Map<Object, Object> hashGetAll(String key) {
-        return redisTemplate.opsForHash().entries(key);
+    public Map<String, Object> hashGetAll(String key) {
+        Map<Object, Object> rawMap = redisTemplate.opsForHash().entries(key);
+        Map<String, Object> result = new HashMap<>();
+        for (Map.Entry<Object, Object> entry : rawMap.entrySet()) {
+            result.put(entry.getKey().toString(), entry.getValue());
+        }
+        return result;
     }
 
     /**

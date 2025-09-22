@@ -1,7 +1,7 @@
 package com.indigo.core.utils;
 
 import com.indigo.core.exception.Ex;
-import com.indigo.core.exception.enums.StandardErrorCode;
+import com.indigo.core.constants.StandardErrorCode;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.*;
@@ -87,8 +87,7 @@ public class DateTimeUtils {
             return LocalDateTime.parse(dateTimeStr, DateTimeFormatter.ofPattern(pattern));
         } catch (Exception e) {
             log.error("Failed to parse date time: {}", dateTimeStr, e);
-            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "Failed to parse date time: " + dateTimeStr, e);
-            return null; // 这行永远不会执行，但满足编译要求
+            throw new RuntimeException("Failed to parse date time: " + dateTimeStr, e);
         }
     }
 
@@ -100,8 +99,7 @@ public class DateTimeUtils {
             return LocalDate.parse(dateStr, DateTimeFormatter.ofPattern(pattern));
         } catch (Exception e) {
             log.error("Failed to parse date: {}", dateStr, e);
-            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "Failed to parse date: " + dateStr, e);
-            return null; // 这行永远不会执行，但满足编译要求
+            throw new RuntimeException("Failed to parse date: " + dateStr, e);
         }
     }
 

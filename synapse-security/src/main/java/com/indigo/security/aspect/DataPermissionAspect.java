@@ -1,7 +1,6 @@
 package com.indigo.security.aspect;
 
 import com.indigo.core.context.UserContext;
-import com.indigo.core.exception.SecurityException;
 import com.indigo.security.annotation.DataPermission;
 import com.indigo.security.model.DataPermissionRule;
 import com.indigo.security.service.DataPermissionService;

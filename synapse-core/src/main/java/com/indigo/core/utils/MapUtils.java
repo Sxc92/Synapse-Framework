@@ -1,7 +1,7 @@
 package com.indigo.core.utils;
 
 import com.indigo.core.exception.Ex;
-import com.indigo.core.exception.enums.StandardErrorCode;
+import com.indigo.core.constants.StandardErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.CollectionUtils;
 
@@ -507,11 +507,15 @@ public class MapUtils {
      * 转换键
      */
     public static <K, V, R> Map<R, V> transformKeys(Map<K, V> map, Function<? super K, ? extends R> keyMapper) {
-        if (map == null || keyMapper == null) throw new NullPointerException();
+        if (map == null || keyMapper == null) {
+            return Collections.emptyMap();
+        }
         Map<R, V> result = new HashMap<>();
         for (Map.Entry<K, V> entry : map.entrySet()) {
             R newKey = keyMapper.apply(entry.getKey());
-            if (result.containsKey(newKey)) throw new IllegalArgumentException("key 重复: " + newKey);
+            if (result.containsKey(newKey)) {
+                throw new IllegalArgumentException("key 重复: " + newKey);
+            }
             result.put(newKey, entry.getValue());
         }
         return result;
@@ -521,7 +525,9 @@ public class MapUtils {
      * 转换值
      */
     public static <K, V, R> Map<K, R> transformValues(Map<K, V> map, Function<? super V, ? extends R> valueMapper) {
-        if (map == null || valueMapper == null) throw new NullPointerException();
+        if (map == null || valueMapper == null) {
+            return Collections.emptyMap();
+        }
         Map<K, R> result = new HashMap<>();
         for (Map.Entry<K, V> entry : map.entrySet()) {
             result.put(entry.getKey(), valueMapper.apply(entry.getValue()));
@@ -533,11 +539,15 @@ public class MapUtils {
      * 转换键值对
      */
     public static <K, V, RK, RV> Map<RK, RV> transformEntries(Map<K, V> map, Function<? super K, ? extends RK> keyMapper, Function<? super V, ? extends RV> valueMapper) {
-        if (map == null || keyMapper == null || valueMapper == null) throw new NullPointerException();
+        if (map == null || keyMapper == null || valueMapper == null) {
+            return Collections.emptyMap();
+        }
         Map<RK, RV> result = new HashMap<>();
         for (Map.Entry<K, V> entry : map.entrySet()) {
             RK newKey = keyMapper.apply(entry.getKey());
-            if (result.containsKey(newKey)) throw new IllegalArgumentException("key 重复: " + newKey);
+            if (result.containsKey(newKey)) {
+                throw new IllegalArgumentException("key 重复: " + newKey);
+            }
             result.put(newKey, valueMapper.apply(entry.getValue()));
         }
         return result;
@@ -547,10 +557,14 @@ public class MapUtils {
      * 转换键值对到目标Map
      */
     public static <K, V, RK, RV> void transformEntriesTo(Map<K, V> map, Map<RK, RV> target, Function<? super K, ? extends RK> keyMapper, Function<? super V, ? extends RV> valueMapper) {
-        if (map == null || target == null || keyMapper == null || valueMapper == null) throw new NullPointerException();
+        if (map == null || target == null || keyMapper == null || valueMapper == null) {
+            return;
+        }
         for (Map.Entry<K, V> entry : map.entrySet()) {
             RK newKey = keyMapper.apply(entry.getKey());
-            if (target.containsKey(newKey)) throw new IllegalArgumentException("key 重复: " + newKey);
+            if (target.containsKey(newKey)) {
+                throw new IllegalArgumentException("key 重复: " + newKey);
+            }
             target.put(newKey, valueMapper.apply(entry.getValue()));
         }
     }
@@ -559,7 +573,9 @@ public class MapUtils {
      * 过滤键值对
      */
     public static <K, V> Map<K, V> filterEntries(Map<K, V> map, BiFunction<? super K, ? super V, Boolean> predicate) {
-        if (map == null || predicate == null) throw new NullPointerException();
+        if (map == null || predicate == null) {
+            return Collections.emptyMap();
+        }
         Map<K, V> result = new HashMap<>();
         for (Map.Entry<K, V> entry : map.entrySet()) {
             if (predicate.apply(entry.getKey(), entry.getValue())) {
@@ -573,7 +589,9 @@ public class MapUtils {
      * 过滤键值对到目标Map
      */
     public static <K, V> void filterEntriesTo(Map<K, V> map, Map<K, V> target, BiFunction<? super K, ? super V, Boolean> predicate) {
-        if (map == null || target == null || predicate == null) throw new NullPointerException();
+        if (map == null || target == null || predicate == null) {
+            return;
+        }
         for (Map.Entry<K, V> entry : map.entrySet()) {
             if (predicate.apply(entry.getKey(), entry.getValue())) {
                 target.put(entry.getKey(), entry.getValue());

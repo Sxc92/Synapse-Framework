@@ -1,10 +1,8 @@
 package com.indigo.core.utils;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.indigo.core.entity.TreeNode;
 import com.indigo.core.exception.Ex;
-import com.indigo.core.exception.enums.StandardErrorCode;
+import com.indigo.core.constants.StandardErrorCode;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -161,17 +159,12 @@ public class TreeUtil<T> {
     }
 
     /** 📝 序列化为 JSON */
-    public String toJson() throws JsonProcessingException {
-        try {
-            return new ObjectMapper().writeValueAsString(root);
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize tree to JSON", e);
-            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "Failed to serialize tree to JSON", e);
-        }
+    public String toJson() {
+        return JsonUtils.toJsonString(root);
     }
 
     /** 🔄 反序列化 JSON 为 Tree */
-    public static <T> TreeUtil<T> fromJson(String json, Class<T> clazz) throws JsonProcessingException {
+    public static <T> TreeUtil<T> fromJson(String json, Class<T> clazz) {
         if (json == null || json.isEmpty()) {
             Ex.throwEx(StandardErrorCode.PARAM_ERROR, "JSON 字符串不能为空");
         }
@@ -179,13 +172,10 @@ public class TreeUtil<T> {
             Ex.throwEx(StandardErrorCode.PARAM_ERROR, "节点类型不能为空");
         }
         
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            TreeNode<T> rootNode = mapper.readValue(json, mapper.getTypeFactory().constructParametricType(TreeNode.class, clazz));
-            return new TreeUtil<>(rootNode.value());
-        } catch (JsonProcessingException e) {
-            log.error("Failed to deserialize JSON to tree", e);
-            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "Failed to deserialize JSON to tree", e);
+        TreeNode<T> rootNode = JsonUtils.fromJson(json, TreeNode.class);
+        if (rootNode == null) {
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "Failed to deserialize JSON to tree");
         }
+        return new TreeUtil<>(rootNode.value());
     }
 }

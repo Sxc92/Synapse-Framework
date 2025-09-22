@@ -6,6 +6,10 @@ import com.indigo.cache.extension.lock.resource.ResourceState;
 import com.indigo.cache.extension.lock.resource.RecoveryState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -78,6 +82,9 @@ public class LockManager {
     private final LockPerformanceMonitor performanceMonitor;
     private final FastRecoveryManager fastRecoveryManager;
     
+    // 分布式死锁检测器（可选）
+    private final DistributedDeadlockDetector distributedDeadlockDetector;
+    
     // 延迟初始化相关字段
     private volatile boolean isInitialized = false;
     private final AtomicLong lastAccessTime = new AtomicLong(System.currentTimeMillis());
@@ -87,13 +94,15 @@ public class LockManager {
                       FairLockService fairLockService,
                       DeadlockDetector deadlockDetector,
                       LockPerformanceMonitor performanceMonitor,
-                      FastRecoveryManager fastRecoveryManager) {
+                      FastRecoveryManager fastRecoveryManager,
+                      DistributedDeadlockDetector distributedDeadlockDetector) {
         this.distributedLockService = distributedLockService;
         this.readWriteLockService = readWriteLockService;
         this.fairLockService = fairLockService;
         this.deadlockDetector = deadlockDetector;
         this.performanceMonitor = performanceMonitor;
         this.fastRecoveryManager = fastRecoveryManager;
+        this.distributedDeadlockDetector = distributedDeadlockDetector;
         
         log.info("LockManager Bean 已创建，采用延迟初始化策略");
     }
@@ -554,6 +563,59 @@ public class LockManager {
      */
     public Map<String, Object> getDeadlockStatus() {
         return deadlockDetector.getStatus();
+    }
+
+    /**
+     * 获取分布式死锁检测状态
+     * 
+     * @return 分布式死锁检测状态
+     */
+    public Map<String, Object> getDistributedDeadlockStatus() {
+        if (distributedDeadlockDetector != null) {
+            return distributedDeadlockDetector.getGlobalStatus();
+        }
+        return Collections.emptyMap();
+    }
+
+    /**
+     * 检测全局死锁
+     * 
+     * @return 全局死锁环列表
+     */
+    public List<Set<String>> detectGlobalDeadlocks() {
+        if (distributedDeadlockDetector != null) {
+            return distributedDeadlockDetector.detectGlobalDeadlocks();
+        }
+        return Collections.emptyList();
+    }
+
+    /**
+     * 同步本地状态到全局
+     */
+    public void syncLocalStateToGlobal() {
+        if (distributedDeadlockDetector != null) {
+            distributedDeadlockDetector.syncLocalStateToGlobal();
+        }
+    }
+
+    /**
+     * 启用/禁用全局检测
+     * 
+     * @param enabled 是否启用
+     */
+    public void setGlobalDetectionEnabled(boolean enabled) {
+        if (distributedDeadlockDetector != null) {
+            distributedDeadlockDetector.setGlobalDetectionEnabled(enabled);
+        }
+    }
+
+    /**
+     * 检查是否启用了分布式死锁检测
+     * 
+     * @return 是否启用
+     */
+    public boolean isDistributedDeadlockEnabled() {
+        return distributedDeadlockDetector != null;
     }
 
     /**

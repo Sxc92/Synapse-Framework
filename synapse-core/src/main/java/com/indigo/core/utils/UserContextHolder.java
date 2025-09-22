@@ -1,6 +1,5 @@
 package com.indigo.core.utils;
 
-import cn.hutool.core.util.StrUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.indigo.core.context.UserContext;
 import lombok.extern.slf4j.Slf4j;
@@ -250,13 +249,20 @@ public class UserContextHolder {
             return UserContext.builder()
                     .userId(userIdStr)
                     .username(username)
-                    .tenantId(StrUtil.isNotBlank(tenantIdStr) ? tenantIdStr : null)
-                    .deptId(StrUtil.isNotBlank(deptIdStr) ? deptIdStr : null)
+                    .tenantId(isNotBlank(tenantIdStr) ? tenantIdStr : null)
+                    .deptId(isNotBlank(deptIdStr) ? deptIdStr : null)
                     .build();
 
         } catch (Exception e) {
             log.error("从请求头构建用户上下文失败", e);
             return null;
         }
+    }
+    
+    /**
+     * 检查字符串是否不为空（JDK17原生实现）
+     */
+    private static boolean isNotBlank(String str) {
+        return str != null && !str.trim().isEmpty();
     }
 } 

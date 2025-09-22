@@ -2,7 +2,7 @@ package com.indigo.core.exception.handler;
 
 import com.indigo.core.entity.Result;
 import com.indigo.core.exception.SynapseException;
-import com.indigo.core.exception.enums.StandardErrorCode;
+import com.indigo.core.constants.StandardErrorCode;
 import com.indigo.core.i18n.MessageResolver;
 import com.indigo.core.i18n.LocaleContext;
 import lombok.extern.slf4j.Slf4j;

@@ -141,6 +141,28 @@ synapse:
         business-cache-threshold: 900000  # 15分钟
         # 临时资源释放阈值(毫秒) - 超过此时间未访问则自动释放
         temporary-threshold: 300000  # 5分钟
+      # 死锁检测配置
+      deadlock:
+        # 分布式死锁检测配置
+        distributed:
+          # 是否启用分布式死锁检测
+          enabled: true
+          # 状态同步间隔(毫秒)
+          sync-interval: 5000  # 5秒
+          # 全局检测间隔(毫秒)
+          global-detection-interval: 10000  # 10秒
+          # 节点超时时间(毫秒)
+          node-timeout: 30000  # 30秒
+          # 最大节点数量
+          max-nodes: 10
+          # Redis键前缀
+          redis-prefix: "deadlock:global"
+          # 是否启用调试日志
+          debug: false
+          # 心跳间隔(毫秒)
+          heartbeat-interval: 1000  # 1秒
+          # 清理间隔(毫秒)
+          cleanup-interval: 30000  # 30秒
     
     # 缓存预热配置
     warmup:

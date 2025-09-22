@@ -1,5 +1,6 @@
 package com.indigo.databases.config;
 
+import com.indigo.databases.dynamic.DynamicRoutingDataSource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -25,12 +26,12 @@ import java.util.Map;
 public class DataSourceConfigurationValidator {
     
     private final SynapseDataSourceProperties properties;
-    private final Map<String, DataSource> dataSourceMap;
+    private final DynamicRoutingDataSource dynamicDataSource;
     
     public DataSourceConfigurationValidator(SynapseDataSourceProperties properties, 
-                                         Map<String, DataSource> dataSourceMap) {
+                                         DynamicRoutingDataSource dynamicDataSource) {
         this.properties = properties;
-        this.dataSourceMap = dataSourceMap;
+        this.dynamicDataSource = dynamicDataSource;
     }
     
     @EventListener(ApplicationReadyEvent.class)
@@ -69,7 +70,7 @@ public class DataSourceConfigurationValidator {
             throw new ConfigurationException("主数据源名称未配置");
         }
         
-        if (!dataSourceMap.containsKey(properties.getPrimary())) {
+        if (!dynamicDataSource.getDataSources().containsKey(properties.getPrimary())) {
             throw new ConfigurationException("主数据源 [" + properties.getPrimary() + "] 不存在");
         }
         
@@ -94,14 +95,14 @@ public class DataSourceConfigurationValidator {
             
             // 验证数据源角色配置
             for (String source : readSources) {
-                if (!dataSourceMap.containsKey(source)) {
+                if (!dynamicDataSource.getDataSources().containsKey(source)) {
                     throw new ConfigurationException("读数据源 [" + source + "] 不存在");
                 }
                 validateDataSourceRole(source, "READ");
             }
             
             for (String source : writeSources) {
-                if (!dataSourceMap.containsKey(source)) {
+                if (!dynamicDataSource.getDataSources().containsKey(source)) {
                     throw new ConfigurationException("写数据源 [" + source + "] 不存在");
                 }
                 validateDataSourceRole(source, "WRITE");
@@ -198,7 +199,7 @@ public class DataSourceConfigurationValidator {
      * 验证数据源连接性
      */
     private void validateDataSourceConnectivity() {
-        for (Map.Entry<String, DataSource> entry : dataSourceMap.entrySet()) {
+        for (Map.Entry<String, DataSource> entry : dynamicDataSource.getDataSources().entrySet()) {
             String name = entry.getKey();
             DataSource dataSource = entry.getValue();
             
@@ -220,7 +221,7 @@ public class DataSourceConfigurationValidator {
     private void printConfigurationSummary() {
         log.info("📊 数据源配置摘要:");
         log.info("   主数据源: [{}]", properties.getPrimary());
-        log.info("   总数据源数: [{}]", dataSourceMap.size());
+        log.info("   总数据源数: [{}]", dynamicDataSource.getDataSources().size());
         log.info("   读写分离: [{}]", properties.getReadWrite().isEnabled() ? "启用" : "禁用");
         log.info("   负载均衡策略: [{}]", properties.getLoadBalance().getStrategy());
         log.info("   故障转移: [{}]", properties.getFailover().isEnabled() ? "启用" : "禁用");

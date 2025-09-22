@@ -1,0 +1,51 @@
+{
+  "groups": [
+    {
+      "name": "synapse.i18n",
+      "type": "com.indigo.i18n.config.I18nProperties",
+      "sourceType": "com.indigo.i18n.config.I18nProperties"
+    },
+    {
+      "name": "synapse.i18n.header",
+      "type": "com.indigo.i18n.config.I18nProperties$Header",
+      "sourceType": "com.indigo.i18n.config.I18nProperties"
+    }
+  ],
+  "properties": [
+    {
+      "name": "synapse.i18n.default-locale",
+      "type": "java.util.Locale",
+      "description": "默认语言环境",
+      "sourceType": "com.indigo.i18n.config.I18nProperties"
+    },
+    {
+      "name": "synapse.i18n.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用国际化功能",
+      "sourceType": "com.indigo.i18n.config.I18nProperties",
+      "defaultValue": true
+    },
+    {
+      "name": "synapse.i18n.header.enable-accept-language",
+      "type": "java.lang.Boolean",
+      "description": "是否启用Accept-Language头解析",
+      "sourceType": "com.indigo.i18n.config.I18nProperties$Header",
+      "defaultValue": true
+    },
+    {
+      "name": "synapse.i18n.header.language-header-name",
+      "type": "java.lang.String",
+      "description": "语言环境请求头名称（备用）",
+      "sourceType": "com.indigo.i18n.config.I18nProperties$Header",
+      "defaultValue": "X-Language"
+    },
+    {
+      "name": "synapse.i18n.header.locale-header-name",
+      "type": "java.lang.String",
+      "description": "语言环境请求头名称",
+      "sourceType": "com.indigo.i18n.config.I18nProperties$Header",
+      "defaultValue": "X-Locale"
+    }
+  ],
+  "hints": []
+}

@@ -9,6 +9,11 @@
       "name": "spring.datasource.dynamic",
       "type": "com.indigo.databases.config.SynapseDataSourceProperties$SpringDatasource$Dynamic",
       "description": "动态数据源配置属性（兼容性配置）"
+    },
+    {
+      "name": "synapse.databases.auto-repository",
+      "type": "com.indigo.databases.config.AutoRepositoryProperties",
+      "description": "自动Repository配置属性"
     }
   ],
   "properties": [
@@ -433,6 +438,30 @@
       "type": "java.lang.Boolean",
       "description": "HikariCP 是否注册MBeans（兼容性配置）",
       "defaultValue": false
+    },
+    {
+      "name": "synapse.databases.auto-repository.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用自动Repository功能",
+      "defaultValue": true
+    },
+    {
+      "name": "synapse.databases.auto-repository.base-packages",
+      "type": "java.util.List<java.lang.String>",
+      "description": "扫描的包路径列表",
+      "defaultValue": ["com.indigo", "com.yourcompany", "com.example"]
+    },
+    {
+      "name": "synapse.databases.auto-repository.debug",
+      "type": "java.lang.Boolean",
+      "description": "是否启用调试日志",
+      "defaultValue": false
+    },
+    {
+      "name": "synapse.databases.auto-repository.bean-name-strategy",
+      "type": "com.indigo.databases.config.AutoRepositoryProperties$BeanNameStrategy",
+      "description": "Bean名称生成策略",
+      "defaultValue": "SIMPLE_NAME"
     }
   ]
 } 

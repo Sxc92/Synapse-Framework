@@ -1,7 +1,7 @@
 package com.indigo.core.utils;
 
 import com.indigo.core.exception.Ex;
-import com.indigo.core.exception.enums.StandardErrorCode;
+import com.indigo.core.constants.StandardErrorCode;
 import lombok.Builder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -450,25 +450,53 @@ public class ThreadUtils {
      */
     private <T> Callable<T> wrapCallable(Callable<T> callable) {
         return () -> {
-            var startTime = System.nanoTime();
+            long startTime = System.nanoTime();
+            String taskName = getTaskName(callable);
+            
             try {
-                var result = callable.call();
-                var duration = System.nanoTime() - startTime;
-                if (duration > 1_000_000_000) { // 超过1秒记录警告
-                    log.warn("Task execution took {} ms", duration / 1_000_000);
+                T result = callable.call();
+                long duration = System.nanoTime() - startTime;
+                long durationMs = duration / 1_000_000;
+                
+                // 性能监控：超过1秒记录警告
+                if (durationMs > 1000) {
+                    log.warn("Task '{}' execution took {} ms - consider optimization", taskName, durationMs);
+                } else if (log.isDebugEnabled()) {
+                    log.debug("Task '{}' completed in {} ms", taskName, durationMs);
                 }
+                
                 return result;
             } catch (Exception e) {
-                var duration = System.nanoTime() - startTime;
-                log.error("Task execution failed after {} ms", duration / 1_000_000, e);
+                long duration = System.nanoTime() - startTime;
+                long durationMs = duration / 1_000_000;
+                
+                log.error("Task '{}' execution failed after {} ms", taskName, durationMs, e);
+                
+                // 统一异常处理：所有异常都包装为RuntimeException
                 if (e instanceof RuntimeException) {
-                    throw e; // 保留原始异常
+                    throw e;
                 } else {
-                    Ex.throwEx(StandardErrorCode.THREAD_ERROR, "Task execution failed: " + e.getMessage(), e);
-                    return null;
+                    throw new RuntimeException("Task '" + taskName + "' execution failed: " + e.getMessage(), e);
                 }
             }
         };
+    }
+    
+    /**
+     * 获取任务名称用于日志记录
+     */
+    private String getTaskName(Callable<?> callable) {
+        if (callable == null) {
+            return "null";
+        }
+        
+        String className = callable.getClass().getSimpleName();
+        // 如果是匿名类或Lambda，尝试获取更友好的名称
+        if (className.contains("$$") || className.contains("Lambda")) {
+            return "Task-" + callable.hashCode();
+        }
+        
+        return className;
     }
 
     // ==================== 任务类型判断 ====================

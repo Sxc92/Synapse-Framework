@@ -15,6 +15,7 @@ import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
@@ -35,6 +36,7 @@ import java.util.Set;
  */
 @Slf4j
 @AutoConfiguration
+@ConditionalOnProperty(name = "synapse.databases.sql-annotation.enabled", havingValue = "true", matchIfMissing = false)
 public class SqlAnnotationAutoConfiguration {
     
     @Autowired
@@ -58,10 +60,10 @@ public class SqlAnnotationAutoConfiguration {
     }
     
     /**
-     * 自动注册Repository代理
+     * 自动注册Repository代理（重命名避免冲突）
      */
     @Bean
-    public AutoRepositoryRegistrar autoRepositoryRegistrar() {
+    public AutoRepositoryRegistrar sqlAnnotationAutoRepositoryRegistrar() {
         return new AutoRepositoryRegistrar();
     }
     
@@ -76,6 +78,7 @@ public class SqlAnnotationAutoConfiguration {
                 log.info("开始扫描@AutoRepository注解的接口...");
                 
                 // 扫描所有带有@AutoRepository注解的接口
+                // 使用Spring的包扫描机制，支持配置的包路径
                 Reflections reflections = new Reflections("com.indigo");
                 Set<Class<?>> repositoryInterfaces = reflections.getTypesAnnotatedWith(AutoRepository.class);
                 

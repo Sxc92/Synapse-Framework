@@ -4,6 +4,7 @@ import com.indigo.cache.config.CacheProperties;
 import com.indigo.cache.infrastructure.CaffeineCacheManager;
 import com.indigo.cache.infrastructure.RedisService;
 import com.indigo.core.utils.ThreadUtils;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -26,7 +27,6 @@ import java.util.concurrent.atomic.AtomicLong;
 @Component
 public class CacheHealthCheckService {
 
-    private final TwoLevelCacheService cacheService;
     private final CaffeineCacheManager localCache;
     private final RedisService redisService;
     private final CacheProperties cacheProperties;
@@ -39,17 +39,16 @@ public class CacheHealthCheckService {
     private final AtomicLong lastFailureTime = new AtomicLong(0);
 
     @Autowired
-    public CacheHealthCheckService(TwoLevelCacheService cacheService,
-                                   CaffeineCacheManager localCache,
-                                   RedisService redisService,
-                                   CacheProperties cacheProperties,
-                                   ThreadUtils threadUtils) {
-        this.cacheService = cacheService;
+    public CacheHealthCheckService(
+            CaffeineCacheManager localCache,
+            RedisService redisService,
+            CacheProperties cacheProperties,
+            ThreadUtils threadUtils) {
         this.localCache = localCache;
         this.redisService = redisService;
         this.cacheProperties = cacheProperties;
         this.threadUtils = threadUtils;
-        
+
         // 启动健康检查任务
         startHealthCheck();
     }
@@ -67,10 +66,10 @@ public class CacheHealthCheckService {
         log.info("启动缓存健康检查任务，间隔: {}秒", intervalSeconds);
 
         healthCheckTask = threadUtils.scheduleWithFixedDelay(
-            this::performHealthCheck,
-            intervalSeconds,
-            intervalSeconds,
-            TimeUnit.SECONDS
+                this::performHealthCheck,
+                intervalSeconds,
+                intervalSeconds,
+                TimeUnit.SECONDS
         );
     }
 
@@ -80,12 +79,12 @@ public class CacheHealthCheckService {
     private void performHealthCheck() {
         try {
             long startTime = System.currentTimeMillis();
-            
+
             boolean localCacheHealthy = checkLocalCache();
             boolean redisCacheHealthy = checkRedisCache();
-            
+
             boolean overallHealthy = localCacheHealthy && redisCacheHealthy;
-            
+
             if (overallHealthy) {
                 if (!isHealthy.get()) {
                     log.info("缓存服务已恢复健康状态");
@@ -96,28 +95,28 @@ public class CacheHealthCheckService {
                 int failures = failureCount.incrementAndGet();
                 isHealthy.set(false);
                 lastFailureTime.set(System.currentTimeMillis());
-                
+
                 // 只在失败次数变化时记录警告
                 if (failures == 1 || failures % 5 == 0) {
                     log.warn("缓存健康检查失败，失败次数: {}", failures);
                 }
-                
+
                 // 检查是否超过失败阈值
                 if (failures >= cacheProperties.getHealthCheck().getFailureThreshold()) {
                     log.error("缓存健康检查失败次数超过阈值: {}", failures);
                 }
             }
-            
+
             lastCheckTime.set(System.currentTimeMillis());
             long duration = System.currentTimeMillis() - startTime;
-            
+
             // 只在耗时过长时记录警告
             if (duration > cacheProperties.getHealthCheck().getTimeout().toMillis()) {
                 log.warn("缓存健康检查耗时过长: {}ms", duration);
             }
-            
+
             // 只在调试模式下记录详细信息
-            log.info("缓存健康检查完成，耗时: {}ms，状态: {}", duration, overallHealthy ? "健康" : "异常");
+            log.debug("缓存健康检查完成，耗时: {}ms，状态: {}", duration, overallHealthy ? "健康" : "异常");
         } catch (Exception e) {
             log.error("缓存健康检查异常", e);
             isHealthy.set(false);
@@ -136,17 +135,17 @@ public class CacheHealthCheckService {
             // 检查本地缓存是否可用
             String testKey = "health_check_local_" + System.currentTimeMillis();
             String testValue = "test_value";
-            
+
             // 尝试保存和获取数据
             localCache.put("health_check", testKey, testValue);
             java.util.Optional<Object> result = localCache.get("health_check", testKey);
-            
+
             if (result.isPresent() && testValue.equals(result.get())) {
                 // 清理测试数据
                 localCache.remove("health_check", testKey);
                 return true;
             } else {
-                log.info("本地缓存健康检查失败：数据不一致");
+                log.warn("本地缓存健康检查失败：数据不一致");
                 return false;
             }
         } catch (Exception e) {
@@ -165,17 +164,17 @@ public class CacheHealthCheckService {
             // 检查Redis连接和基本操作
             String testKey = "health_check_redis_" + System.currentTimeMillis();
             String testValue = "test_value";
-            
+
             // 尝试保存和获取数据
             redisService.set(testKey, testValue, 60);
             Object result = redisService.get(testKey);
-            
+
             if (testValue.equals(result)) {
                 // 清理测试数据
                 redisService.delete(testKey);
                 return true;
             } else {
-                log.info("Redis缓存健康检查失败：数据不一致");
+                log.warn("Redis缓存健康检查失败：数据不一致");
                 return false;
             }
         } catch (Exception e) {
@@ -191,23 +190,23 @@ public class CacheHealthCheckService {
      */
     public HealthCheckResult manualHealthCheck() {
         log.info("开始手动健康检查");
-        
+
         long startTime = System.currentTimeMillis();
         boolean localCacheHealthy = checkLocalCache();
         boolean redisCacheHealthy = checkRedisCache();
         boolean overallHealthy = localCacheHealthy && redisCacheHealthy;
         long duration = System.currentTimeMillis() - startTime;
-        
+
         HealthCheckResult result = HealthCheckResult.builder()
-            .overallHealthy(overallHealthy)
-            .localCacheHealthy(localCacheHealthy)
-            .redisCacheHealthy(redisCacheHealthy)
-            .checkTime(System.currentTimeMillis())
-            .duration(duration)
-            .failureCount(failureCount.get())
-            .lastFailureTime(lastFailureTime.get())
-            .build();
-        
+                .overallHealthy(overallHealthy)
+                .localCacheHealthy(localCacheHealthy)
+                .redisCacheHealthy(redisCacheHealthy)
+                .checkTime(System.currentTimeMillis())
+                .duration(duration)
+                .failureCount(failureCount.get())
+                .lastFailureTime(lastFailureTime.get())
+                .build();
+
         log.info("手动健康检查完成: {}", result);
         return result;
     }
@@ -228,16 +227,16 @@ public class CacheHealthCheckService {
      */
     public DetailedHealthStatus getDetailedHealthStatus() {
         return DetailedHealthStatus.builder()
-            .isHealthy(isHealthy.get())
-            .failureCount(failureCount.get())
-            .lastCheckTime(lastCheckTime.get())
-            .lastFailureTime(lastFailureTime.get())
-            .healthCheckEnabled(cacheProperties.getHealthCheck().isEnabled())
-            .healthCheckInterval(cacheProperties.getHealthCheck().getInterval())
-            .failureThreshold(cacheProperties.getHealthCheck().getFailureThreshold())
-            .recoveryThreshold(cacheProperties.getHealthCheck().getRecoveryThreshold())
-            .scheduledTaskRunning(healthCheckTask != null && !healthCheckTask.isCancelled())
-            .build();
+                .isHealthy(isHealthy.get())
+                .failureCount(failureCount.get())
+                .lastCheckTime(lastCheckTime.get())
+                .lastFailureTime(lastFailureTime.get())
+                .healthCheckEnabled(cacheProperties.getHealthCheck().isEnabled())
+                .healthCheckInterval(cacheProperties.getHealthCheck().getInterval())
+                .failureThreshold(cacheProperties.getHealthCheck().getFailureThreshold())
+                .recoveryThreshold(cacheProperties.getHealthCheck().getRecoveryThreshold())
+                .scheduledTaskRunning(healthCheckTask != null && !healthCheckTask.isCancelled())
+                .build();
     }
 
     /**
@@ -246,7 +245,7 @@ public class CacheHealthCheckService {
     public void stopHealthCheck() {
         if (healthCheckTask != null && !healthCheckTask.isCancelled()) {
             healthCheckTask.cancel(true);
-            log.info("缓存健康检查任务已停止");
+            log.warn("缓存健康检查任务已停止");
         }
     }
 
@@ -257,49 +256,24 @@ public class CacheHealthCheckService {
         isHealthy.set(true);
         failureCount.set(0);
         lastFailureTime.set(0);
-        log.info("缓存健康状态已重置");
+        log.warn("缓存健康状态已重置");
     }
 
     /**
      * 健康检查结果
      */
-    public static class HealthCheckResult {
-        private final boolean overallHealthy;
-        private final boolean localCacheHealthy;
-        private final boolean redisCacheHealthy;
-        private final long checkTime;
-        private final long duration;
-        private final int failureCount;
-        private final long lastFailureTime;
-
-        public HealthCheckResult(boolean overallHealthy, boolean localCacheHealthy, boolean redisCacheHealthy,
-                                long checkTime, long duration, int failureCount, long lastFailureTime) {
-            this.overallHealthy = overallHealthy;
-            this.localCacheHealthy = localCacheHealthy;
-            this.redisCacheHealthy = redisCacheHealthy;
-            this.checkTime = checkTime;
-            this.duration = duration;
-            this.failureCount = failureCount;
-            this.lastFailureTime = lastFailureTime;
-        }
+    public record HealthCheckResult(boolean overallHealthy, boolean localCacheHealthy, boolean redisCacheHealthy,
+                                    long checkTime, long duration, int failureCount, long lastFailureTime) {
 
         public static Builder builder() {
             return new Builder();
         }
 
-        public boolean isOverallHealthy() { return overallHealthy; }
-        public boolean isLocalCacheHealthy() { return localCacheHealthy; }
-        public boolean isRedisCacheHealthy() { return redisCacheHealthy; }
-        public long getCheckTime() { return checkTime; }
-        public long getDuration() { return duration; }
-        public int getFailureCount() { return failureCount; }
-        public long getLastFailureTime() { return lastFailureTime; }
-
         @Override
         public String toString() {
             return String.format("HealthCheckResult{overallHealthy=%s, localCacheHealthy=%s, redisCacheHealthy=%s, " +
-                "checkTime=%d, duration=%dms, failureCount=%d}", 
-                overallHealthy, localCacheHealthy, redisCacheHealthy, checkTime, duration, failureCount);
+                            "checkTime=%d, duration=%dms, failureCount=%d}",
+                    overallHealthy, localCacheHealthy, redisCacheHealthy, checkTime, duration, failureCount);
         }
 
         public static class Builder {
@@ -348,7 +322,7 @@ public class CacheHealthCheckService {
 
             public HealthCheckResult build() {
                 return new HealthCheckResult(overallHealthy, localCacheHealthy, redisCacheHealthy,
-                    checkTime, duration, failureCount, lastFailureTime);
+                        checkTime, duration, failureCount, lastFailureTime);
             }
         }
     }
@@ -356,44 +330,13 @@ public class CacheHealthCheckService {
     /**
      * 详细健康状态
      */
-    public static class DetailedHealthStatus {
-        private final boolean isHealthy;
-        private final int failureCount;
-        private final long lastCheckTime;
-        private final long lastFailureTime;
-        private final boolean healthCheckEnabled;
-        private final Duration healthCheckInterval;
-        private final int failureThreshold;
-        private final int recoveryThreshold;
-        private final boolean scheduledTaskRunning;
-
-        public DetailedHealthStatus(boolean isHealthy, int failureCount, long lastCheckTime, long lastFailureTime,
-                                   boolean healthCheckEnabled, Duration healthCheckInterval, int failureThreshold,
-                                   int recoveryThreshold, boolean scheduledTaskRunning) {
-            this.isHealthy = isHealthy;
-            this.failureCount = failureCount;
-            this.lastCheckTime = lastCheckTime;
-            this.lastFailureTime = lastFailureTime;
-            this.healthCheckEnabled = healthCheckEnabled;
-            this.healthCheckInterval = healthCheckInterval;
-            this.failureThreshold = failureThreshold;
-            this.recoveryThreshold = recoveryThreshold;
-            this.scheduledTaskRunning = scheduledTaskRunning;
-        }
+    public record DetailedHealthStatus(boolean isHealthy, int failureCount, long lastCheckTime, long lastFailureTime,
+                                       boolean healthCheckEnabled, Duration healthCheckInterval, int failureThreshold,
+                                       int recoveryThreshold, boolean scheduledTaskRunning) {
 
         public static Builder builder() {
             return new Builder();
         }
-
-        public boolean isHealthy() { return isHealthy; }
-        public int getFailureCount() { return failureCount; }
-        public long getLastCheckTime() { return lastCheckTime; }
-        public long getLastFailureTime() { return lastFailureTime; }
-        public boolean isHealthCheckEnabled() { return healthCheckEnabled; }
-        public Duration getHealthCheckInterval() { return healthCheckInterval; }
-        public int getFailureThreshold() { return failureThreshold; }
-        public int getRecoveryThreshold() { return recoveryThreshold; }
-        public boolean isScheduledTaskRunning() { return scheduledTaskRunning; }
 
         public static class Builder {
             private boolean isHealthy;
@@ -453,7 +396,7 @@ public class CacheHealthCheckService {
 
             public DetailedHealthStatus build() {
                 return new DetailedHealthStatus(isHealthy, failureCount, lastCheckTime, lastFailureTime,
-                    healthCheckEnabled, healthCheckInterval, failureThreshold, recoveryThreshold, scheduledTaskRunning);
+                        healthCheckEnabled, healthCheckInterval, failureThreshold, recoveryThreshold, scheduledTaskRunning);
             }
         }
     }

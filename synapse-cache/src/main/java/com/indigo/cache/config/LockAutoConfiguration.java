@@ -7,7 +7,6 @@ import com.indigo.cache.manager.CacheKeyGenerator;
 import com.indigo.cache.core.CacheService;
 import com.indigo.cache.infrastructure.CaffeineCacheManager;
 import com.indigo.cache.session.SessionManager;
-import com.indigo.cache.session.CachePermissionManager;
 import com.indigo.cache.session.StatisticsManager;
 import com.indigo.core.utils.ThreadUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -34,13 +33,13 @@ import java.util.concurrent.atomic.AtomicLong;
 @Slf4j
 @AutoConfiguration
 @ConditionalOnClass({RedisService.class, ThreadUtils.class})
-@EnableConfigurationProperties(LockProperties.class)
+@EnableConfigurationProperties({LockProperties.class, DistributedDeadlockProperties.class})
 @EnableScheduling
 public class LockAutoConfiguration {
-    
+
     private final LockProperties lockProperties;
     private final AtomicLong lastAccessTime = new AtomicLong(System.currentTimeMillis());
-    
+
     public LockAutoConfiguration(LockProperties lockProperties) {
         this.lockProperties = lockProperties;
         log.info("LockAutoConfiguration 已创建，延迟初始化策略已启用");
@@ -80,17 +79,27 @@ public class LockAutoConfiguration {
     }
 
     /**
-     * 死锁检测器（内部Bean）
+     * 本地死锁检测器（内部Bean）
+     */
+    @Bean("localDeadlockDetector")
+    @ConditionalOnMissingBean(name = "localDeadlockDetector")
+    public DeadlockDetector localDeadlockDetector(
+            @Qualifier("lockScheduledExecutor") ScheduledExecutorService scheduler) {
+        log.debug("创建本地DeadlockDetector Bean（延迟初始化）");
+        return new DeadlockDetector(scheduler);
+    }
+
+    /**
+     * 分布式死锁检测器（内部Bean）
      */
     @Bean
     @ConditionalOnMissingBean
-    public DeadlockDetector deadlockDetector(
+    public DistributedDeadlockDetector distributedDeadlockDetector(
+            @Qualifier("lockScheduledExecutor") ScheduledExecutorService scheduler,
             RedisService redisService,
-            @Qualifier("synapseCacheKeyGenerator") CacheKeyGenerator cacheKeyGenerator,
-            DistributedLockService distributedLockService,
-            @Qualifier("lockScheduledExecutor") ScheduledExecutorService scheduler) {
-        log.debug("创建DeadlockDetector Bean（延迟初始化）");
-        return new DeadlockDetector(redisService, cacheKeyGenerator, distributedLockService, scheduler);
+            DistributedDeadlockProperties distributedDeadlockProperties) {
+        log.debug("创建DistributedDeadlockDetector Bean（延迟初始化）");
+        return new DistributedDeadlockDetector(scheduler, redisService, distributedDeadlockProperties);
     }
 
     /**
@@ -128,7 +137,7 @@ public class LockAutoConfiguration {
         log.debug("创建ResourcePool Bean");
         return new ResourcePool();
     }
-    
+
     /**
      * 快速恢复管理器
      */
@@ -138,14 +147,14 @@ public class LockAutoConfiguration {
         log.debug("创建FastRecoveryManager Bean");
         return new FastRecoveryManager(resourcePool);
     }
-    
+
     /**
      * 自动释放检查器
      */
     @Bean
     @ConditionalOnMissingBean
     public AutoReleaseChecker autoReleaseChecker(
-            ResourcePool resourcePool, 
+            ResourcePool resourcePool,
             LockProperties lockProperties,
             CacheService cacheService,
             CaffeineCacheManager caffeineCacheManager,
@@ -153,10 +162,10 @@ public class LockAutoConfiguration {
             StatisticsManager statisticsManager,
             LockPerformanceMonitor lockPerformanceMonitor) {
         log.debug("创建AutoReleaseChecker Bean");
-        return new AutoReleaseChecker(resourcePool, lockProperties, cacheService, 
-                                   caffeineCacheManager, sessionManager, statisticsManager, lockPerformanceMonitor);
+        return new AutoReleaseChecker(resourcePool, lockProperties, cacheService,
+                caffeineCacheManager, sessionManager, statisticsManager, lockPerformanceMonitor);
     }
-    
+
     /**
      * 统一分布式锁管理器（对外暴露的唯一入口）
      */
@@ -166,14 +175,15 @@ public class LockAutoConfiguration {
             DistributedLockService distributedLockService,
             ReadWriteLockService readWriteLockService,
             FairLockService fairLockService,
-            DeadlockDetector deadlockDetector,
+            @Qualifier("localDeadlockDetector") DeadlockDetector deadlockDetector,
             LockPerformanceMonitor performanceMonitor,
-            FastRecoveryManager fastRecoveryManager) {
+            FastRecoveryManager fastRecoveryManager,
+            DistributedDeadlockDetector distributedDeadlockDetector) {
         log.info("创建LockManager Bean - 分布式锁统一入口");
-        return new LockManager(distributedLockService, readWriteLockService, 
-                             fairLockService, deadlockDetector, performanceMonitor, fastRecoveryManager);
+        return new LockManager(distributedLockService, readWriteLockService,
+                fairLockService, deadlockDetector, performanceMonitor, fastRecoveryManager,distributedDeadlockDetector);
     }
-    
+
     /**
      * 自动释放资源检查任务
      * 根据配置的阈值自动释放长时间未使用的资源
@@ -183,11 +193,11 @@ public class LockAutoConfiguration {
         if (!lockProperties.getAutoRelease().isEnabled()) {
             return;
         }
-        
+
         long currentTime = System.currentTimeMillis();
         long lastAccess = lastAccessTime.get();
         long threshold = lockProperties.getAutoRelease().getCoreServiceThreshold();
-        
+
         if (currentTime - lastAccess > threshold) {
             log.info("检测到长时间未使用，开始自动释放分布式锁资源...");
             // 这里可以添加具体的资源释放逻辑
@@ -195,7 +205,7 @@ public class LockAutoConfiguration {
             log.info("分布式锁资源自动释放完成");
         }
     }
-    
+
     /**
      * 更新最后访问时间
      * 供外部调用以更新活跃状态

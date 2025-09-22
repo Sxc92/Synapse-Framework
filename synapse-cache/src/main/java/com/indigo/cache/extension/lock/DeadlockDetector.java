@@ -29,10 +29,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Component
 public class DeadlockDetector {
 
-    private final RedisService redisService;
-    private final CacheKeyGenerator keyGenerator;
-    private final DistributedLockService distributedLockService;
-    private final ScheduledExecutorService scheduler;
+    protected final ScheduledExecutorService scheduler;
 
     // 检测间隔（毫秒）
     private static final long DETECTION_INTERVAL = 5000;
@@ -54,22 +51,15 @@ public class DeadlockDetector {
 
     private final AtomicBoolean running = new AtomicBoolean(true);
 
-    public DeadlockDetector(RedisService redisService, 
-                           CacheKeyGenerator keyGenerator,
-                           DistributedLockService distributedLockService,
-                           @Qualifier("lockScheduledExecutor") ScheduledExecutorService scheduler) {
-        this.redisService = redisService;
-        this.keyGenerator = keyGenerator;
-        this.distributedLockService = distributedLockService;
+    public DeadlockDetector(@Qualifier("lockScheduledExecutor") ScheduledExecutorService scheduler) {
         this.scheduler = scheduler;
-        
         // 启动死锁检测任务
         startDeadlockDetection();
     }
 
     /**
      * 记录锁获取
-     * 
+     *
      * @param threadId 线程ID
      * @param lockKey 锁键
      */
@@ -77,13 +67,13 @@ public class DeadlockDetector {
         threadLocks.computeIfAbsent(threadId, k -> ConcurrentHashMap.newKeySet()).add(lockKey);
         lockHolders.put(lockKey, threadId);
         threadTimeouts.put(threadId, System.currentTimeMillis() + LOCK_TIMEOUT * 1000L);
-        
+
         log.info("[DeadlockDetector] 记录锁获取: threadId={} lockKey={}", threadId, lockKey);
     }
 
     /**
      * 记录锁释放
-     * 
+     *
      * @param threadId 线程ID
      * @param lockKey 锁键
      */
@@ -97,26 +87,26 @@ public class DeadlockDetector {
             }
         }
         lockHolders.remove(lockKey);
-        
+
         log.info("[DeadlockDetector] 记录锁释放: threadId={} lockKey={}", threadId, lockKey);
     }
 
     /**
      * 记录锁等待开始
-     * 
+     *
      * @param threadId 线程ID
      * @param lockKey 锁键
      */
     public void recordLockWaitStart(String threadId, String lockKey) {
         threadWaits.computeIfAbsent(threadId, k -> ConcurrentHashMap.newKeySet()).add(lockKey);
         lockWaiters.computeIfAbsent(lockKey, k -> ConcurrentHashMap.newKeySet()).add(threadId);
-        
+
         log.info("[DeadlockDetector] 记录锁等待: threadId={} lockKey={}", threadId, lockKey);
     }
 
     /**
      * 记录锁等待结束
-     * 
+     *
      * @param threadId 线程ID
      * @param lockKey 锁键
      */
@@ -128,7 +118,7 @@ public class DeadlockDetector {
                 threadWaits.remove(threadId);
             }
         }
-        
+
         Set<String> waiters = lockWaiters.get(lockKey);
         if (waiters != null) {
             waiters.remove(threadId);
@@ -136,7 +126,7 @@ public class DeadlockDetector {
                 lockWaiters.remove(lockKey);
             }
         }
-        
+
         log.info("[DeadlockDetector] 记录锁等待结束: threadId={} lockKey={}", threadId, lockKey);
     }
 
@@ -144,7 +134,7 @@ public class DeadlockDetector {
      * 启动死锁检测任务
      */
     private void startDeadlockDetection() {
-        scheduler.scheduleWithFixedDelay(this::detectDeadlocks, 
+        scheduler.scheduleWithFixedDelay(this::detectDeadlocks,
             DETECTION_INTERVAL, DETECTION_INTERVAL, TimeUnit.MILLISECONDS);
         log.info("[DeadlockDetector] 死锁检测任务已启动，检测间隔: {}ms", DETECTION_INTERVAL);
     }
@@ -158,17 +148,17 @@ public class DeadlockDetector {
         try {
             // 清理超时线程
             cleanupTimeoutThreads();
-            
+
             // 检测死锁
             List<Set<String>> deadlockCycles = findDeadlockCycles();
-            
+
             if (!deadlockCycles.isEmpty()) {
                 log.warn("[DeadlockDetector] 检测到死锁，死锁环数量: {}", deadlockCycles.size());
                 for (int i = 0; i < deadlockCycles.size(); i++) {
                     Set<String> cycle = deadlockCycles.get(i);
                     log.warn("[DeadlockDetector] 死锁环 {}: {}", i + 1, cycle);
                 }
-                
+
                 // 处理死锁
                 handleDeadlocks(deadlockCycles);
             }
@@ -183,17 +173,17 @@ public class DeadlockDetector {
     private void cleanupTimeoutThreads() {
         long now = System.currentTimeMillis();
         List<String> timeoutThreads = new ArrayList<>();
-        
+
         for (Map.Entry<String, Long> entry : threadTimeouts.entrySet()) {
             if (entry.getValue() < now) {
                 timeoutThreads.add(entry.getKey());
             }
         }
-        
+
         // 只在有超时线程时记录警告
         if (!timeoutThreads.isEmpty()) {
             log.warn("[DeadlockDetector] 检测到 {} 个超时线程，强制释放锁", timeoutThreads.size());
-            
+
             for (String threadId : timeoutThreads) {
                 log.info("[DeadlockDetector] 线程超时，强制释放锁: threadId={}", threadId);
                 forceReleaseThreadLocks(threadId);
@@ -203,10 +193,10 @@ public class DeadlockDetector {
 
     /**
      * 强制释放线程的所有锁
-     * 
+     *
      * @param threadId 线程ID
      */
-    private void forceReleaseThreadLocks(String threadId) {
+    protected void forceReleaseThreadLocks(String threadId) {
         Set<String> locks = threadLocks.get(threadId);
         if (locks != null) {
             for (String lockKey : new HashSet<>(locks)) {

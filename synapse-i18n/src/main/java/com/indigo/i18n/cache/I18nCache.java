@@ -3,7 +3,6 @@ package com.indigo.i18n.cache;
 import com.indigo.cache.core.CacheService;
 import com.indigo.cache.model.CacheObject;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -22,8 +21,11 @@ import java.util.Optional;
 @Component
 public class I18nCache {
     
-    @Autowired
-    private CacheService cacheService;
+    private final CacheService cacheService;
+    
+    public I18nCache(CacheService cacheService) {
+        this.cacheService = cacheService;
+    }
     
     // 固定的缓存配置，不可配置
     private static final String MESSAGE_KEY_PREFIX = "i18n:messages";

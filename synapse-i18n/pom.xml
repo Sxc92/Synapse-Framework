@@ -38,6 +38,13 @@
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
         
+        <!-- Spring Boot Web Starter for servlet support -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <optional>true</optional>
+        </dependency>
+        
         <!-- Spring Boot Auto Configuration -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

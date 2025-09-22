@@ -1,0 +1,206 @@
+# Synapse Framework 数据库模块完整配置示例
+# 复制此文件到您的项目中，并根据实际环境修改配置
+
+# =============================================================================
+# Synapse Framework 数据库配置（推荐方式）
+# =============================================================================
+synapse:
+  datasource:
+    # MyBatis-Plus 配置
+    mybatis-plus:
+      configuration:
+        log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+        map-underscore-to-camel-case: true
+        cache-enabled: true
+        lazy-loading-enabled: true
+        aggressive-lazy-loading: false
+        multiple-result-sets-enabled: true
+        use-column-label: true
+        use-generated-keys: false
+        auto-mapping-behavior: PARTIAL
+        auto-mapping-unknown-column-behavior: WARNING
+        default-executor-type: SIMPLE
+        default-statement-timeout: 25
+        default-fetch-size: 100
+        safe-row-bounds-enabled: false
+        safe-result-handler-enabled: true
+        local-cache-scope: SESSION
+        lazy-load-trigger-methods: "equals,clone,hashCode,toString"
+      global-config:
+        banner: false
+        enable-sql-runner: false
+        enable-meta-object-handler: true
+        enable-sql-injector: true
+        enable-pagination: true
+        enable-optimistic-locker: true
+        enable-block-attack: true
+      type-aliases-package: com.indigo.**.entity
+      mapper-locations: "classpath*:mapper/**/*.xml"
+    
+    # 主数据源名称
+    primary: master1
+    
+    # 动态数据源配置
+    dynamic-data-source:
+      strict: false
+      seata: false
+      p6spy: false
+      datasource:
+        master1:
+          type: MYSQL
+          host: localhost
+          port: 3306
+          database: synapse_demo
+          username: root
+          password: 123456
+          pool-type: HIKARI
+          params:
+            useUnicode: "true"
+            characterEncoding: "utf8"
+            useSSL: "false"
+            serverTimezone: "Asia/Shanghai"
+          hikari:
+            minimum-idle: 5
+            maximum-pool-size: 15
+            idle-timeout: 30000
+            max-lifetime: 1800000
+            connection-timeout: 30000
+            connection-test-query: "SELECT 1"
+            connection-init-sql: ""
+            validation-timeout: 5000
+            leak-detection-threshold: 0
+            register-mbeans: false
+            
+        slave1:
+          type: MYSQL
+          host: localhost
+          port: 3307
+          database: synapse_demo
+          username: root
+          password: 123456
+          pool-type: HIKARI
+          params:
+            useUnicode: "true"
+            characterEncoding: "utf8"
+            useSSL: "false"
+            serverTimezone: "Asia/Shanghai"
+          hikari:
+            minimum-idle: 3
+            maximum-pool-size: 10
+            idle-timeout: 30000
+            max-lifetime: 1800000
+            connection-timeout: 30000
+            connection-test-query: "SELECT 1"
+            connection-init-sql: ""
+            validation-timeout: 5000
+            leak-detection-threshold: 0
+            register-mbeans: false
+
+  # 自动Repository配置
+  databases:
+    auto-repository:
+      enabled: true
+      base-packages:
+        - com.indigo.repository
+        - com.yourcompany.repository
+        - com.example.repository
+      debug: false
+      bean-name-strategy: SIMPLE_NAME
+
+# =============================================================================
+# Spring Boot 标准配置（兼容性方式）
+# =============================================================================
+spring:
+  datasource:
+    dynamic:
+      primary: master1
+      strict: false
+      seata: false
+      p6spy: false
+      datasource:
+        master1:
+          type: MYSQL
+          host: localhost
+          port: 3306
+          database: synapse_demo
+          username: root
+          password: 123456
+          pool-type: HIKARI
+          params:
+            useUnicode: "true"
+            characterEncoding: "utf8"
+            useSSL: "false"
+            serverTimezone: "Asia/Shanghai"
+          hikari:
+            minimum-idle: 5
+            maximum-pool-size: 15
+            idle-timeout: 30000
+            max-lifetime: 1800000
+            connection-timeout: 30000
+            connection-test-query: "SELECT 1"
+
+# MyBatis-Plus 标准配置（可选，与synapse.datasource.mybatis-plus重复）
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true
+    cache-enabled: true
+    lazy-loading-enabled: true
+    aggressive-lazy-loading: false
+    multiple-result-sets-enabled: true
+    use-column-label: true
+    use-generated-keys: false
+    auto-mapping-behavior: PARTIAL
+    auto-mapping-unknown-column-behavior: WARNING
+    default-executor-type: SIMPLE
+    default-statement-timeout: 25
+    default-fetch-size: 100
+    safe-row-bounds-enabled: false
+    safe-result-handler-enabled: true
+    local-cache-scope: SESSION
+    lazy-load-trigger-methods: "equals,clone,hashCode,toString"
+  global-config:
+    banner: false
+    enable-sql-runner: false
+    enable-meta-object-handler: true
+    enable-sql-injector: true
+    enable-pagination: true
+    enable-optimistic-locker: true
+    enable-block-attack: true
+  type-aliases-package: com.indigo.**.entity
+  mapper-locations: "classpath*:mapper/**/*.xml"
+
+# =============================================================================
+# 监控和日志配置
+# =============================================================================
+# 健康检查端点配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+
+# 日志配置
+logging:
+  level:
+    com.indigo.databases: DEBUG
+    com.indigo.databases.repository: DEBUG
+    com.indigo.databases.config: DEBUG
+    org.springframework.jdbc: DEBUG
+    org.mybatis: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# =============================================================================
+# 配置说明
+# =============================================================================
+# 1. 推荐使用 synapse.datasource 配置方式，功能更完整
+# 2. spring.datasource.dynamic 为兼容性配置，功能相对简单
+# 3. mybatis-plus 配置与 synapse.datasource.mybatis-plus 重复，可选择其一
+# 4. synapse.databases.auto-repository 为新增的自动Repository配置
+# 5. 根据实际需要调整数据库连接参数、连接池参数等

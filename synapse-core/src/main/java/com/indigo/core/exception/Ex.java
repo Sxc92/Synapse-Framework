@@ -1,6 +1,6 @@
 package com.indigo.core.exception;
 
-import com.indigo.core.exception.enums.ErrorCode;
+import com.indigo.core.constants.ErrorCode;
 
 /**
  * 异常工具类

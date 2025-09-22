@@ -145,9 +145,6 @@ public class CollectionUtils {
         if (list == null || predicate == null) return Collections.emptyList();
         return list.stream().filter(predicate).collect(Collectors.toList());
     }
-    public static <T> List<T> filterToNew(List<T> list, Predicate<? super T> predicate) {
-        return filter(list, predicate);
-    }
     public static <K, V> Map<K, V> filterMap(Map<K, V> map, BiFunction<? super K, ? super V, Boolean> predicate) {
         if (map == null || predicate == null) return Collections.emptyMap();
         Map<K, V> result = new HashMap<>();
@@ -158,15 +155,9 @@ public class CollectionUtils {
         }
         return result;
     }
-    public static <K, V> Map<K, V> filterMapToNew(Map<K, V> map, BiFunction<? super K, ? super V, Boolean> predicate) {
-        return filterMap(map, predicate);
-    }
     public static <T, R> List<R> transform(List<T> list, Function<? super T, ? extends R> mapper) {
         if (list == null || mapper == null) return Collections.emptyList();
         return list.stream().map(mapper).collect(Collectors.toList());
-    }
-    public static <T, R> List<R> transformToNew(List<T> list, Function<? super T, ? extends R> mapper) {
-        return transform(list, mapper);
     }
     public static <K, V, R> Map<K, R> transformMapValues(Map<K, V> map, Function<? super V, ? extends R> mapper) {
         if (map == null || mapper == null) return Collections.emptyMap();
@@ -175,9 +166,6 @@ public class CollectionUtils {
             result.put(entry.getKey(), mapper.apply(entry.getValue()));
         }
         return result;
-    }
-    public static <K, V, R> Map<K, R> transformMapValuesToNew(Map<K, V> map, Function<? super V, ? extends R> mapper) {
-        return transformMapValues(map, mapper);
     }
     public static <T, K> Map<K, Long> countBy(List<T> list, Function<? super T, ? extends K> classifier) {
         if (list == null || classifier == null) return Collections.emptyMap();
@@ -194,30 +182,6 @@ public class CollectionUtils {
     public static <T, K, A, D> Map<K, D> groupBy(List<T> list, Function<? super T, ? extends K> classifier, Collector<? super T, A, D> downstream) {
         if (list == null || classifier == null || downstream == null) return Collections.emptyMap();
         return list.stream().collect(Collectors.groupingBy(classifier, downstream));
-    }
-    public static <T> List<T> toListFromArray(T[] array) {
-        if (array == null) {
-            return Collections.emptyList();
-        }
-        return Arrays.asList(array);
-    }
-    public static <T> Set<T> toSetFromArray(T[] array) {
-        if (array == null) {
-            return Collections.emptySet();
-        }
-        return new HashSet<>(Arrays.asList(array));
-    }
-    public static <T> List<T> toList(Collection<T> collection) {
-        if (collection == null) {
-            return Collections.emptyList();
-        }
-        return new ArrayList<>(collection);
-    }
-    public static <T> Set<T> toSet(Collection<T> collection) {
-        if (collection == null) {
-            return Collections.emptySet();
-        }
-        return new HashSet<>(collection);
     }
     public static <T> T findFirst(Collection<T> collection, Predicate<T> predicate) {
         if (collection == null || predicate == null) {

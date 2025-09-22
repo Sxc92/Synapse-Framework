@@ -1,7 +1,7 @@
 package com.indigo.core.entity;
 
-import com.indigo.core.exception.enums.ErrorCode;
-import com.indigo.core.exception.enums.StandardErrorCode;
+import com.indigo.core.constants.ErrorCode;
+import com.indigo.core.constants.StandardErrorCode;
 import com.indigo.core.i18n.MessageResolver;
 import com.indigo.core.i18n.LocaleContext;
 import com.indigo.core.utils.SpringUtils;

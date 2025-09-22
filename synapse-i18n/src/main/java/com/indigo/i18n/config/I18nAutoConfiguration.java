@@ -1,24 +1,20 @@
-package com.indigo.i18n.auto;
+package com.indigo.i18n.config;
 
+import com.indigo.cache.core.CacheService;
 import com.indigo.i18n.resolver.I18nMessageResolver;
 import com.indigo.i18n.resolver.RedisI18nMessageResolver;
 import com.indigo.i18n.cache.I18nCache;
 import com.indigo.i18n.utils.MessageUtils;
-import com.indigo.i18n.config.I18nProperties;
 import com.indigo.i18n.resolver.HeaderLocaleResolver;
 import com.indigo.i18n.adapter.MessageResolverAdapter;
 import com.indigo.i18n.adapter.LocaleContextAdapter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.LocaleResolver;
-import org.springframework.web.servlet.i18n.AcceptHeaderLocaleResolver;
 
-import java.util.Locale;
 
 /**
  * 国际化自动配置
@@ -47,8 +43,8 @@ public class I18nAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    public I18nCache i18nCache(com.indigo.cache.core.CacheService cacheService, I18nProperties i18nProperties) {
-        return new I18nCache();
+    public I18nCache i18nCache(CacheService cacheService, I18nProperties i18nProperties) {
+        return new I18nCache(cacheService);
     }
     
     /**
@@ -81,18 +77,18 @@ public class I18nAutoConfiguration {
         return resolver;
     }
     
-    /**
-     * Spring LocaleResolver
-     * 在Gateway架构中，语言环境通常由Gateway处理并传递
-     */
-    @Bean
-    @ConditionalOnMissingBean
-    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-    public LocaleResolver localeResolver(I18nProperties i18nProperties) {
-        AcceptHeaderLocaleResolver localeResolver = new AcceptHeaderLocaleResolver();
-        localeResolver.setDefaultLocale(i18nProperties.getDefaultLocale());
-        return localeResolver;
-    }
+//    /**
+//     * Spring LocaleResolver
+//     * 在Gateway架构中，语言环境通常由Gateway处理并传递
+//     */
+//    @Bean
+//    @ConditionalOnMissingBean
+//    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+//    public LocaleResolver localeResolver(I18nProperties i18nProperties) {
+//        AcceptHeaderLocaleResolver localeResolver = new AcceptHeaderLocaleResolver();
+//        localeResolver.setDefaultLocale(i18nProperties.getDefaultLocale());
+//        return localeResolver;
+//    }
     
     /**
      * 消息解析器适配器

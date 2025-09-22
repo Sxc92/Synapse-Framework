@@ -45,7 +45,7 @@ public class SecurityAutoConfiguration {
     public void init() {
         // 关闭Sa-Token的banner图
         System.setProperty("sa-token.is-print", "false");
-        log.info("Sa-Token banner已关闭");
+        log.debug("Sa-Token banner已关闭");
     }
 
     /**
@@ -55,7 +55,7 @@ public class SecurityAutoConfiguration {
     @ConditionalOnMissingBean
     @ConditionalOnBean(UserSessionService.class)
     public TokenManager tokenManager(UserSessionService userSessionService) {
-        log.info("初始化Token管理服务");
+        log.debug("初始化Token管理服务");
         return new TokenManager(userSessionService);
     }
 
@@ -67,7 +67,7 @@ public class SecurityAutoConfiguration {
     @ConditionalOnMissingBean(StpInterface.class)
     @ConditionalOnBean(UserSessionService.class)
     public PermissionManager permissionManager(UserSessionService userSessionService) {
-        log.info("初始化权限管理服务");
+        log.debug("初始化权限管理服务");
         return new PermissionManager(userSessionService);
     }
 
@@ -78,7 +78,7 @@ public class SecurityAutoConfiguration {
     @Primary
     @ConditionalOnMissingBean(AuthenticationService.class)
     public AuthenticationService authenticationService() {
-        log.info("初始化认证服务（默认版本）");
+        log.debug("初始化认证服务（默认版本）");
         return new DefaultAuthenticationService();
     }
 
@@ -89,7 +89,7 @@ public class SecurityAutoConfiguration {
     @ConditionalOnMissingBean
     @ConditionalOnProperty(name = "synapse.oauth2.enabled", havingValue = "true", matchIfMissing = false)
     public SaOAuth2Config oAuth2Config() {
-        log.info("初始化OAuth2.0配置");
+        log.debug("初始化OAuth2.0配置");
         // 基础的OAuth2配置，具体的视图处理可以在后续版本中完善
         return new SaOAuth2Config();
     }

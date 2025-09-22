@@ -83,20 +83,6 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- JWT Dependencies -->
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-impl</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-jackson</artifactId>
-        </dependency>
-
 <!--        &lt;!&ndash; Synapse I18n Module &ndash;&gt;-->
 <!--        <dependency>-->
 <!--            <groupId>com.indigo</groupId>-->

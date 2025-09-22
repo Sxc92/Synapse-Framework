@@ -1,8 +1,8 @@
 package com.indigo.core.utils;
 
 import com.indigo.core.exception.SynapseException;
-import com.indigo.core.exception.enums.ErrorCode;
-import com.indigo.core.exception.enums.StandardErrorCode;
+import com.indigo.core.constants.ErrorCode;
+import com.indigo.core.constants.StandardErrorCode;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 

@@ -3,7 +3,8 @@ package com.indigo.databases.utils;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.indigo.databases.annotation.QueryCondition;
-import com.indigo.databases.dto.PageDTO;
+import com.indigo.core.entity.dto.PageDTO;
+import com.indigo.core.entity.dto.QueryDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -24,7 +25,21 @@ import java.util.Map;
 public class QueryConditionBuilder {
 
     /**
-     * 根据DTO对象构建查询条件（推荐使用）
+     * 根据QueryDTO对象构建查询条件（推荐使用）
+     */
+    public static <T> QueryWrapper<T> buildQueryWrapper(QueryDTO queryDTO) {
+        QueryWrapper<T> wrapper = new QueryWrapper<>();
+
+        if (queryDTO != null) {
+            addEntityConditions(wrapper, queryDTO);
+            addOrderByConditions(wrapper, queryDTO);
+        }
+
+        return wrapper;
+    }
+
+    /**
+     * 根据PageDTO对象构建查询条件（推荐使用）
      */
     public static <T> QueryWrapper<T> buildQueryWrapper(PageDTO queryDTO) {
         QueryWrapper<T> wrapper = new QueryWrapper<>();
@@ -101,9 +116,9 @@ public class QueryConditionBuilder {
     /**
      * 添加排序条件
      */
-    private static <T> void addOrderByConditions(QueryWrapper<T> wrapper, PageDTO queryDTO) {
+    private static <T> void addOrderByConditions(QueryWrapper<T> wrapper, QueryDTO queryDTO) {
         if (queryDTO.getOrderByList() != null && !queryDTO.getOrderByList().isEmpty()) {
-            for (PageDTO.OrderBy orderBy : queryDTO.getOrderByList()) {
+            for (QueryDTO.OrderBy orderBy : queryDTO.getOrderByList()) {
                 if (StringUtils.isNotBlank(orderBy.getField())) {
                     String columnName = convertFieldToColumn(orderBy.getField());
                     if ("DESC".equalsIgnoreCase(orderBy.getDirection())) {

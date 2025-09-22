@@ -1,0 +1,10 @@
+D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-i18n\src\main\java\com\indigo\i18n\adapter\MessageResolverAdapter.java
+D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-i18n\src\main\java\com\indigo\i18n\config\I18nProperties.java
+D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-i18n\src\main\java\com\indigo\i18n\utils\LocaleContextHolder.java
+D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-i18n\src\main\java\com\indigo\i18n\resolver\I18nMessageResolver.java
+D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-i18n\src\main\java\com\indigo\i18n\utils\MessageUtils.java
+D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-i18n\src\main\java\com\indigo\i18n\resolver\RedisI18nMessageResolver.java
+D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-i18n\src\main\java\com\indigo\i18n\config\I18nAutoConfiguration.java
+D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-i18n\src\main\java\com\indigo\i18n\resolver\HeaderLocaleResolver.java
+D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-i18n\src\main\java\com\indigo\i18n\adapter\LocaleContextAdapter.java
+D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-i18n\src\main\java\com\indigo\i18n\cache\I18nCache.java

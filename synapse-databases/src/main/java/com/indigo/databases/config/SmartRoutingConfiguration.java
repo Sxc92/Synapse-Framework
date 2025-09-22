@@ -47,15 +47,15 @@ public class SmartRoutingConfiguration {
     private void configureSmartRoutingStrategies(SmartRouterSelector selector) {
         // 根据配置设置智能策略
         if (properties.getReadWrite().isEnabled()) {
-            log.info("配置读写分离为智能主要策略");
+            log.debug("配置读写分离为智能主要策略");
         }
         
         if (properties.getFailover().isEnabled()) {
-            log.info("配置故障转移为智能备用策略");
+            log.debug("配置故障转移为智能备用策略");
         }
         
         // 负载均衡总是启用的，因为它是一个功能特性
-        log.info("配置负载均衡为智能策略");
+        log.debug("配置负载均衡为智能策略");
     }
     
     /**
@@ -65,7 +65,7 @@ public class SmartRoutingConfiguration {
         routers.forEach(router -> {
             String name = getRouterName(router);
             selector.registerRouter(name, router);
-            log.info("智能选择器注册路由器: [{}] -> [{}]", name, router.getClass().getSimpleName());
+            log.debug("智能选择器注册路由器: [{}] -> [{}]", name, router.getClass().getSimpleName());
         });
     }
     
