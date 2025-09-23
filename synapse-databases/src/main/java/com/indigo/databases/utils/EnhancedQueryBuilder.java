@@ -1,6 +1,7 @@
 package com.indigo.databases.utils;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -11,15 +12,22 @@ import com.indigo.core.entity.result.AggregationPageResult;
 import com.indigo.core.entity.result.EnhancedPageResult;
 import com.indigo.core.entity.result.PageResult;
 import com.indigo.core.entity.result.PerformancePageResult;
+import com.indigo.core.annotation.FieldMapping;
 import com.indigo.core.entity.vo.BaseVO;
 import com.indigo.databases.mapper.EnhancedVoMapper;
+import com.indigo.databases.service.FieldConversionService;
+import com.indigo.databases.utils.VoMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.HashMap;
-import java.util.List;
+import java.lang.reflect.Field;
+import java.util.*;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.springframework.beans.BeanUtils;
+import org.springframework.stereotype.Component;
 
 /**
  * 增强查询构建器
@@ -34,6 +42,7 @@ import org.springframework.beans.BeanUtils;
  *   <li><strong>聚合查询</strong>：COUNT、SUM、AVG、MAX、MIN等聚合函数</li>
  *   <li><strong>性能监控</strong>：查询时间、执行计划、性能评级</li>
  *   <li><strong>便捷方法</strong>：快速查询、统计查询、存在性查询</li>
+ *   <li><strong>异步查询</strong>：基于CompletableFuture的异步查询支持（实验性功能）</li>
  * </ul>
  * 
  * <h3>使用示例：</h3>
@@ -57,10 +66,34 @@ import org.springframework.beans.BeanUtils;
  * // 便捷查询
  * PageResult<ProductVO> result = EnhancedQueryBuilder.quickPage(
  *     productService, pageDTO, ProductVO.class);
+ * 
+ * // 异步查询（实验性功能）
+ * CompletableFuture<PageResult<ProductVO>> future = EnhancedQueryBuilder.pageWithConditionAsync(
+ *     productService, pageDTO, ProductVO.class);
+ * future.thenAccept(result -> {
+ *     System.out.println("查询完成，共" + result.getTotal() + "条记录");
+ * });
  * }</pre>
+ * 
+ * <h3>异步查询说明：</h3>
+ * <p><strong>⚠️ 实验性功能</strong>：异步查询功能目前处于实验阶段，主要用于：</p>
+ * <ul>
+ *   <li>大数据量查询（>10万条记录）</li>
+ *   <li>复杂多表关联查询</li>
+ *   <li>需要并行执行多个查询的场景</li>
+ *   <li>提升用户体验（避免界面卡顿）</li>
+ * </ul>
+ * <p><strong>注意事项</strong>：</p>
+ * <ul>
+ *   <li>异步查询会增加内存消耗和线程管理复杂度</li>
+ *   <li>错误处理相对复杂，需要正确处理CompletableFuture的异常</li>
+ *   <li>调试相对困难，建议在性能瓶颈明确时再使用</li>
+ *   <li>API可能会在后续版本中调整</li>
+ * </ul>
  *
  * @author 史偕成
  * @date 2025/12/19
+ * @version 1.0.0
  */
 @Slf4j
 public class EnhancedQueryBuilder {
@@ -77,7 +110,7 @@ public class EnhancedQueryBuilder {
             QueryWrapper<T> wrapper = QueryConditionBuilder.buildQueryWrapper(pageDTO);
             
             // 使用 IService 的分页方法，确保所有功能正常工作
-            Page<T> page = new Page<>(pageDTO.getPageNo(), pageDTO.getPageSize());
+            Page<T> page = createEntityPage(pageDTO);
             Page<T> result = service.page(page, wrapper);
             
             return PageResult.of(result.getRecords(), result.getTotal(), result.getCurrent(), result.getSize());
@@ -117,23 +150,8 @@ public class EnhancedQueryBuilder {
         // 构建基础查询条件
         QueryWrapper<T> wrapper = QueryConditionBuilder.buildQueryWrapper(pageDTO);
         
-        // 根据VO类自动选择字段 - 智能映射
-        String[] selectFields = VoFieldSelector.getSelectFields(voClass);
-        wrapper.select(selectFields);
-        
-        // 构建SQL查询
-        String sql = wrapper.getSqlSegment();
-        String fullSql = "SELECT " + String.join(", ", selectFields) + " FROM " + getTableName(service) + " WHERE " + sql;
-        
-        // 创建分页对象
-        Page<V> page = new Page<>(pageDTO.getPageNo(), pageDTO.getPageSize());
-        
-        // 使用EnhancedVoMapper执行查询，实现智能映射
-        @SuppressWarnings("unchecked")
-        EnhancedVoMapper<T, V> mapper = (EnhancedVoMapper<T, V>) service.getBaseMapper();
-        IPage<V> result = mapper.selectPageAsVo(page, fullSql);
-        
-        return PageResult.of(result.getRecords(), result.getTotal(), result.getCurrent(), result.getSize());
+        // 使用统一的查询执行方法
+        return executeQuery(service, wrapper, pageDTO, voClass);
     }
     
     /**
@@ -144,14 +162,20 @@ public class EnhancedQueryBuilder {
         String sql = MultiTableQueryBuilder.buildMultiTableSql(pageDTO, voClass);
         
         // 创建分页对象
-        Page<V> page = new Page<>(pageDTO.getPageNo(), pageDTO.getPageSize());
+        Page<Map<String, Object>> page = createMapPage(pageDTO);
         
         // 执行查询（需要强制转换为EnhancedVoMapper）
-        @SuppressWarnings("unchecked")
-        EnhancedVoMapper<T, V> mapper = (EnhancedVoMapper<T, V>) service.getBaseMapper();
-        IPage<V> result = mapper.selectPageAsVo(page, sql);
+        EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service);
+        if (mapper == null) {
+            // 如果Mapper没有实现EnhancedVoMapper，多表查询无法正常工作
+            log.warn("Mapper {} 没有实现EnhancedVoMapper，多表查询可能无法正常工作", service.getBaseMapper().getClass().getSimpleName());
+            throw new UnsupportedOperationException("多表查询需要Mapper实现EnhancedVoMapper接口");
+        }
+        IPage<Map<String, Object>> result = mapper.selectPageAsVo(page, sql);
         
-        return PageResult.of(result.getRecords(), result.getTotal(), result.getCurrent(), result.getSize());
+        // 手动映射Map到VO
+        List<V> voList = mapMapToVoList(result.getRecords(), voClass);
+        return PageResult.of(voList, result.getTotal(), result.getCurrent(), result.getSize());
     }
     
     /**
@@ -181,24 +205,19 @@ public class EnhancedQueryBuilder {
         // 构建基础查询条件
         QueryWrapper<T> wrapper = QueryConditionBuilder.buildQueryWrapper(queryDTO);
         
-        // 根据VO类自动选择字段 - 智能映射
-        String[] selectFields = VoFieldSelector.getSelectFields(voClass);
-        wrapper.select(selectFields);
+        // 获取Mapper
+        EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service);
         
-        // 构建SQL查询
-        String sql = wrapper.getSqlSegment();
-        String fullSql = "SELECT " + String.join(", ", selectFields) + " FROM " + getTableName(service) + " WHERE " + sql;
-        
-        // 使用EnhancedVoMapper执行查询，实现智能映射
-        BaseMapper<T> baseMapper = service.getBaseMapper();
-        if (baseMapper instanceof EnhancedVoMapper) {
-            @SuppressWarnings("unchecked")
-            EnhancedVoMapper<T, V> mapper = (EnhancedVoMapper<T, V>) baseMapper;
-            return mapper.selectListAsVo(fullSql);
+        if (mapper == null) {
+            // 基础查询
+            log.warn("Mapper {} 没有实现EnhancedVoMapper，使用基础查询", service.getBaseMapper().getClass().getSimpleName());
+            List<T> entities = service.list(wrapper);
+            return VoMapper.mapToVoList(entities, voClass);
         } else {
-            // 如果Mapper没有实现EnhancedVoMapper，使用基础查询
-            log.warn("Mapper {} 没有实现EnhancedVoMapper，使用基础查询", baseMapper.getClass().getSimpleName());
-            List<T> entities = baseMapper.selectList(wrapper);
+            // 增强查询 - 使用基础查询避免参数绑定问题
+            String[] selectFields = VoFieldSelector.getSelectFields(voClass);
+            wrapper.select(selectFields);
+            List<T> entities = service.list(wrapper);
             return VoMapper.mapToVoList(entities, voClass);
         }
     }
@@ -211,16 +230,15 @@ public class EnhancedQueryBuilder {
         String sql = MultiTableQueryBuilder.buildMultiTableSql(queryDTO, voClass);
         
         // 执行查询
-        BaseMapper<T> baseMapper = service.getBaseMapper();
-        if (baseMapper instanceof EnhancedVoMapper) {
-            @SuppressWarnings("unchecked")
-            EnhancedVoMapper<T, V> mapper = (EnhancedVoMapper<T, V>) baseMapper;
-            return mapper.selectListAsVo(sql);
-        } else {
-            // 如果Mapper没有实现EnhancedVoMapper，使用基础查询
-            log.warn("Mapper {} 没有实现EnhancedVoMapper，多表查询可能无法正常工作", baseMapper.getClass().getSimpleName());
+        EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service);
+        if (mapper == null) {
+            // 如果Mapper没有实现EnhancedVoMapper，多表查询无法正常工作
+            log.warn("Mapper {} 没有实现EnhancedVoMapper，多表查询可能无法正常工作", service.getBaseMapper().getClass().getSimpleName());
             throw new UnsupportedOperationException("多表查询需要Mapper实现EnhancedVoMapper接口");
         }
+        
+        // 对于多表查询，我们需要使用动态SQL方法
+        return mapper.selectListAsVoWithSql(sql);
     }
     
     /**
@@ -250,18 +268,21 @@ public class EnhancedQueryBuilder {
         // 构建基础查询条件
         QueryWrapper<T> wrapper = QueryConditionBuilder.buildQueryWrapper(queryDTO);
         
-        // 根据VO类自动选择字段 - 智能映射
-        String[] selectFields = VoFieldSelector.getSelectFields(voClass);
-        wrapper.select(selectFields);
+        // 获取Mapper
+        EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service);
         
-        // 构建SQL查询
-        String sql = wrapper.getSqlSegment();
-        String fullSql = "SELECT " + String.join(", ", selectFields) + " FROM " + getTableName(service) + " WHERE " + sql + " LIMIT 1";
-        
-        // 使用EnhancedVoMapper执行查询，实现智能映射
-        @SuppressWarnings("unchecked")
-        EnhancedVoMapper<T, V> mapper = (EnhancedVoMapper<T, V>) service.getBaseMapper();
-        return mapper.selectOneAsVo(fullSql);
+        if (mapper == null) {
+            // 基础查询
+            log.warn("Mapper {} 没有实现EnhancedVoMapper，使用基础查询", service.getBaseMapper().getClass().getSimpleName());
+            T entity = service.getOne(wrapper);
+            return VoMapper.mapToVo(entity, voClass);
+        } else {
+            // 增强查询 - 使用基础查询避免参数绑定问题
+            String[] selectFields = VoFieldSelector.getSelectFields(voClass);
+            wrapper.select(selectFields);
+            T entity = service.getOne(wrapper);
+            return VoMapper.mapToVo(entity, voClass);
+        }
     }
     
     /**
@@ -272,11 +293,15 @@ public class EnhancedQueryBuilder {
         String sql = MultiTableQueryBuilder.buildMultiTableSql(queryDTO, voClass);
         
         // 执行查询
-        @SuppressWarnings("unchecked")
-        EnhancedVoMapper<T, V> mapper = (EnhancedVoMapper<T, V>) service.getBaseMapper();
-        V result = mapper.selectOneAsVo(sql);
+        EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service);
+        if (mapper == null) {
+            // 如果Mapper没有实现EnhancedVoMapper，多表查询无法正常工作
+            log.warn("Mapper {} 没有实现EnhancedVoMapper，多表查询可能无法正常工作", service.getBaseMapper().getClass().getSimpleName());
+            throw new UnsupportedOperationException("多表查询需要Mapper实现EnhancedVoMapper接口");
+        }
         
-        return result;
+        // 对于多表查询，我们需要使用动态SQL方法
+        return mapper.selectOneAsVoWithSql(sql);
     }
     
     // ==================== 聚合查询 ====================
@@ -293,7 +318,7 @@ public class EnhancedQueryBuilder {
             // 构建聚合字段
             if (pageDTO.getAggregations() != null && !pageDTO.getAggregations().isEmpty()) {
                 String[] selectFields = pageDTO.getAggregations().stream()
-                    .map(agg -> buildAggregationField(agg))
+                    .map(EnhancedQueryBuilder::buildAggregationField)
                     .toArray(String[]::new);
                 wrapper.select(selectFields);
                 
@@ -321,14 +346,24 @@ public class EnhancedQueryBuilder {
                 String fullSql = "SELECT " + String.join(", ", selectFields) + " FROM " + getTableName(service) + " WHERE " + sql;
                 
                 // 创建分页对象
-                Page<V> page = new Page<>(pageDTO.getPageNo(), pageDTO.getPageSize());
+                Page<Map<String, Object>> page = createMapPage(pageDTO);
                 
                 // 使用EnhancedVoMapper执行查询，实现智能映射
-                @SuppressWarnings("unchecked")
-                EnhancedVoMapper<T, V> mapper = (EnhancedVoMapper<T, V>) service.getBaseMapper();
-                IPage<V> result = mapper.selectPageAsVo(page, fullSql);
+                EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service);
+                if (mapper == null) {
+                    // 如果Mapper没有实现EnhancedVoMapper，使用基础查询
+                    log.warn("Mapper {} 没有实现EnhancedVoMapper，使用基础查询", service.getBaseMapper().getClass().getSimpleName());
+                    Page<T> entityPage = createEntityPage(pageDTO);
+                    IPage<T> entityResult = service.page(entityPage, wrapper);
+                    List<V> voList = VoMapper.mapToVoList(entityResult.getRecords(), voClass);
+                    return new AggregationPageResult<>(voList, entityResult.getTotal(), 
+                                                     entityResult.getCurrent(), entityResult.getSize());
+                }
+                IPage<Map<String, Object>> result = mapper.selectPageAsVo(page, fullSql);
                 
-                return new AggregationPageResult<>(result.getRecords(), result.getTotal(), 
+                // 手动映射Map到VO
+                List<V> voList = mapMapToVoList(result.getRecords(), voClass);
+                return new AggregationPageResult<>(voList, result.getTotal(), 
                                                  result.getCurrent(), result.getSize());
             }
             
@@ -381,49 +416,15 @@ public class EnhancedQueryBuilder {
      * 返回查询执行时间和执行计划
      */
     public static <T, V extends BaseVO> PerformancePageResult<V> pageWithPerformance(IService<T> service, PerformancePageDTO pageDTO, Class<V> voClass) {
-        try {
-            long startTime = System.currentTimeMillis();
-            
-            // 构建基础查询条件
-            QueryWrapper<T> wrapper = QueryConditionBuilder.buildQueryWrapper(pageDTO);
-            
-            // 根据VO类自动选择字段
-            String[] selectFields = VoFieldSelector.getSelectFields(voClass);
-            wrapper.select(selectFields);
-            
-            // 执行查询 - 使用智能映射
-            String sql = wrapper.getSqlSegment();
-            String fullSql = "SELECT " + String.join(", ", selectFields) + " FROM " + getTableName(service) + " WHERE " + sql;
-            
-            // 创建分页对象
-            Page<V> page = new Page<>(pageDTO.getPageNo(), pageDTO.getPageSize());
-            
-            // 使用EnhancedVoMapper执行查询，实现智能映射
-            @SuppressWarnings("unchecked")
-            EnhancedVoMapper<T, V> mapper = (EnhancedVoMapper<T, V>) service.getBaseMapper();
-            IPage<V> result = mapper.selectPageAsVo(page, fullSql);
-            
-            long endTime = System.currentTimeMillis();
-            long queryTime = endTime - startTime;
-            
-            // 获取执行计划
-            String executionPlan = getExecutionPlan(wrapper);
-            
-            // 构建性能统计
-            PerformancePageResult.PageStatistics statistics = buildStatistics(pageDTO, queryTime, executionPlan);
-            
-            PerformancePageResult<V> performanceResult = new PerformancePageResult<>(result.getRecords(), result.getTotal(), 
-                                             result.getCurrent(), result.getSize());
-            performanceResult.setQueryTime(queryTime);
-            performanceResult.setExecutionPlan(executionPlan);
-            performanceResult.setStatistics(statistics);
-            
-            return performanceResult;
-            
-        } catch (Exception e) {
-            log.error("性能监控查询失败", e);
-            throw new RuntimeException("性能监控查询失败: " + e.getMessage(), e);
-        }
+        // 构建基础查询条件
+        QueryWrapper<T> wrapper = QueryConditionBuilder.buildQueryWrapper(pageDTO);
+        
+        // 根据VO类自动选择字段
+        String[] selectFields = VoFieldSelector.getSelectFields(voClass);
+        wrapper.select(selectFields);
+        
+        // 使用统一的性能监控查询方法
+        return executeWithPerformanceMonitoring(service, wrapper, pageDTO, voClass, pageDTO);
     }
     
     /**
@@ -431,40 +432,22 @@ public class EnhancedQueryBuilder {
      * 支持指定返回字段，提高查询性能
      */
     public static <T, V extends BaseVO> PerformancePageResult<V> pageWithSelectFields(IService<T> service, PerformancePageDTO pageDTO, Class<V> voClass) {
-        try {
-            // 构建基础查询条件
-            QueryWrapper<T> wrapper = QueryConditionBuilder.buildQueryWrapper(pageDTO);
-            
-            // 设置选择字段
-            String[] selectFields;
-            if (pageDTO.getSelectFields() != null && !pageDTO.getSelectFields().isEmpty()) {
-                selectFields = pageDTO.getSelectFields().toArray(new String[0]);
-                wrapper.select(selectFields);
-            } else {
-                // 使用VO字段选择器
-                selectFields = VoFieldSelector.getSelectFields(voClass);
-                wrapper.select(selectFields);
-            }
-            
-            // 执行查询 - 使用智能映射
-            String sql = wrapper.getSqlSegment();
-            String fullSql = "SELECT " + String.join(", ", selectFields) + " FROM " + getTableName(service) + " WHERE " + sql;
-            
-            // 创建分页对象
-            Page<V> page = new Page<>(pageDTO.getPageNo(), pageDTO.getPageSize());
-            
-            // 使用EnhancedVoMapper执行查询，实现智能映射
-            @SuppressWarnings("unchecked")
-            EnhancedVoMapper<T, V> mapper = (EnhancedVoMapper<T, V>) service.getBaseMapper();
-            IPage<V> result = mapper.selectPageAsVo(page, fullSql);
-            
-            return new PerformancePageResult<>(result.getRecords(), result.getTotal(), 
-                                             result.getCurrent(), result.getSize());
-            
-        } catch (Exception e) {
-            log.error("字段选择查询失败", e);
-            throw new RuntimeException("字段选择查询失败: " + e.getMessage(), e);
+        // 构建基础查询条件
+        QueryWrapper<T> wrapper = QueryConditionBuilder.buildQueryWrapper(pageDTO);
+        
+        // 设置选择字段
+        String[] selectFields;
+        if (pageDTO.getSelectFields() != null && !pageDTO.getSelectFields().isEmpty()) {
+            selectFields = pageDTO.getSelectFields().toArray(new String[0]);
+            wrapper.select(selectFields);
+        } else {
+            // 使用VO字段选择器
+            selectFields = VoFieldSelector.getSelectFields(voClass);
+            wrapper.select(selectFields);
         }
+        
+        // 使用统一的性能监控查询方法
+        return executeWithPerformanceMonitoring(service, wrapper, pageDTO, voClass, pageDTO);
     }
     
     // ==================== 多表关联查询 ====================
@@ -506,14 +489,25 @@ public class EnhancedQueryBuilder {
             String fullSql = "SELECT " + String.join(", ", selectFields) + " FROM " + getTableName(service) + " WHERE " + sql;
             
             // 创建分页对象
-            Page<V> page = new Page<>(pageDTO.getPageNo(), pageDTO.getPageSize());
+            Page<Map<String, Object>> page = createMapPage(pageDTO);
             
             // 使用EnhancedVoMapper执行查询，实现智能映射
-            @SuppressWarnings("unchecked")
-            EnhancedVoMapper<T, V> mapper = (EnhancedVoMapper<T, V>) service.getBaseMapper();
-            IPage<V> result = mapper.selectPageAsVo(page, fullSql);
+            EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service);
+            if (mapper == null) {
+                // 如果Mapper没有实现EnhancedVoMapper，使用基础查询
+                log.warn("Mapper {} 没有实现EnhancedVoMapper，使用基础查询", service.getBaseMapper().getClass().getSimpleName());
+                Page<T> entityPage = createEntityPage(pageDTO);
+                IPage<T> entityResult = service.page(entityPage, wrapper);
+                List<V> voList = VoMapper.mapToVoList(entityResult.getRecords(), voClass);
+                PageResult<V> pageResult = new PageResult<>(voList, entityResult.getTotal(), 
+                                             entityResult.getCurrent(), entityResult.getSize());
+                return pageResult;
+            }
+            IPage<Map<String, Object>> result = mapper.selectPageAsVo(page, fullSql);
             
-            return PageResult.of(result.getRecords(), result.getTotal(), result.getCurrent(), result.getSize());
+            // 手动映射Map到VO
+            List<V> voList = mapMapToVoList(result.getRecords(), voClass);
+            return PageResult.of(voList, result.getTotal(), result.getCurrent(), result.getSize());
             
         } catch (Exception e) {
             log.error("多表关联查询失败", e);
@@ -543,14 +537,25 @@ public class EnhancedQueryBuilder {
             String fullSql = "SELECT " + String.join(", ", selectFields) + " FROM " + getTableName(service) + " WHERE " + sql;
             
             // 创建分页对象
-            Page<V> page = new Page<>(pageDTO.getPageNo(), pageDTO.getPageSize());
+            Page<Map<String, Object>> page = createMapPage(pageDTO);
             
             // 使用EnhancedVoMapper执行查询，实现智能映射
-            @SuppressWarnings("unchecked")
-            EnhancedVoMapper<T, V> mapper = (EnhancedVoMapper<T, V>) service.getBaseMapper();
-            IPage<V> result = mapper.selectPageAsVo(page, fullSql);
+            EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service);
+            if (mapper == null) {
+                // 如果Mapper没有实现EnhancedVoMapper，使用基础查询
+                log.warn("Mapper {} 没有实现EnhancedVoMapper，使用基础查询", service.getBaseMapper().getClass().getSimpleName());
+                Page<T> entityPage = createEntityPage(pageDTO);
+                IPage<T> entityResult = service.page(entityPage, wrapper);
+                List<V> voList = VoMapper.mapToVoList(entityResult.getRecords(), voClass);
+                PageResult<V> pageResult = new PageResult<>(voList, entityResult.getTotal(), 
+                                             entityResult.getCurrent(), entityResult.getSize());
+                return pageResult;
+            }
+            IPage<Map<String, Object>> result = mapper.selectPageAsVo(page, fullSql);
             
-            return PageResult.of(result.getRecords(), result.getTotal(), result.getCurrent(), result.getSize());
+            // 手动映射Map到VO
+            List<V> voList = mapMapToVoList(result.getRecords(), voClass);
+            return PageResult.of(voList, result.getTotal(), result.getCurrent(), result.getSize());
             
         } catch (Exception e) {
             log.error("复杂查询失败", e);
@@ -582,7 +587,7 @@ public class EnhancedQueryBuilder {
             // 添加聚合字段
             if (pageDTO.getAggregations() != null && !pageDTO.getAggregations().isEmpty()) {
                 String[] selectFields = pageDTO.getAggregations().stream()
-                    .map(agg -> buildAggregationField(agg))
+                    .map(EnhancedQueryBuilder::buildAggregationField)
                     .toArray(String[]::new);
                 wrapper.select(selectFields);
             }
@@ -592,12 +597,31 @@ public class EnhancedQueryBuilder {
             String fullSql = "SELECT * FROM " + getTableName(service) + " WHERE " + sql;
             
             // 创建分页对象
-            Page<V> page = new Page<>(pageDTO.getPageNo(), pageDTO.getPageSize());
+            Page<Map<String, Object>> page = createMapPage(pageDTO);
             
             // 使用EnhancedVoMapper执行查询，实现智能映射
-            @SuppressWarnings("unchecked")
-            EnhancedVoMapper<T, V> mapper = (EnhancedVoMapper<T, V>) service.getBaseMapper();
-            IPage<V> result = mapper.selectPageAsVo(page, fullSql);
+            EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service);
+            List<V> voList;
+            long total;
+            long current;
+            long size;
+            
+            if (mapper == null) {
+                // 如果Mapper没有实现EnhancedVoMapper，使用基础查询
+                log.warn("Mapper {} 没有实现EnhancedVoMapper，使用基础查询", service.getBaseMapper().getClass().getSimpleName());
+                Page<T> entityPage = createEntityPage(pageDTO);
+                IPage<T> entityResult = service.page(entityPage, wrapper);
+                voList = VoMapper.mapToVoList(entityResult.getRecords(), voClass);
+                total = entityResult.getTotal();
+                current = entityResult.getCurrent();
+                size = entityResult.getSize();
+            } else {
+                IPage<Map<String, Object>> result = mapper.selectPageAsVo(page, fullSql);
+                voList = mapMapToVoList(result.getRecords(), voClass);
+                total = result.getTotal();
+                current = result.getCurrent();
+                size = result.getSize();
+            }
             
             long endTime = System.currentTimeMillis();
             long queryTime = endTime - startTime;
@@ -608,11 +632,10 @@ public class EnhancedQueryBuilder {
             // 构建聚合结果
             Map<String, Object> aggregations = new HashMap<>();
             if (pageDTO.getAggregations() != null && !pageDTO.getAggregations().isEmpty()) {
-                aggregations = buildAggregationResults(pageDTO.getAggregations(), result.getRecords());
+                aggregations = buildAggregationResults(pageDTO.getAggregations(), voList);
             }
             
-            EnhancedPageResult<V> enhancedResult = new EnhancedPageResult<>(result.getRecords(), result.getTotal(), 
-                                          result.getCurrent(), result.getSize());
+            EnhancedPageResult<V> enhancedResult = new EnhancedPageResult<>(voList, total, current, size);
             enhancedResult.setQueryTime(queryTime);
             enhancedResult.setExecutionPlan(executionPlan);
             enhancedResult.setAggregations(aggregations);
@@ -688,6 +711,266 @@ public class EnhancedQueryBuilder {
     }
     
     // ==================== 工具方法 ====================
+    
+    /**
+     * 执行带性能监控的查询
+     * 统一处理性能监控逻辑，减少重复代码
+     */
+    private static <T, V extends BaseVO> PerformancePageResult<V> executeWithPerformanceMonitoring(
+            IService<T> service, 
+            QueryWrapper<T> wrapper, 
+            PageDTO pageDTO, 
+            Class<V> voClass,
+            PerformancePageDTO performancePageDTO) {
+        
+        long startTime = System.currentTimeMillis();
+        
+        try {
+            // 执行查询
+            PageResult<V> pageResult = executeQuery(service, wrapper, pageDTO, voClass);
+            
+            long endTime = System.currentTimeMillis();
+            long queryTime = endTime - startTime;
+            
+            // 构建性能结果
+            PerformancePageResult<V> performanceResult = new PerformancePageResult<>(
+                pageResult.getRecords(), 
+                pageResult.getTotal(), 
+                pageResult.getCurrent(), 
+                pageResult.getSize()
+            );
+            
+            // 设置性能数据
+            String executionPlan = getExecutionPlan(wrapper);
+            PerformancePageResult.PageStatistics statistics = buildStatistics(performancePageDTO, queryTime, executionPlan);
+            performanceResult.setQueryTime(queryTime);
+            performanceResult.setExecutionPlan(executionPlan);
+            performanceResult.setStatistics(statistics);
+            
+            return performanceResult;
+            
+        } catch (Exception e) {
+            log.error("性能监控查询失败", e);
+            throw new RuntimeException("性能监控查询失败: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 统一的查询执行方法
+     * 处理Mapper获取和查询执行逻辑
+     */
+    private static <T, V extends BaseVO> PageResult<V> executeQuery(
+            IService<T> service, 
+            QueryWrapper<T> wrapper, 
+            PageDTO pageDTO, 
+            Class<V> voClass) {
+        
+        // 获取Mapper
+        EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service);
+        
+        if (mapper == null) {
+            // 基础查询
+            log.warn("Mapper {} 没有实现EnhancedVoMapper，使用基础查询", service.getBaseMapper().getClass().getSimpleName());
+            Page<T> entityPage = createEntityPage(pageDTO);
+            IPage<T> entityResult = service.page(entityPage, wrapper);
+            List<V> voList = VoMapper.mapToVoList(entityResult.getRecords(), voClass);
+            return PageResult.of(voList, entityResult.getTotal(), entityResult.getCurrent(), entityResult.getSize());
+        } else {
+            // 增强查询
+            String[] selectFields = VoFieldSelector.getSelectFields(voClass);
+            wrapper.select(selectFields);
+            String fullSql = buildSelectSql(service, wrapper, selectFields);
+            
+            Page<Map<String, Object>> page = createMapPage(pageDTO);
+            IPage<Map<String, Object>> result = mapper.selectPageAsVo(page, fullSql);
+            
+            // 手动映射Map到VO
+            List<V> voList = mapMapToVoList(result.getRecords(), voClass);
+            return PageResult.of(voList, result.getTotal(), result.getCurrent(), result.getSize());
+        }
+    }
+    
+    /**
+     * 创建Map类型的分页对象
+     */
+    private static Page<Map<String, Object>> createMapPage(PageDTO pageDTO) {
+        return new Page<>(pageDTO.getPageNo(), pageDTO.getPageSize());
+    }
+    
+    /**
+     * 将Map列表映射为VO列表
+     * 支持父类字段映射
+     */
+    private static <V extends BaseVO> List<V> mapMapToVoList(List<Map<String, Object>> mapList, Class<V> voClass) {
+        List<V> voList = new ArrayList<>();
+        
+        for (Map<String, Object> map : mapList) {
+            try {
+                V vo = voClass.getDeclaredConstructor().newInstance();
+                
+                // 处理字段映射注解（包括父类字段）
+                Field[] allFields = getAllFields(voClass);
+                for (Field field : allFields) {
+                    // 跳过静态字段
+                    if (java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+                        continue;
+                    }
+                    
+                    // 跳过特殊字段
+                    if (isSpecialField(field.getName())) {
+                        continue;
+                    }
+                    
+                    FieldMapping mapping = field.getAnnotation(FieldMapping.class);
+                    if (mapping != null && !mapping.ignore()) {
+                        // 使用注解指定的数据库字段名
+                        String dbFieldName = mapping.value();
+                        if (!dbFieldName.isEmpty() && map.containsKey(dbFieldName)) {
+                            field.setAccessible(true);
+                            Object value = map.get(dbFieldName);
+                            field.set(vo, value);
+                        }
+                    } else {
+                        // 使用配置的字段转换策略
+                        String dbFieldName = FieldConversionUtils.convertFieldToColumn(field.getName());
+                        if (map.containsKey(dbFieldName)) {
+                            field.setAccessible(true);
+                            Object value = map.get(dbFieldName);
+                            field.set(vo, value);
+                        }
+                    }
+                }
+                
+                voList.add(vo);
+            } catch (Exception e) {
+                log.error("Map映射到VO失败: {}", e.getMessage(), e);
+            }
+        }
+        
+        return voList;
+    }
+    
+    /**
+     * 获取类及其所有父类的字段
+     */
+    private static Field[] getAllFields(Class<?> clazz) {
+        List<Field> allFields = new ArrayList<>();
+        
+        // 遍历整个继承链
+        Class<?> currentClass = clazz;
+        while (currentClass != null && currentClass != Object.class) {
+            Field[] declaredFields = currentClass.getDeclaredFields();
+            for (Field field : declaredFields) {
+                allFields.add(field);
+            }
+            currentClass = currentClass.getSuperclass();
+        }
+        
+        return allFields.toArray(new Field[0]);
+    }
+    
+    /**
+     * 判断是否为特殊字段
+     */
+    private static boolean isSpecialField(String fieldName) {
+        // 常见的特殊字段
+        return "serialVersionUID".equals(fieldName) ||
+               "class".equals(fieldName) ||
+               fieldName.startsWith("$");
+    }
+    
+    /**
+     * 驼峰转下划线
+     */
+    private static String camelToUnderline(String camelCase) {
+        if (camelCase == null || camelCase.isEmpty()) {
+            return camelCase;
+        }
+        
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < camelCase.length(); i++) {
+            char c = camelCase.charAt(i);
+            if (Character.isUpperCase(c)) {
+                if (i > 0) {
+                    result.append('_');
+                }
+                result.append(Character.toLowerCase(c));
+            } else {
+                result.append(c);
+            }
+        }
+        return result.toString();
+    }
+    
+    /**
+     * SQL构建器 - 统一SQL构建逻辑
+     * 构建完整的SQL，避免参数绑定问题
+     */
+    private static <T> String buildSelectSql(IService<T> service, QueryWrapper<T> wrapper, String[] selectFields) {
+        // 获取实体类对应的表名
+        String tableName = getTableNameFromEntity(service);
+        
+        // 构建完整的SQL
+        StringBuilder sql = new StringBuilder();
+        sql.append("SELECT ").append(String.join(", ", selectFields));
+        sql.append(" FROM ").append(tableName);
+        
+        // 获取WHERE条件，但不包含参数占位符
+        String whereClause = wrapper.getSqlSegment();
+        if (whereClause != null && !whereClause.trim().isEmpty()) {
+            sql.append(" WHERE ").append(whereClause);
+        }
+        
+        return sql.toString();
+    }
+    
+    /**
+     * 从实体类获取表名
+     */
+    private static <T> String getTableNameFromEntity(IService<T> service) {
+        try {
+            // 获取实体类
+            Class<?> entityClass = service.getEntityClass();
+            
+            // 检查是否有@TableName注解
+            com.baomidou.mybatisplus.annotation.TableName tableNameAnnotation = 
+                entityClass.getAnnotation(com.baomidou.mybatisplus.annotation.TableName.class);
+            
+            if (tableNameAnnotation != null && !tableNameAnnotation.value().isEmpty()) {
+                return tableNameAnnotation.value();
+            }
+            
+            // 如果没有注解，使用类名转下划线
+            String className = entityClass.getSimpleName();
+            return com.baomidou.mybatisplus.core.toolkit.StringUtils.camelToUnderline(className);
+            
+        } catch (Exception e) {
+            log.warn("无法获取实体类表名，使用默认值", e);
+            return "t_" + service.getClass().getSimpleName().toLowerCase().replace("service", "");
+        }
+    }
+    
+    /**
+     * SQL构建器 - 构建带LIMIT的查询SQL
+     */
+    private static <T> String buildSelectOneSql(IService<T> service, QueryWrapper<T> wrapper, String[] selectFields) {
+        // 获取实体类对应的表名
+        String tableName = getTableNameFromEntity(service);
+        
+        // 构建完整的SQL
+        StringBuilder sql = new StringBuilder();
+        sql.append("SELECT ").append(String.join(", ", selectFields));
+        sql.append(" FROM ").append(tableName);
+        
+        // 获取WHERE条件
+        String whereClause = wrapper.getSqlSegment();
+        if (whereClause != null && !whereClause.trim().isEmpty()) {
+            sql.append(" WHERE ").append(whereClause);
+        }
+        
+        sql.append(" LIMIT 1");
+        return sql.toString();
+    }
     
     /**
      * 构建性能统计信息
@@ -797,7 +1080,6 @@ public class EnhancedQueryBuilder {
     /**
      * 安全获取EnhancedVoMapper，如果不存在则使用基础查询
      */
-    @SuppressWarnings("unchecked")
     private static <T, V extends BaseVO> EnhancedVoMapper<T, V> getEnhancedVoMapper(IService<T> service) {
         BaseMapper<T> baseMapper = service.getBaseMapper();
         if (baseMapper instanceof EnhancedVoMapper) {
@@ -807,4 +1089,262 @@ public class EnhancedQueryBuilder {
             return null;
         }
     }
-} 
+    
+    /**
+     * 创建VO分页对象
+     * 统一分页对象创建逻辑，避免代码重复
+     */
+    private static <V> Page<V> createPage(PageDTO pageDTO) {
+        return new Page<>(pageDTO.getPageNo(), pageDTO.getPageSize());
+    }
+    
+    /**
+     * 创建实体分页对象
+     * 统一实体分页对象创建逻辑，避免代码重复
+     */
+    private static <T> Page<T> createEntityPage(PageDTO pageDTO) {
+        return new Page<>(pageDTO.getPageNo(), pageDTO.getPageSize());
+    }
+    
+    // ==================== 异步查询方法（实验性功能） ====================
+    
+    /**
+     * 异步基础分页查询
+     * 使用 CompletableFuture 实现异步查询，不阻塞当前线程
+     * 
+     * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
+     * 
+     * <h3>使用场景：</h3>
+     * <ul>
+     *   <li>大数据量查询（>10万条记录）</li>
+     *   <li>复杂多表关联查询</li>
+     *   <li>需要并行执行多个查询</li>
+     *   <li>提升用户体验（避免界面卡顿）</li>
+     * </ul>
+     * 
+     * <h3>使用示例：</h3>
+     * <pre>{@code
+     * // 异步查询
+     * CompletableFuture<PageResult<ProductVO>> future = 
+     *     EnhancedQueryBuilder.pageWithConditionAsync(productService, pageDTO, ProductVO.class);
+     * 
+     * // 处理结果
+     * future.thenAccept(result -> {
+     *     System.out.println("查询完成，共" + result.getTotal() + "条记录");
+     * }).exceptionally(throwable -> {
+     *     System.err.println("查询失败：" + throwable.getMessage());
+     *     return null;
+     * });
+     * 
+     * // 或者等待结果
+     * PageResult<ProductVO> result = future.get(30, TimeUnit.SECONDS);
+     * }</pre>
+     * 
+     */
+    public static <T, V extends BaseVO> CompletableFuture<PageResult<V>> pageWithConditionAsync(
+            IService<T> service, PageDTO pageDTO, Class<V> voClass) {
+        
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return pageWithCondition(service, pageDTO, voClass);
+            } catch (Exception e) {
+                log.error("异步分页查询失败", e);
+                throw new RuntimeException("异步分页查询失败: " + e.getMessage(), e);
+            }
+        });
+    }
+    
+    /**
+     * 异步列表查询
+     * 适用于不需要分页的列表查询场景
+     * 
+     * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
+     * 
+     */
+    public static <T, V extends BaseVO> CompletableFuture<List<V>> listWithConditionAsync(
+            IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
+        
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return listWithCondition(service, queryDTO, voClass);
+            } catch (Exception e) {
+                log.error("异步列表查询失败", e);
+                throw new RuntimeException("异步列表查询失败: " + e.getMessage(), e);
+            }
+        });
+    }
+    
+    /**
+     * 异步单个查询
+     * 适用于查询单条记录的场景
+     * 
+     * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
+     * 
+     */
+    public static <T, V extends BaseVO> CompletableFuture<V> getOneWithConditionAsync(
+            IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
+        
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return getOneWithCondition(service, queryDTO, voClass);
+            } catch (Exception e) {
+                log.error("异步单个查询失败", e);
+                throw new RuntimeException("异步单个查询失败: " + e.getMessage(), e);
+            }
+        });
+    }
+    
+    /**
+     * 异步性能监控查询
+     * 适用于需要性能监控的查询场景
+     * 
+     * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
+     * 
+     */
+    public static <T, V extends BaseVO> CompletableFuture<PerformancePageResult<V>> pageWithPerformanceAsync(
+            IService<T> service, PerformancePageDTO pageDTO, Class<V> voClass) {
+        
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return pageWithPerformance(service, pageDTO, voClass);
+            } catch (Exception e) {
+                log.error("异步性能监控查询失败", e);
+                throw new RuntimeException("异步性能监控查询失败: " + e.getMessage(), e);
+            }
+        });
+    }
+    
+    /**
+     * 异步聚合查询
+     * 适用于需要聚合统计的查询场景
+     * 
+     * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
+     * 
+     */
+    public static <T, V extends BaseVO> CompletableFuture<AggregationPageResult<V>> pageWithAggregationAsync(
+            IService<T> service, AggregationPageDTO pageDTO, Class<V> voClass) {
+        
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return pageWithAggregation(service, pageDTO, voClass);
+            } catch (Exception e) {
+                log.error("异步聚合查询失败", e);
+                throw new RuntimeException("异步聚合查询失败: " + e.getMessage(), e);
+            }
+        });
+    }
+    
+    /**
+     * 异步增强查询
+     * 适用于需要组合功能的复杂查询场景
+     * 
+     * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
+     * 
+     */
+    public static <T, V extends BaseVO> CompletableFuture<EnhancedPageResult<V>> pageWithEnhancedAsync(
+            IService<T> service, EnhancedPageDTO pageDTO, Class<V> voClass) {
+        
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return pageWithEnhanced(service, pageDTO, voClass);
+            } catch (Exception e) {
+                log.error("异步增强查询失败", e);
+                throw new RuntimeException("异步增强查询失败: " + e.getMessage(), e);
+            }
+        });
+    }
+    
+    /**
+     * 异步统计查询
+     * 适用于只需要记录数量的查询场景
+     * 
+     * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
+     * 
+     */
+    public static <T, V extends BaseVO> CompletableFuture<Long> countWithConditionAsync(
+            IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
+        
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return countWithCondition(service, queryDTO, voClass);
+            } catch (Exception e) {
+                log.error("异步统计查询失败", e);
+                throw new RuntimeException("异步统计查询失败: " + e.getMessage(), e);
+            }
+        });
+    }
+    
+    /**
+     * 异步存在性查询
+     * 适用于检查记录是否存在的场景
+     * 
+     * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
+     * 
+     */
+    public static <T, V extends BaseVO> CompletableFuture<Boolean> existsWithConditionAsync(
+            IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
+        
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return existsWithCondition(service, queryDTO, voClass);
+            } catch (Exception e) {
+                log.error("异步存在性查询失败", e);
+                throw new RuntimeException("异步存在性查询失败: " + e.getMessage(), e);
+            }
+        });
+    }
+    
+    // ==================== 异步查询工具方法（实验性功能） ====================
+    
+    /**
+     * 并行执行多个异步查询
+     * 适用于需要同时查询多个数据集的场景
+     * 
+     * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
+     * 
+     * <h3>使用示例：</h3>
+     * <pre>{@code
+     * // 并行查询用户信息和订单信息
+     * CompletableFuture<PageResult<UserVO>> userFuture = 
+     *     pageWithConditionAsync(userService, userPageDTO, UserVO.class);
+     * CompletableFuture<PageResult<OrderVO>> orderFuture = 
+     *     pageWithConditionAsync(orderService, orderPageDTO, OrderVO.class);
+     * 
+     * // 等待所有查询完成
+     * CompletableFuture.allOf(userFuture, orderFuture)
+     *     .thenRun(() -> {
+     *         PageResult<UserVO> users = userFuture.join();
+     *         PageResult<OrderVO> orders = orderFuture.join();
+     *         // 处理结果
+     *     });
+     * }</pre>
+     * 
+     */
+    public static CompletableFuture<Void> executeAllAsync(CompletableFuture<?>... futures) {
+        return CompletableFuture.allOf(futures);
+    }
+    
+    /**
+     * 异步查询超时控制
+     * 为异步查询添加超时机制，避免长时间等待
+     * 
+     * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
+     * 
+     * <h3>使用示例：</h3>
+     * <pre>{@code
+     * CompletableFuture<PageResult<ProductVO>> future = 
+     *     pageWithConditionAsync(productService, pageDTO, ProductVO.class);
+     * 
+     * try {
+     *     PageResult<ProductVO> result = future.get(30, TimeUnit.SECONDS);
+     * } catch (TimeoutException e) {
+     *     log.warn("查询超时，取消执行");
+     *     future.cancel(true);
+     * }
+     * }</pre>
+     * 
+     */
+    public static <T> CompletableFuture<T> withTimeout(CompletableFuture<T> future, long timeout, TimeUnit unit) {
+        return future.orTimeout(timeout, unit);
+    }
+}

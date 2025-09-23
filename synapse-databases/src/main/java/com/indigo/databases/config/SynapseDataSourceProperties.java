@@ -1,6 +1,7 @@
 package com.indigo.databases.config;
 
 import com.indigo.databases.enums.DatabaseType;
+import com.indigo.databases.enums.FieldConversionStrategyType;
 import com.indigo.databases.enums.PoolType;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -53,6 +54,11 @@ public class SynapseDataSourceProperties {
     private SeataConfig seata = new SeataConfig();
 
     /**
+     * 字段转换配置
+     */
+    private FieldConversionConfig fieldConversion = new FieldConversionConfig();
+
+    /**
      * 数据源配置
      */
     private Map<String, DataSourceConfig> datasources = new LinkedHashMap<>();
@@ -65,7 +71,7 @@ public class SynapseDataSourceProperties {
         /**
          * 是否启用读写分离
          */
-        private boolean enabled = true;
+        private boolean enabled = false;
 
         /**
          * 读数据源列表
@@ -143,17 +149,27 @@ public class SynapseDataSourceProperties {
         /**
          * 是否启用故障转移
          */
-        private boolean enabled = true;
-
-        /**
-         * 故障转移超时时间（毫秒）
-         */
-        private long timeout = 5000;
+        private boolean enabled = false;
 
         /**
          * 最大重试次数
          */
-        private int maxRetries = 3;
+        private int maxRetryTimes = 3;
+
+        /**
+         * 重试间隔时间（毫秒）
+         */
+        private long retryInterval = 1000;
+
+        /**
+         * 故障检测间隔（毫秒）
+         */
+        private long detectionInterval = 5000;
+
+        /**
+         * 故障恢复检测间隔（毫秒）
+         */
+        private long recoveryInterval = 10000;
 
         /**
          * 故障转移策略
@@ -624,16 +640,6 @@ public class SynapseDataSourceProperties {
         private boolean enabled = false;
         
         /**
-         * 是否启用数据源代理
-         */
-        private boolean datasourceProxy = true;
-        
-        /**
-         * 是否启用全局事务扫描
-         */
-        private boolean globalTransactionScan = true;
-        
-        /**
          * 扫描包路径
          */
         private List<String> scanPackages = new ArrayList<>();
@@ -648,4 +654,61 @@ public class SynapseDataSourceProperties {
          */
         private int delayInitMs = 1000;
     }
+
+    /**
+     * 字段转换配置
+     */
+    @Data
+    public static class FieldConversionConfig {
+        
+        /**
+         * 字段转换策略类型
+         * 可选值：CAMEL_TO_UNDERLINE, CAMEL_TO_KEBAB_CASE, NO_CONVERSION, CUSTOM
+         * 默认：CAMEL_TO_UNDERLINE
+         */
+        private FieldConversionStrategyType strategy = FieldConversionStrategyType.CAMEL_TO_UNDERLINE;
+        
+        /**
+         * 自定义转换模式（当strategy为CUSTOM时使用）
+         */
+        private CustomConversionPattern customPattern = new CustomConversionPattern();
+        
+        /**
+         * 是否启用字段转换
+         * 默认：true
+         */
+        private boolean enabled = true;
+        
+        /**
+         * 自定义转换模式配置
+         */
+        @Data
+        public static class CustomConversionPattern {
+            
+            /**
+             * 字段名转列名的正则表达式
+             * 例如：([A-Z]) -> _$1
+             */
+            private String fieldToColumnPattern;
+            
+            /**
+             * 列名转字段名的正则表达式
+             * 例如：_([a-z]) -> $1
+             */
+            private String columnToFieldPattern;
+            
+            /**
+             * 字段名转列名的替换字符串
+             * 例如：_$1
+             */
+            private String fieldToColumnReplacement;
+            
+            /**
+             * 列名转字段名的替换字符串
+             * 例如：$1
+             */
+            private String columnToFieldReplacement;
+        }
+    }
+
 } 

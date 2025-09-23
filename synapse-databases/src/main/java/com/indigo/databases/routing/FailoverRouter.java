@@ -1,14 +1,16 @@
 package com.indigo.databases.routing;
 
 import com.indigo.databases.config.SynapseDataSourceProperties;
+import com.indigo.databases.routing.DataSourceRouter.SqlType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-
 /**
  * 故障转移路由器
  * 实现数据源故障时的自动切换
@@ -86,11 +88,11 @@ public class FailoverRouter implements DataSourceRouter {
      * 健康数据源优先策略
      */
     private String selectHealthyFirst(List<String> healthyDataSources, RoutingContext context) {
-        // 根据数据源的健康评分选择
+        // 根据数据源的健康评分和上下文信息选择
         return healthyDataSources.stream()
                 .max((ds1, ds2) -> {
-                    int score1 = calculateHealthScore(ds1);
-                    int score2 = calculateHealthScore(ds2);
+                    int score1 = calculateHealthScore(ds1, context);
+                    int score2 = calculateHealthScore(ds2, context);
                     return Integer.compare(score1, score2);
                 })
                 .orElse(healthyDataSources.get(0));
@@ -126,7 +128,67 @@ public class FailoverRouter implements DataSourceRouter {
     }
     
     /**
-     * 计算数据源健康评分
+     * 计算数据源健康评分（考虑上下文信息）
+     */
+    private int calculateHealthScore(String dataSourceName, RoutingContext context) {
+        int baseScore = calculateHealthScore(dataSourceName);
+        
+        // 根据上下文信息调整评分
+        if (context != null) {
+            // 根据用户ID进行一致性路由（相同用户优先使用相同数据源）
+            String userId = context.getUserId();
+            if (userId != null) {
+                String preferredDataSource = getUserPreferredDataSource(userId);
+                if (dataSourceName.equals(preferredDataSource)) {
+                    baseScore += 20; // 用户偏好数据源加分
+                }
+            }
+            
+            // 根据SQL类型调整评分
+            SqlType sqlType = context.getSqlType();
+            if (sqlType != null) {
+                switch (sqlType) {
+                    case SELECT:
+                        // 读请求优先选择读性能好的数据源
+                        if (isReadOptimizedDataSource(dataSourceName)) {
+                            baseScore += 15;
+                        }
+                        break;
+                    case INSERT:
+                    case UPDATE:
+                    case DELETE:
+                        // 写请求优先选择写性能好的数据源
+                        if (isWriteOptimizedDataSource(dataSourceName)) {
+                            baseScore += 15;
+                        }
+                        break;
+                    case MERGE:
+                    case CALL:
+                        // 复杂操作优先选择处理能力强的数据源
+                        if (isBatchOptimizedDataSource(dataSourceName)) {
+                            baseScore += 10;
+                        }
+                        break;
+                    case OTHER:
+                        // 其他操作使用默认评分
+                        break;
+                }
+            }
+            
+            // 根据数据源负载情况调整评分
+            int currentLoad = getDataSourceLoad(dataSourceName);
+            if (currentLoad < 50) {
+                baseScore += 10; // 低负载加分
+            } else if (currentLoad > 80) {
+                baseScore -= 20; // 高负载减分
+            }
+        }
+        
+        return Math.max(0, baseScore); // 确保评分不为负数
+    }
+    
+    /**
+     * 计算数据源基础健康评分
      */
     private int calculateHealthScore(String dataSourceName) {
         int baseScore = 100;
@@ -218,5 +280,53 @@ public class FailoverRouter implements DataSourceRouter {
     @Override
     public String getStrategyName() {
         return "FAILOVER_ROUTER";
+    }
+    
+    /**
+     * 获取用户偏好的数据源
+     */
+    private String getUserPreferredDataSource(String userId) {
+        // 简单的哈希算法，确保相同用户总是路由到相同的数据源
+        int hash = Math.abs(userId.hashCode());
+        List<String> allDataSources = new ArrayList<>(dataSourceHealth.keySet());
+        int index = hash % allDataSources.size();
+        return allDataSources.get(index);
+    }
+    
+    /**
+     * 检查数据源是否针对读操作优化
+     */
+    private boolean isReadOptimizedDataSource(String dataSourceName) {
+        // 可以根据数据源配置或名称判断
+        return dataSourceName.toLowerCase().contains("read") || 
+               dataSourceName.toLowerCase().contains("slave");
+    }
+    
+    /**
+     * 检查数据源是否针对写操作优化
+     */
+    private boolean isWriteOptimizedDataSource(String dataSourceName) {
+        // 可以根据数据源配置或名称判断
+        return dataSourceName.toLowerCase().contains("write") || 
+               dataSourceName.toLowerCase().contains("master");
+    }
+    
+    /**
+     * 检查数据源是否针对批量操作优化
+     */
+    private boolean isBatchOptimizedDataSource(String dataSourceName) {
+        // 可以根据数据源配置或名称判断
+        return dataSourceName.toLowerCase().contains("batch") || 
+               dataSourceName.toLowerCase().contains("analytics");
+    }
+    
+    /**
+     * 获取数据源当前负载百分比
+     */
+    private int getDataSourceLoad(String dataSourceName) {
+        // 这里可以集成实际的负载监控系统
+        // 目前返回模拟数据
+        Random random = new Random(dataSourceName.hashCode());
+        return random.nextInt(100);
     }
 }

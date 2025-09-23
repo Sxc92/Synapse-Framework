@@ -394,6 +394,95 @@ public class SqlMethodInterceptor implements InvocationHandler {
                             throw new UnsupportedOperationException("Invalid arguments for quickGetOne");
                         }
                         
+                        // 异步查询方法
+                        case "pageWithConditionAsync" -> {
+                            if (args.length == 2 && args[0] instanceof PageDTO pageDTO && args[1] instanceof Class<?> voClass) {
+                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
+                                yield EnhancedQueryBuilder.pageWithConditionAsync((IService<?>) service, pageDTO, (Class<? extends BaseVO>) voClass);
+                            }
+                            throw new UnsupportedOperationException("Invalid arguments for pageWithConditionAsync");
+                        }
+                        
+                        case "listWithConditionAsync" -> {
+                            if (args.length == 2 && args[0] instanceof QueryDTO queryDTO && args[1] instanceof Class<?> voClass) {
+                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
+                                yield EnhancedQueryBuilder.listWithConditionAsync((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            }
+                            throw new UnsupportedOperationException("Invalid arguments for listWithConditionAsync");
+                        }
+                        
+                        case "getOneWithConditionAsync" -> {
+                            if (args.length == 2 && args[0] instanceof QueryDTO queryDTO && args[1] instanceof Class<?> voClass) {
+                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
+                                yield EnhancedQueryBuilder.getOneWithConditionAsync((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            }
+                            throw new UnsupportedOperationException("Invalid arguments for getOneWithConditionAsync");
+                        }
+                        
+                        case "pageWithPerformanceAsync" -> {
+                            if (args.length == 2 && args[0] instanceof PerformancePageDTO pageDTO && args[1] instanceof Class<?> voClass) {
+                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
+                                yield EnhancedQueryBuilder.pageWithPerformanceAsync((IService<?>) service, pageDTO, (Class<? extends BaseVO>) voClass);
+                            }
+                            throw new UnsupportedOperationException("Invalid arguments for pageWithPerformanceAsync");
+                        }
+                        
+                        case "pageWithAggregationAsync" -> {
+                            if (args.length == 2 && args[0] instanceof AggregationPageDTO pageDTO && args[1] instanceof Class<?> voClass) {
+                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
+                                yield EnhancedQueryBuilder.pageWithAggregationAsync((IService<?>) service, pageDTO, (Class<? extends BaseVO>) voClass);
+                            }
+                            throw new UnsupportedOperationException("Invalid arguments for pageWithAggregationAsync");
+                        }
+                        
+                        case "pageWithEnhancedAsync" -> {
+                            if (args.length == 2 && args[0] instanceof EnhancedPageDTO pageDTO && args[1] instanceof Class<?> voClass) {
+                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
+                                yield EnhancedQueryBuilder.pageWithEnhancedAsync((IService<?>) service, pageDTO, (Class<? extends BaseVO>) voClass);
+                            }
+                            throw new UnsupportedOperationException("Invalid arguments for pageWithEnhancedAsync");
+                        }
+                        
+                        case "countWithConditionAsync" -> {
+                            if (args.length == 2 && args[0] instanceof QueryDTO queryDTO && args[1] instanceof Class<?> voClass) {
+                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
+                                yield EnhancedQueryBuilder.countWithConditionAsync((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            }
+                            throw new UnsupportedOperationException("Invalid arguments for countWithConditionAsync");
+                        }
+                        
+                        case "existsWithConditionAsync" -> {
+                            if (args.length == 2 && args[0] instanceof QueryDTO queryDTO && args[1] instanceof Class<?> voClass) {
+                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
+                                yield EnhancedQueryBuilder.existsWithConditionAsync((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            }
+                            throw new UnsupportedOperationException("Invalid arguments for existsWithConditionAsync");
+                        }
+                        
+                        case "quickPageAsync" -> {
+                            if (args.length == 2 && args[0] instanceof PageDTO pageDTO && args[1] instanceof Class<?> voClass) {
+                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
+                                yield EnhancedQueryBuilder.pageWithConditionAsync((IService<?>) service, pageDTO, (Class<? extends BaseVO>) voClass);
+                            }
+                            throw new UnsupportedOperationException("Invalid arguments for quickPageAsync");
+                        }
+                        
+                        case "quickListAsync" -> {
+                            if (args.length == 2 && args[0] instanceof QueryDTO queryDTO && args[1] instanceof Class<?> voClass) {
+                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
+                                yield EnhancedQueryBuilder.listWithConditionAsync((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            }
+                            throw new UnsupportedOperationException("Invalid arguments for quickListAsync");
+                        }
+                        
+                        case "quickGetOneAsync" -> {
+                            if (args.length == 2 && args[0] instanceof QueryDTO queryDTO && args[1] instanceof Class<?> voClass) {
+                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
+                                yield EnhancedQueryBuilder.getOneWithConditionAsync((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            }
+                            throw new UnsupportedOperationException("Invalid arguments for quickGetOneAsync");
+                        }
+                        
                         default -> throw new UnsupportedOperationException("Default method not implemented: " + methodName);
                     };
                 }

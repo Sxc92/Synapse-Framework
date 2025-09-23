@@ -140,7 +140,7 @@ public class Result<T> implements Serializable {
             MessageResolver messageResolver = SpringUtils.getBean(MessageResolver.class);
             LocaleContext localeContext = SpringUtils.getBean(LocaleContext.class);
             
-            Locale locale = localeContext != null ? localeContext.getCurrentLocale() : Locale.getDefault();
+            Locale locale = localeContext.getCurrentLocale();
             return messageResolver.resolveMessage(errorCode.getMessageKey(), locale, args);
         } catch (Exception e) {
             // 如果国际化解析失败，返回错误码

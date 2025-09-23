@@ -15,6 +15,7 @@ import com.indigo.databases.utils.EnhancedQueryBuilder;
 import com.indigo.databases.utils.QueryConditionBuilder;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * 基础Repository接口
@@ -30,6 +31,7 @@ import java.util.List;
  *   <li><strong>聚合查询</strong>：支持COUNT、SUM、AVG等聚合函数</li>
  *   <li><strong>性能监控</strong>：提供查询性能监控和优化建议</li>
  *   <li><strong>便捷方法</strong>：提供快速查询、统计查询等便捷方法</li>
+ *   <li><strong>异步查询</strong>：基于CompletableFuture的异步查询支持（实验性功能）</li>
  * </ul>
  * 
  * <h3>使用示例：</h3>
@@ -44,7 +46,6 @@ import java.util.List;
  *     PageResult<ProductMultiTableVO> pageProductsWithBrand(ProductPageQueryDTO queryDTO);
  *     
  *     // 多表关联查询 - 基于JoinPageDTO配置（已过时）
- *     @Deprecated(since = "1.0.0", forRemoval = true)
  *     PageResult<ProductMultiTableVO> pageProductsWithJoin(JoinPageDTO joinPageDTO);
  *     
  *     // 聚合查询
@@ -52,11 +53,31 @@ import java.util.List;
  *     
  *     // 便捷查询 - 支持@VoMapping注解的多表关联
  *     PageResult<ProductMultiTableVO> quickPageProducts(ProductPageQueryDTO queryDTO);
+ *     
+ *     // 异步查询（实验性功能）
+ *     CompletableFuture<PageResult<ProductVO>> asyncPageProducts(ProductPageQueryDTO queryDTO);
  * }
  * }</pre>
+ * 
+ * <h3>异步查询说明：</h3>
+ * <p><strong>⚠️ 实验性功能</strong>：异步查询功能目前处于实验阶段，主要用于：</p>
+ * <ul>
+ *   <li>大数据量查询（>10万条记录）</li>
+ *   <li>复杂多表关联查询</li>
+ *   <li>需要并行执行多个查询的场景</li>
+ *   <li>提升用户体验（避免界面卡顿）</li>
+ * </ul>
+ * <p><strong>注意事项</strong>：</p>
+ * <ul>
+ *   <li>异步查询会增加内存消耗和线程管理复杂度</li>
+ *   <li>错误处理相对复杂，需要正确处理CompletableFuture的异常</li>
+ *   <li>调试相对困难，建议在性能瓶颈明确时再使用</li>
+ *   <li>API可能会在后续版本中调整</li>
+ * </ul>
  *
  * @author 史偕成
  * @date 2025/12/19
+ * @version 1.0.0
  */
 public interface BaseRepository<T, M extends BaseMapper<T>> extends IService<T> {
     
@@ -184,10 +205,8 @@ public interface BaseRepository<T, M extends BaseMapper<T>> extends IService<T> 
      * 多表关联查询 - 支持VO映射
      * 支持 INNER, LEFT, RIGHT, FULL JOIN
      * 
-     * @deprecated 推荐使用 {@link #pageWithVoMapping(PageDTO, Class)} 或 {@link #pageWithCondition(PageDTO, Class)}
      *             基于@VoMapping注解的方式更简洁、维护性更好
      */
-//    @Deprecated(since = "1.0.0", forRemoval = true)
 //    default <V extends BaseVO> PageResult<V> pageWithJoin(JoinPageDTO queryDTO, Class<V> voClass) {
 //        return EnhancedQueryBuilder.pageWithJoin(this, queryDTO, voClass);
 //    }
@@ -259,5 +278,135 @@ public interface BaseRepository<T, M extends BaseMapper<T>> extends IService<T> 
      */
     default <V extends BaseVO> boolean existsWithCondition(QueryDTO queryDTO, Class<V> voClass) {
         return EnhancedQueryBuilder.existsWithCondition(this, queryDTO, voClass);
+    }
+    
+    // ==================== 异步查询方法（实验性功能） ====================
+    
+    /**
+     * 异步分页查询 - 支持VO映射
+     * 使用 CompletableFuture 实现异步查询，不阻塞当前线程
+     * 
+     * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
+     * 
+     * <h3>使用场景：</h3>
+     * <ul>
+     *   <li>大数据量查询（>10万条记录）</li>
+     *   <li>复杂多表关联查询</li>
+     *   <li>需要并行执行多个查询</li>
+     *   <li>提升用户体验（避免界面卡顿）</li>
+     * </ul>
+     */
+    default <V extends BaseVO> CompletableFuture<PageResult<V>> pageWithConditionAsync(PageDTO pageDTO, Class<V> voClass) {
+        return EnhancedQueryBuilder.pageWithConditionAsync(this, pageDTO, voClass);
+    }
+    
+    /**
+     * 异步列表查询 - 支持VO映射
+     * 适用于不需要分页的列表查询场景
+     * 
+     * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
+     * 
+     */
+    default <V extends BaseVO> CompletableFuture<List<V>> listWithConditionAsync(QueryDTO queryDTO, Class<V> voClass) {
+        return EnhancedQueryBuilder.listWithConditionAsync(this, queryDTO, voClass);
+    }
+    
+    /**
+     * 异步单个查询 - 支持VO映射
+     * 适用于查询单条记录的场景
+     * 
+     * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
+     * 
+     */
+    default <V extends BaseVO> CompletableFuture<V> getOneWithConditionAsync(QueryDTO queryDTO, Class<V> voClass) {
+        return EnhancedQueryBuilder.getOneWithConditionAsync(this, queryDTO, voClass);
+    }
+    
+    /**
+     * 异步性能监控查询 - 支持VO映射
+     * 适用于需要性能监控的查询场景
+     * 
+     * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
+     * 
+     */
+    default <V extends BaseVO> CompletableFuture<PerformancePageResult<V>> pageWithPerformanceAsync(PerformancePageDTO pageDTO, Class<V> voClass) {
+        return EnhancedQueryBuilder.pageWithPerformanceAsync(this, pageDTO, voClass);
+    }
+    
+    /**
+     * 异步聚合查询 - 支持VO映射
+     * 适用于需要聚合统计的查询场景
+     * 
+     * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
+     * 
+     */
+    default <V extends BaseVO> CompletableFuture<AggregationPageResult<V>> pageWithAggregationAsync(AggregationPageDTO pageDTO, Class<V> voClass) {
+        return EnhancedQueryBuilder.pageWithAggregationAsync(this, pageDTO, voClass);
+    }
+    
+    /**
+     * 异步增强查询 - 支持VO映射
+     * 适用于需要组合功能的复杂查询场景
+     * 
+     * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
+     * 
+     */
+    default <V extends BaseVO> CompletableFuture<EnhancedPageResult<V>> pageWithEnhancedAsync(EnhancedPageDTO pageDTO, Class<V> voClass) {
+        return EnhancedQueryBuilder.pageWithEnhancedAsync(this, pageDTO, voClass);
+    }
+    
+    /**
+     * 异步统计查询 - 支持VO映射
+     * 适用于只需要记录数量的查询场景
+     * 
+     * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
+     * 
+     */
+    default <V extends BaseVO> CompletableFuture<Long> countWithConditionAsync(QueryDTO queryDTO, Class<V> voClass) {
+        return EnhancedQueryBuilder.countWithConditionAsync(this, queryDTO, voClass);
+    }
+    
+    /**
+     * 异步存在性查询 - 支持VO映射
+     * 适用于检查记录是否存在的场景
+     * 
+     * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
+     * 
+     */
+    default <V extends BaseVO> CompletableFuture<Boolean> existsWithConditionAsync(QueryDTO queryDTO, Class<V> voClass) {
+        return EnhancedQueryBuilder.existsWithConditionAsync(this, queryDTO, voClass);
+    }
+    
+    /**
+     * 异步快速分页查询 - 支持VO映射
+     * 简化版异步分页查询，自动处理单表/多表查询
+     * 
+     * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
+     * 
+     */
+    default <V extends BaseVO> CompletableFuture<PageResult<V>> quickPageAsync(PageDTO pageDTO, Class<V> voClass) {
+        return EnhancedQueryBuilder.pageWithConditionAsync(this, pageDTO, voClass);
+    }
+    
+    /**
+     * 异步快速列表查询 - 支持VO映射
+     * 简化版异步列表查询，自动处理单表/多表查询
+     * 
+     * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
+     * 
+     */
+    default <V extends BaseVO> CompletableFuture<List<V>> quickListAsync(QueryDTO queryDTO, Class<V> voClass) {
+        return EnhancedQueryBuilder.listWithConditionAsync(this, queryDTO, voClass);
+    }
+    
+    /**
+     * 异步快速单个查询 - 支持VO映射
+     * 简化版异步单个查询，自动处理单表/多表查询
+     * 
+     * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
+     * 
+     */
+    default <V extends BaseVO> CompletableFuture<V> quickGetOneAsync(QueryDTO queryDTO, Class<V> voClass) {
+        return EnhancedQueryBuilder.getOneWithConditionAsync(this, queryDTO, voClass);
     }
 } 

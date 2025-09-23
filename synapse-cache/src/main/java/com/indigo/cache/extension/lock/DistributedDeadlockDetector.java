@@ -438,7 +438,7 @@ public class DistributedDeadlockDetector extends DeadlockDetector {
 
             redisService.publish(properties.getRedisPrefix() + ":notifications", notification);
 
-            log.info("[DistributedDeadlockDetector] 已通知节点 {} 处理死锁牺牲", victimNode);
+            log.debug("[DistributedDeadlockDetector] 已通知节点 {} 处理死锁牺牲", victimNode);
 
         } catch (Exception e) {
             log.error("[DistributedDeadlockDetector] 通知节点处理牺牲失败", e);
@@ -494,7 +494,7 @@ public class DistributedDeadlockDetector extends DeadlockDetector {
             redisService.hashDelete(properties.getRedisPrefix() + ":waits", nodeId + ":*");
             redisService.hashDelete(properties.getRedisPrefix() + ":nodes", nodeId);
 
-            log.info("[DistributedDeadlockDetector] 已清理节点 {} 的状态", nodeId);
+            log.debug("[DistributedDeadlockDetector] 已清理节点 {} 的状态", nodeId);
 
         } catch (Exception e) {
             log.error("[DistributedDeadlockDetector] 清理节点状态失败", e);
@@ -546,7 +546,7 @@ public class DistributedDeadlockDetector extends DeadlockDetector {
      */
     public void setGlobalDetectionEnabled(boolean enabled) {
         isGlobalDetectionEnabled.set(enabled);
-        log.info("[DistributedDeadlockDetector] 全局检测已{}", enabled ? "启用" : "禁用");
+        log.debug("[DistributedDeadlockDetector] 全局检测已{}", enabled ? "启用" : "禁用");
     }
 
     /**
@@ -560,6 +560,6 @@ public class DistributedDeadlockDetector extends DeadlockDetector {
         // 清理当前节点状态
         cleanupNodeState(nodeId);
 
-        log.info("[DistributedDeadlockDetector] 分布式死锁检测已停止");
+        log.debug("[DistributedDeadlockDetector] 分布式死锁检测已停止");
     }
 }

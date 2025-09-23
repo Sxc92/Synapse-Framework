@@ -117,6 +117,7 @@ public class MybatisPlusConfig {
         dbConfig.setUpdateStrategy(FieldStrategy.ALWAYS);
         dbConfig.setInsertStrategy(FieldStrategy.ALWAYS);
         globalConfig.setDbConfig(dbConfig);
+        globalConfig.setBanner(synapseDataSourceProperties.getMybatisPlus().getGlobalConfig().isBanner());
         // 设置 MetaObjectHandler
         globalConfig.setMetaObjectHandler(new MyMetaObjectHandler());
         return globalConfig;

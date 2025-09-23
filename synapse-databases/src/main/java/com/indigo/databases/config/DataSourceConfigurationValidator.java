@@ -10,7 +10,6 @@ import org.springframework.util.StringUtils;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -54,7 +53,7 @@ public class DataSourceConfigurationValidator {
             // 5. 输出配置摘要
             printConfigurationSummary();
             
-            log.info("数据源配置验证完成 ✅");
+            log.debug("数据源配置验证完成 ✅");
             
         } catch (Exception e) {
             log.error("数据源配置验证失败 ❌", e);
@@ -74,7 +73,7 @@ public class DataSourceConfigurationValidator {
             throw new ConfigurationException("主数据源 [" + properties.getPrimary() + "] 不存在");
         }
         
-        log.info("✅ 主数据源验证通过: [{}]", properties.getPrimary());
+        log.debug("✅ 主数据源验证通过: [{}]", properties.getPrimary());
     }
     
     /**
@@ -86,11 +85,11 @@ public class DataSourceConfigurationValidator {
             List<String> writeSources = properties.getReadWrite().getWriteSources();
             
             if (readSources.isEmpty()) {
-                log.warn("⚠️  读写分离已启用，但读数据源列表为空");
+                log.debug("⚠️  读写分离已启用，但读数据源列表为空");
             }
             
             if (writeSources.isEmpty()) {
-                log.warn("⚠️  读写分离已启用，但写数据源列表为空");
+                log.debug("⚠️  读写分离已启用，但写数据源列表为空");
             }
             
             // 验证数据源角色配置
@@ -108,7 +107,7 @@ public class DataSourceConfigurationValidator {
                 validateDataSourceRole(source, "WRITE");
             }
             
-            log.info("✅ 读写分离配置验证通过");
+            log.debug("✅ 读写分离配置验证通过");
         }
     }
     
@@ -120,7 +119,7 @@ public class DataSourceConfigurationValidator {
         if (config != null) {
             String actualRole = config.getRole().name();
             if (!isRoleCompatible(actualRole, expectedRole)) {
-                log.warn("⚠️  数据源 [{}] 角色配置不匹配，期望: [{}], 实际: [{}]", 
+                log.warn("⚠️  数据源 [{}] 角色配置不匹配，期望: [{}], 实际: [{}]",
                         dataSourceName, expectedRole, actualRole);
             }
         }
@@ -149,7 +148,7 @@ public class DataSourceConfigurationValidator {
             validateDruidConfiguration(name, config.getDruid());
         }
         
-        log.info("✅ 连接池配置验证通过");
+        log.debug("✅ 连接池配置验证通过");
     }
     
     /**
@@ -207,7 +206,7 @@ public class DataSourceConfigurationValidator {
                 try (Statement stmt = conn.createStatement()) {
                     stmt.execute("SELECT 1");
                 }
-                log.info("✅ 数据源 [{}] 连接测试通过", name);
+                log.debug("✅ 数据源 [{}] 连接测试通过", name);
             } catch (Exception e) {
                 log.error("❌ 数据源 [{}] 连接测试失败: {}", name, e.getMessage());
                 throw new ConfigurationException("数据源 [" + name + "] 连接失败", e);
@@ -219,16 +218,16 @@ public class DataSourceConfigurationValidator {
      * 输出配置摘要
      */
     private void printConfigurationSummary() {
-        log.info("📊 数据源配置摘要:");
-        log.info("   主数据源: [{}]", properties.getPrimary());
-        log.info("   总数据源数: [{}]", dynamicDataSource.getDataSources().size());
-        log.info("   读写分离: [{}]", properties.getReadWrite().isEnabled() ? "启用" : "禁用");
-        log.info("   负载均衡策略: [{}]", properties.getLoadBalance().getStrategy());
-        log.info("   故障转移: [{}]", properties.getFailover().isEnabled() ? "启用" : "禁用");
+        log.debug("📊 数据源配置摘要:");
+        log.debug("   主数据源: [{}]", properties.getPrimary());
+        log.debug("   总数据源数: [{}]", dynamicDataSource.getDataSources().size());
+        log.debug("   读写分离: [{}]", properties.getReadWrite().isEnabled() ? "启用" : "禁用");
+        log.debug("   负载均衡策略: [{}]", properties.getLoadBalance().getStrategy());
+        log.debug("   故障转移: [{}]", properties.getFailover().isEnabled() ? "启用" : "禁用");
         
         if (properties.getReadWrite().isEnabled()) {
-            log.info("   读数据源: [{}]", String.join(", ", properties.getReadWrite().getReadSources()));
-            log.info("   写数据源: [{}]", String.join(", ", properties.getReadWrite().getWriteSources()));
+            log.debug("   读数据源: [{}]", String.join(", ", properties.getReadWrite().getReadSources()));
+            log.debug("   写数据源: [{}]", String.join(", ", properties.getReadWrite().getWriteSources()));
         }
         
         // 输出数据源角色分布

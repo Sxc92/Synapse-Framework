@@ -14,6 +14,21 @@
       "name": "synapse.databases.auto-repository",
       "type": "com.indigo.databases.config.AutoRepositoryProperties",
       "description": "自动Repository配置属性"
+    },
+    {
+      "name": "synapse.databases.sql-annotation",
+      "type": "com.indigo.databases.config.SqlAnnotationProperties",
+      "description": "SQL注解配置属性"
+    },
+    {
+      "name": "synapse.datasource.field-conversion",
+      "type": "com.indigo.databases.config.SynapseDataSourceProperties$FieldConversionConfig",
+      "description": "字段转换配置属性"
+    },
+    {
+      "name": "synapse.datasource.failover",
+      "type": "com.indigo.databases.config.SynapseDataSourceProperties$FailoverConfig",
+      "description": "故障转移配置属性"
     }
   ],
   "properties": [
@@ -180,128 +195,110 @@
       "defaultValue": "master1"
     },
     {
-      "name": "synapse.datasource.dynamic-data-source.strict",
-      "type": "java.lang.Boolean",
-      "description": "是否启用严格模式",
-      "defaultValue": false
-    },
-    {
-      "name": "synapse.datasource.dynamic-data-source.seata",
-      "type": "java.lang.Boolean",
-      "description": "是否启用Seata分布式事务",
-      "defaultValue": false
-    },
-    {
-      "name": "synapse.datasource.dynamic-data-source.p6spy",
-      "type": "java.lang.Boolean",
-      "description": "是否启用P6Spy",
-      "defaultValue": false
-    },
-    {
-      "name": "synapse.datasource.dynamic-data-source.datasource",
-      "type": "java.util.Map<java.lang.String,com.indigo.databases.config.SynapseDataSourceProperties$DynamicDataSource$DataSourceConfig>",
+      "name": "synapse.datasource.datasources",
+      "type": "java.util.Map<java.lang.String,com.indigo.databases.config.SynapseDataSourceProperties$DataSourceConfig>",
       "description": "数据源配置"
     },
     {
-      "name": "synapse.datasource.dynamic-data-source.datasource.*.type",
+      "name": "synapse.datasource.datasources.*.type",
       "type": "com.indigo.databases.enums.DatabaseType",
       "description": "数据库类型",
       "defaultValue": "MYSQL"
     },
     {
-      "name": "synapse.datasource.dynamic-data-source.datasource.*.pool-type",
+      "name": "synapse.datasource.datasources.*.pool-type",
       "type": "com.indigo.databases.enums.PoolType",
       "description": "连接池类型",
       "defaultValue": "HIKARI"
     },
     {
-      "name": "synapse.datasource.dynamic-data-source.datasource.*.host",
+      "name": "synapse.datasource.datasources.*.host",
       "type": "java.lang.String",
       "description": "主机地址",
       "defaultValue": "localhost"
     },
     {
-      "name": "synapse.datasource.dynamic-data-source.datasource.*.port",
+      "name": "synapse.datasource.datasources.*.port",
       "type": "java.lang.Integer",
       "description": "端口号",
       "defaultValue": 3306
     },
     {
-      "name": "synapse.datasource.dynamic-data-source.datasource.*.database",
+      "name": "synapse.datasource.datasources.*.database",
       "type": "java.lang.String",
       "description": "数据库名"
     },
     {
-      "name": "synapse.datasource.dynamic-data-source.datasource.*.username",
+      "name": "synapse.datasource.datasources.*.username",
       "type": "java.lang.String",
       "description": "用户名"
     },
     {
-      "name": "synapse.datasource.dynamic-data-source.datasource.*.password",
+      "name": "synapse.datasource.datasources.*.password",
       "type": "java.lang.String",
       "description": "密码"
     },
     {
-      "name": "synapse.datasource.dynamic-data-source.datasource.*.params",
+      "name": "synapse.datasource.datasources.*.params",
       "type": "java.util.Map<java.lang.String,java.lang.String>",
       "description": "数据库连接参数"
     },
     {
-      "name": "synapse.datasource.dynamic-data-source.datasource.*.hikari.minimum-idle",
+      "name": "synapse.datasource.datasources.*.hikari.minimum-idle",
       "type": "java.lang.Integer",
       "description": "HikariCP 最小空闲连接数",
       "defaultValue": 5
     },
     {
-      "name": "synapse.datasource.dynamic-data-source.datasource.*.hikari.maximum-pool-size",
+      "name": "synapse.datasource.datasources.*.hikari.maximum-pool-size",
       "type": "java.lang.Integer",
       "description": "HikariCP 最大连接池大小",
       "defaultValue": 15
     },
     {
-      "name": "synapse.datasource.dynamic-data-source.datasource.*.hikari.idle-timeout",
+      "name": "synapse.datasource.datasources.*.hikari.idle-timeout",
       "type": "java.lang.Long",
       "description": "HikariCP 空闲超时时间(毫秒)",
       "defaultValue": 30000
     },
     {
-      "name": "synapse.datasource.dynamic-data-source.datasource.*.hikari.max-lifetime",
+      "name": "synapse.datasource.datasources.*.hikari.max-lifetime",
       "type": "java.lang.Long",
       "description": "HikariCP 最大生命周期(毫秒)",
       "defaultValue": 1800000
     },
     {
-      "name": "synapse.datasource.dynamic-data-source.datasource.*.hikari.connection-timeout",
+      "name": "synapse.datasource.datasources.*.hikari.connection-timeout",
       "type": "java.lang.Long",
       "description": "HikariCP 连接超时时间(毫秒)",
       "defaultValue": 30000
     },
     {
-      "name": "synapse.datasource.dynamic-data-source.datasource.*.hikari.connection-test-query",
+      "name": "synapse.datasource.datasources.*.hikari.connection-test-query",
       "type": "java.lang.String",
       "description": "HikariCP 连接测试查询",
       "defaultValue": "SELECT 1"
     },
     {
-      "name": "synapse.datasource.dynamic-data-source.datasource.*.hikari.connection-init-sql",
+      "name": "synapse.datasource.datasources.*.hikari.connection-init-sql",
       "type": "java.lang.String",
       "description": "HikariCP 连接初始化SQL",
       "defaultValue": ""
     },
     {
-      "name": "synapse.datasource.dynamic-data-source.datasource.*.hikari.validation-timeout",
+      "name": "synapse.datasource.datasources.*.hikari.validation-timeout",
       "type": "java.lang.Long",
       "description": "HikariCP 验证超时时间(毫秒)",
       "defaultValue": 5000
     },
     {
-      "name": "synapse.datasource.dynamic-data-source.datasource.*.hikari.leak-detection-threshold",
+      "name": "synapse.datasource.datasources.*.hikari.leak-detection-threshold",
       "type": "java.lang.Long",
       "description": "HikariCP 连接泄漏检测阈值(毫秒)",
       "defaultValue": 0
     },
     {
-      "name": "synapse.datasource.dynamic-data-source.datasource.*.hikari.register-mbeans",
+      "name": "synapse.datasource.datasources.*.hikari.register-mbeans",
       "type": "java.lang.Boolean",
       "description": "HikariCP 是否注册MBeans",
       "defaultValue": false
@@ -462,6 +459,86 @@
       "type": "com.indigo.databases.config.AutoRepositoryProperties$BeanNameStrategy",
       "description": "Bean名称生成策略",
       "defaultValue": "SIMPLE_NAME"
+    },
+    {
+      "name": "synapse.databases.sql-annotation.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用SQL注解功能",
+      "defaultValue": true
+    },
+    {
+      "name": "synapse.databases.sql-annotation.debug",
+      "type": "java.lang.Boolean",
+      "description": "是否启用调试日志",
+      "defaultValue": false
+    },
+    {
+      "name": "synapse.datasource.field-conversion.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用字段转换功能",
+      "defaultValue": true
+    },
+    {
+      "name": "synapse.datasource.field-conversion.strategy",
+      "type": "com.indigo.databases.enums.FieldConversionStrategyType",
+      "description": "字段转换策略类型",
+      "defaultValue": "CAMEL_TO_UNDERLINE"
+    },
+    {
+      "name": "synapse.datasource.field-conversion.custom-pattern.field-to-column-pattern",
+      "type": "java.lang.String",
+      "description": "字段名转列名的正则表达式（自定义转换时使用）"
+    },
+    {
+      "name": "synapse.datasource.field-conversion.custom-pattern.field-to-column-replacement",
+      "type": "java.lang.String",
+      "description": "字段名转列名的替换字符串（自定义转换时使用）"
+    },
+    {
+      "name": "synapse.datasource.field-conversion.custom-pattern.column-to-field-pattern",
+      "type": "java.lang.String",
+      "description": "列名转字段名的正则表达式（自定义转换时使用）"
+    },
+    {
+      "name": "synapse.datasource.field-conversion.custom-pattern.column-to-field-replacement",
+      "type": "java.lang.String",
+      "description": "列名转字段名的替换字符串（自定义转换时使用）"
+    },
+    {
+      "name": "synapse.datasource.failover.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用故障转移",
+      "defaultValue": false
+    },
+    {
+      "name": "synapse.datasource.failover.max-retry-times",
+      "type": "java.lang.Integer",
+      "description": "最大重试次数",
+      "defaultValue": 3
+    },
+    {
+      "name": "synapse.datasource.failover.retry-interval",
+      "type": "java.lang.Long",
+      "description": "重试间隔时间(毫秒)",
+      "defaultValue": 1000
+    },
+    {
+      "name": "synapse.datasource.failover.detection-interval",
+      "type": "java.lang.Long",
+      "description": "故障检测间隔(毫秒)",
+      "defaultValue": 5000
+    },
+    {
+      "name": "synapse.datasource.failover.recovery-interval",
+      "type": "java.lang.Long",
+      "description": "故障恢复检测间隔(毫秒)",
+      "defaultValue": 10000
+    },
+    {
+      "name": "synapse.datasource.failover.strategy",
+      "type": "com.indigo.databases.config.SynapseDataSourceProperties$FailoverConfig$FailoverStrategy",
+      "description": "故障转移策略",
+      "defaultValue": "PRIMARY_FIRST"
     }
   ]
-} 
+}

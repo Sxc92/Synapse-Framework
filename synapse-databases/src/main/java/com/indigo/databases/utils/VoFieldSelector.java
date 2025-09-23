@@ -1,8 +1,12 @@
 package com.indigo.databases.utils;
 
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
+import com.indigo.core.annotation.FieldMapping;
 import com.indigo.core.entity.vo.BaseVO;
+import com.indigo.databases.service.FieldConversionService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -11,6 +15,7 @@ import java.util.List;
 /**
  * VO字段选择器
  * 根据VO类自动选择需要的数据库字段
+ * 支持可配置的字段转换策略
  *
  * @author 史偕成
  * @date 2025/12/19
@@ -20,15 +25,16 @@ public class VoFieldSelector {
     
     /**
      * 根据VO类获取需要查询的字段列表
+     * 支持字段映射注解，包括父类字段
      */
     public static <V extends BaseVO> String[] getSelectFields(Class<V> voClass) {
         List<String> fields = new ArrayList<>();
         
         try {
-            // 获取VO类的所有字段
-            Field[] declaredFields = voClass.getDeclaredFields();
+            // 获取VO类的所有字段（包括父类）
+            Field[] allFields = getAllFields(voClass);
             
-            for (Field field : declaredFields) {
+            for (Field field : allFields) {
                 // 跳过静态字段
                 if (java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
                     continue;
@@ -39,8 +45,19 @@ public class VoFieldSelector {
                     continue;
                 }
                 
-                // 转换为数据库字段名
-                String columnName = convertFieldToColumn(field.getName());
+                // 检查是否有字段映射注解
+                FieldMapping mapping = field.getAnnotation(FieldMapping.class);
+                String columnName;
+                
+                if (mapping != null && !mapping.ignore() && !mapping.value().isEmpty()) {
+                    // 使用注解指定的数据库字段名
+                    columnName = mapping.value();
+                    log.debug("使用字段映射注解: {} -> {}", field.getName(), columnName);
+                } else {
+                    // 使用配置的字段转换策略
+                    columnName = FieldConversionUtils.convertFieldToColumn(field.getName());
+                }
+                
                 fields.add(columnName);
             }
             
@@ -75,11 +92,24 @@ public class VoFieldSelector {
     }
     
     /**
-     * 字段名转换为列名
+     * 获取类及其所有父类的字段
      */
-    private static String convertFieldToColumn(String fieldName) {
-        return StringUtils.camelToUnderline(fieldName);
+    private static Field[] getAllFields(Class<?> clazz) {
+        List<Field> allFields = new ArrayList<>();
+        
+        // 遍历整个继承链
+        Class<?> currentClass = clazz;
+        while (currentClass != null && currentClass != Object.class) {
+            Field[] declaredFields = currentClass.getDeclaredFields();
+            for (Field field : declaredFields) {
+                allFields.add(field);
+            }
+            currentClass = currentClass.getSuperclass();
+        }
+        
+        return allFields.toArray(new Field[0]);
     }
+    
     
     /**
      * 判断是否为特殊字段
