@@ -199,10 +199,10 @@ public class LockAutoConfiguration {
         long threshold = lockProperties.getAutoRelease().getCoreServiceThreshold();
 
         if (currentTime - lastAccess > threshold) {
-            log.info("检测到长时间未使用，开始自动释放分布式锁资源...");
+            log.debug("检测到长时间未使用，开始自动释放分布式锁资源...");
             // 这里可以添加具体的资源释放逻辑
             // 例如：关闭线程池、清理缓存等
-            log.info("分布式锁资源自动释放完成");
+            log.debug("分布式锁资源自动释放完成");
         }
     }
 
