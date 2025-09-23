@@ -906,6 +906,10 @@ public class EnhancedQueryBuilder {
      * SQL构建器 - 统一SQL构建逻辑
      * 构建完整的SQL，避免参数绑定问题
      */
+    /**
+     * 构建完整的SELECT SQL
+     * 使用更简单的方法，直接使用MyBatis-Plus的内置方法
+     */
     private static <T> String buildSelectSql(IService<T> service, QueryWrapper<T> wrapper, String[] selectFields) {
         // 获取实体类对应的表名
         String tableName = getTableNameFromEntity(service);
@@ -915,13 +919,75 @@ public class EnhancedQueryBuilder {
         sql.append("SELECT ").append(String.join(", ", selectFields));
         sql.append(" FROM ").append(tableName);
         
-        // 获取WHERE条件，但不包含参数占位符
-        String whereClause = wrapper.getSqlSegment();
+        // 使用MyBatis-Plus的内置方法获取WHERE条件
+        // 注意：这里我们需要获取不带参数占位符的SQL片段
+        String whereClause = getWhereClauseWithoutParams(wrapper);
         if (whereClause != null && !whereClause.trim().isEmpty()) {
             sql.append(" WHERE ").append(whereClause);
         }
         
         return sql.toString();
+    }
+    
+    /**
+     * 获取不带参数占位符的WHERE条件
+     * 这是一个简化的实现，直接使用QueryWrapper的toString方法
+     */
+    private static <T> String getWhereClauseWithoutParams(QueryWrapper<T> wrapper) {
+        // 获取QueryWrapper的SQL片段
+        String sqlSegment = wrapper.getSqlSegment();
+        
+        if (sqlSegment == null || sqlSegment.trim().isEmpty()) {
+            return null;
+        }
+        
+        // 替换参数占位符为实际值
+        return replaceParameterPlaceholders(sqlSegment, wrapper);
+    }
+    
+    /**
+     * 替换参数占位符为实际值
+     */
+    private static <T> String replaceParameterPlaceholders(String sqlSegment, QueryWrapper<T> wrapper) {
+        // 获取QueryWrapper的参数映射
+        Map<String, Object> paramNameValuePairs = wrapper.getParamNameValuePairs();
+        
+        String result = sqlSegment;
+        for (Map.Entry<String, Object> entry : paramNameValuePairs.entrySet()) {
+            String paramName = entry.getKey();
+            Object paramValue = entry.getValue();
+            
+            // 替换 #{ew.paramNameValuePairs.paramName} 为实际值
+            String placeholder = "#{ew.paramNameValuePairs." + paramName + "}";
+            String value = formatSqlValue(paramValue);
+            result = result.replace(placeholder, value);
+        }
+        
+        return result;
+    }
+    
+    /**
+     * 格式化SQL值
+     */
+    private static String formatSqlValue(Object value) {
+        if (value == null) {
+            return "NULL";
+        }
+        
+        if (value instanceof String) {
+            return "'" + value.toString().replace("'", "''") + "'";
+        }
+        
+        if (value instanceof Number) {
+            return value.toString();
+        }
+        
+        if (value instanceof Boolean) {
+            return value.toString();
+        }
+        
+        // 其他类型转换为字符串
+        return "'" + value.toString().replace("'", "''") + "'";
     }
     
     /**

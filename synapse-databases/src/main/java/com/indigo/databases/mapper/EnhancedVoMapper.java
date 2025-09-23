@@ -26,8 +26,8 @@ public interface EnhancedVoMapper<T, V extends BaseVO> extends BaseMapper<T> {
      * 分页查询 - 直接映射到VO（支持多表关联）
      * 返回Map类型，需要手动映射
      */
-    @Select("${param1}")
-    IPage<Map<String, Object>> selectPageAsVo(Page<Map<String, Object>> page, @Param("param1") String sql);
+    @Select("${sql}")
+    IPage<Map<String, Object>> selectPageAsVo(Page<Map<String, Object>> page, @Param("sql") String sql);
     
     /**
      * 列表查询 - 直接映射到VO（支持多表关联）
@@ -60,6 +60,6 @@ public interface EnhancedVoMapper<T, V extends BaseVO> extends BaseMapper<T> {
     /**
      * 统计查询
      */
-    @Select("${param1}")
-    Long selectCountAsVo(@Param("param1") String sql);
+    @Select("${sql}")
+    Long selectCountAsVo(@Param("sql") String sql);
 }

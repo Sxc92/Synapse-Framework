@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.http.codec.ServerCodecConfigurer;
 import org.springframework.web.reactive.config.WebFluxConfigurer;
 
 import jakarta.annotation.PostConstruct;
@@ -45,7 +46,6 @@ public class SecurityAutoConfiguration {
     public void init() {
         // 关闭Sa-Token的banner图
         System.setProperty("sa-token.is-print", "false");
-        log.debug("Sa-Token banner已关闭");
     }
 
     /**
@@ -120,7 +120,7 @@ public class SecurityAutoConfiguration {
         }
 
         @Override
-        public void configureHttpMessageCodecs(org.springframework.http.codec.ServerCodecConfigurer configurer) {
+        public void configureHttpMessageCodecs(ServerCodecConfigurer configurer) {
             // WebFlux特定的配置
         }
     }
