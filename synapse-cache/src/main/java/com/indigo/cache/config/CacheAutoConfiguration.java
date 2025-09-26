@@ -31,7 +31,7 @@ import com.indigo.cache.session.StatisticsManager;
 /**
  * 缓存自动配置类，用于自动注册缓存服务
  * 基于 Spring Boot 的 Redis 自动配置进行扩展
- * 
+ * <p>
  * 注意：该配置类在RedisAutoConfiguration之后运行，确保RedisTemplate等依赖已经可用
  *
  * @author 史偕成
@@ -70,15 +70,14 @@ public class CacheAutoConfiguration {
     @ConditionalOnMissingBean
     @SuppressWarnings("unchecked")
     public RedisService redisService(@Qualifier("redisTemplate") @SuppressWarnings("rawtypes") RedisTemplate redisTemplate,
-                                   @Qualifier("stringRedisTemplate") StringRedisTemplate stringRedisTemplate,
-                                   @Qualifier("synapseObjectMapper") ObjectMapper objectMapper) {
-        log.info("创建RedisService Bean，RedisTemplate: {}, StringRedisTemplate: {}", 
-                 redisTemplate != null ? redisTemplate.getClass().getSimpleName() : "null",
-                 stringRedisTemplate != null ? stringRedisTemplate.getClass().getSimpleName() : "null");
-        
+                                     @Qualifier("stringRedisTemplate") StringRedisTemplate stringRedisTemplate) {
+        log.info("创建RedisService Bean，RedisTemplate: {}, StringRedisTemplate: {}",
+                redisTemplate != null ? redisTemplate.getClass().getSimpleName() : "null",
+                stringRedisTemplate != null ? stringRedisTemplate.getClass().getSimpleName() : "null");
+
         // 类型转换为我们需要的泛型类型
         RedisTemplate<String, Object> typedRedisTemplate = (RedisTemplate<String, Object>) redisTemplate;
-        return new RedisService(typedRedisTemplate, stringRedisTemplate, objectMapper);
+        return new RedisService(typedRedisTemplate, stringRedisTemplate);
     }
 
     /**

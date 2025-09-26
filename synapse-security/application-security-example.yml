@@ -1,0 +1,48 @@
+# ===========================================
+# Synapse Security 配置示例
+# 正确的 Sa-Token Banner 关闭配置
+# ===========================================
+
+synapse:
+  security:
+    # 启用安全模块
+    enabled: true
+    
+    # 安全模式
+    mode: STRICT
+    
+    # Sa-Token 配置
+    satoken:
+      # 启用 Sa-Token
+      enabled: true
+      
+      # 关闭 Sa-Token 的 banner 和版本信息打印
+      # 这是控制 Sa-Token 启动时显示 banner 的关键配置
+      is-print: false
+      
+      # 其他配置
+      token-name: "satoken"
+      timeout: 2592000
+      activity-timeout: 1800
+      is-concurrent: true
+      is-share: false
+      is-log: true
+      is-read-header: true
+      is-write-header: true
+      token-prefix: "Bearer"
+      token-style: "uuid"
+
+# ===========================================
+# 日志配置
+# ===========================================
+logging:
+  level:
+    com.indigo.security: INFO
+    cn.dev33.satoken: INFO
+
+# ===========================================
+# 验证配置是否生效的方法：
+# 1. 启动应用后，控制台不应该显示 Sa-Token 的 banner
+# 2. 检查日志中是否有 "Sa-Token配置已应用" 的信息
+# 3. 确认 is-print=false 的配置被正确应用
+# ===========================================
