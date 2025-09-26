@@ -1,7 +1,11 @@
 package com.indigo.core.entity.dto.page;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
+import lombok.experimental.SuperBuilder;
 
 import java.util.List;
 
@@ -13,7 +17,11 @@ import java.util.List;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class EnhancedPageDTO extends AggregationPageDTO {
+@SuperBuilder
+@AllArgsConstructor
+@NoArgsConstructor
+@Accessors(chain = true)
+public class EnhancedPageDTO<T> extends AggregationPageDTO<T> {
     
     /**
      * 是否显示执行计划

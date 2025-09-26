@@ -1,7 +1,11 @@
 package com.indigo.core.entity.dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
+import lombok.experimental.SuperBuilder;
 
 import java.util.List;
 
@@ -13,13 +17,17 @@ import java.util.List;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class PageDTO extends QueryDTO {
-    
+@SuperBuilder
+@AllArgsConstructor
+@NoArgsConstructor
+@Accessors(chain = true)
+public class PageDTO<T> extends QueryDTO<T> {
+
     /**
      * 当前页码，从1开始
      */
     private long pageNo = 1;
-    
+
     /**
      * 每页大小
      */

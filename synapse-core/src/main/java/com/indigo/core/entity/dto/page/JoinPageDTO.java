@@ -1,9 +1,9 @@
 package com.indigo.core.entity.dto.page;
 
 import com.indigo.core.entity.dto.PageDTO;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
+import lombok.*;
+import lombok.experimental.Accessors;
+import lombok.experimental.SuperBuilder;
 
 import java.util.List;
 
@@ -15,7 +15,11 @@ import java.util.List;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class JoinPageDTO extends PageDTO {
+@SuperBuilder
+@AllArgsConstructor
+@NoArgsConstructor
+@Accessors(chain = true)
+public class JoinPageDTO<T> extends PageDTO<T> {
     
     /**
      * 多表关联配置

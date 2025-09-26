@@ -1,8 +1,12 @@
 package com.indigo.core.entity.dto.page;
 
 import com.indigo.core.entity.dto.PageDTO;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
+import lombok.experimental.SuperBuilder;
 
 import java.util.Map;
 
@@ -14,7 +18,11 @@ import java.util.Map;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class ComplexPageDTO extends PageDTO {
+@SuperBuilder
+@AllArgsConstructor
+@NoArgsConstructor
+@Accessors(chain = true)
+public class ComplexPageDTO<T> extends PageDTO<T> {
     
     /**
      * 复杂查询SQL（当简单查询无法满足时使用）

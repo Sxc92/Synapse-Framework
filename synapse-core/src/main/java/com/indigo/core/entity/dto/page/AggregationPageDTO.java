@@ -1,8 +1,12 @@
 package com.indigo.core.entity.dto.page;
 
 import com.indigo.core.entity.dto.PageDTO;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
+import lombok.experimental.SuperBuilder;
 
 import java.util.List;
 
@@ -14,7 +18,11 @@ import java.util.List;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class AggregationPageDTO extends PageDTO {
+@SuperBuilder
+@AllArgsConstructor
+@NoArgsConstructor
+@Accessors(chain = true)
+public class AggregationPageDTO<T> extends PageDTO<T> {
     
     /**
      * 聚合统计字段
