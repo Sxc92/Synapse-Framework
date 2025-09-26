@@ -3,10 +3,7 @@ package com.indigo.databases.utils;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.indigo.core.annotation.FieldMapping;
 import com.indigo.core.entity.vo.BaseVO;
-import com.indigo.databases.service.FieldConversionService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -21,6 +18,7 @@ import java.util.List;
  * @date 2025/12/19
  */
 @Slf4j
+@SuppressWarnings("rawtypes")
 public class VoFieldSelector {
     
     /**

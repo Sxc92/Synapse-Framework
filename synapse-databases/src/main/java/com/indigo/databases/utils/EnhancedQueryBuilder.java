@@ -15,19 +15,13 @@ import com.indigo.core.entity.result.PerformancePageResult;
 import com.indigo.core.annotation.FieldMapping;
 import com.indigo.core.entity.vo.BaseVO;
 import com.indigo.databases.mapper.EnhancedVoMapper;
-import com.indigo.databases.service.FieldConversionService;
-import com.indigo.databases.utils.VoMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import org.springframework.beans.BeanUtils;
-import org.springframework.stereotype.Component;
 
 /**
  * 增强查询构建器
@@ -96,6 +90,7 @@ import org.springframework.stereotype.Component;
  * @version 1.0.0
  */
 @Slf4j
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class EnhancedQueryBuilder {
 
     // ==================== 基础分页查询 ====================
@@ -317,16 +312,20 @@ public class EnhancedQueryBuilder {
             
             // 构建聚合字段
             if (pageDTO.getAggregations() != null && !pageDTO.getAggregations().isEmpty()) {
-                String[] selectFields = pageDTO.getAggregations().stream()
-                    .map(EnhancedQueryBuilder::buildAggregationField)
-                    .toArray(String[]::new);
+                List<String> fieldList = new ArrayList<>();
+                for (Object aggObj : pageDTO.getAggregations()) {
+                    AggregationPageDTO.AggregationField agg = (AggregationPageDTO.AggregationField) aggObj;
+                    fieldList.add(buildAggregationField(agg));
+                }
+                String[] selectFields = fieldList.toArray(new String[0]);
                 wrapper.select(selectFields);
                 
                 // 使用 IService 的 list 方法
                 List<T> entities = service.list(wrapper);
                 
                 // 构建聚合结果 - 直接使用实体数据
-                Map<String, Object> aggregations = buildAggregationResults(pageDTO.getAggregations(), entities);
+                List<AggregationPageDTO.AggregationField> aggList = (List<AggregationPageDTO.AggregationField>) pageDTO.getAggregations();
+                Map<String, Object> aggregations = buildAggregationResults(aggList, entities);
                 
                 // 聚合查询返回单条记录，包含所有聚合值
                 return AggregationPageResult.withAggregations(
@@ -384,15 +383,19 @@ public class EnhancedQueryBuilder {
             
             // 构建聚合字段
             if (pageDTO.getAggregations() != null && !pageDTO.getAggregations().isEmpty()) {
-                String[] selectFields = pageDTO.getAggregations().stream()
-                    .map(EnhancedQueryBuilder::buildAggregationField)
-                    .toArray(String[]::new);
+                List<String> fieldList = new ArrayList<>();
+                for (Object aggObj : pageDTO.getAggregations()) {
+                    AggregationPageDTO.AggregationField agg = (AggregationPageDTO.AggregationField) aggObj;
+                    fieldList.add(buildAggregationField(agg));
+                }
+                String[] selectFields = fieldList.toArray(new String[0]);
                 wrapper.select(selectFields);
             }
             
             // 添加分组字段
             if (pageDTO.getGroupByFields() != null && !pageDTO.getGroupByFields().isEmpty()) {
-                for (String field : pageDTO.getGroupByFields()) {
+                for (Object fieldObj : pageDTO.getGroupByFields()) {
+                    String field = (String) fieldObj;
                     wrapper.groupBy(field);
                 }
             }
@@ -438,7 +441,11 @@ public class EnhancedQueryBuilder {
         // 设置选择字段
         String[] selectFields;
         if (pageDTO.getSelectFields() != null && !pageDTO.getSelectFields().isEmpty()) {
-            selectFields = pageDTO.getSelectFields().toArray(new String[0]);
+            List<String> fieldList = new ArrayList<>();
+            for (Object fieldObj : pageDTO.getSelectFields()) {
+                fieldList.add((String) fieldObj);
+            }
+            selectFields = fieldList.toArray(new String[0]);
             wrapper.select(selectFields);
         } else {
             // 使用VO字段选择器
@@ -467,7 +474,8 @@ public class EnhancedQueryBuilder {
             
             // 添加表关联
             if (pageDTO.getTableJoins() != null && !pageDTO.getTableJoins().isEmpty()) {
-                for (JoinPageDTO.TableJoin join : pageDTO.getTableJoins()) {
+                for (Object joinObj : pageDTO.getTableJoins()) {
+                JoinPageDTO.TableJoin join = (JoinPageDTO.TableJoin) joinObj;
                     // 使用 MyBatis-Plus 的 apply 方法添加自定义 SQL
                     String joinSql = String.format("%s %s %s ON %s", 
                         join.getJoinType().getSqlKeyword(), join.getTableName(), join.getTableAlias(), join.getJoinCondition());
@@ -577,7 +585,12 @@ public class EnhancedQueryBuilder {
             
             // 设置选择字段
             if (pageDTO.getSelectFields() != null && !pageDTO.getSelectFields().isEmpty()) {
-                wrapper.select(pageDTO.getSelectFields().toArray(new String[0]));
+                List<String> fieldList = new ArrayList<>();
+                for (Object fieldObj : pageDTO.getSelectFields()) {
+                    fieldList.add((String) fieldObj);
+                }
+                String[] fields = fieldList.toArray(new String[0]);
+                wrapper.select(fields);
             } else {
                 // 使用VO字段选择器
                 String[] selectFields = VoFieldSelector.getSelectFields(voClass);
@@ -586,9 +599,12 @@ public class EnhancedQueryBuilder {
             
             // 添加聚合字段
             if (pageDTO.getAggregations() != null && !pageDTO.getAggregations().isEmpty()) {
-                String[] selectFields = pageDTO.getAggregations().stream()
-                    .map(EnhancedQueryBuilder::buildAggregationField)
-                    .toArray(String[]::new);
+                List<String> fieldList = new ArrayList<>();
+                for (Object aggObj : pageDTO.getAggregations()) {
+                    AggregationPageDTO.AggregationField agg = (AggregationPageDTO.AggregationField) aggObj;
+                    fieldList.add(buildAggregationField(agg));
+                }
+                String[] selectFields = fieldList.toArray(new String[0]);
                 wrapper.select(selectFields);
             }
             
@@ -632,7 +648,8 @@ public class EnhancedQueryBuilder {
             // 构建聚合结果
             Map<String, Object> aggregations = new HashMap<>();
             if (pageDTO.getAggregations() != null && !pageDTO.getAggregations().isEmpty()) {
-                aggregations = buildAggregationResults(pageDTO.getAggregations(), voList);
+                List<AggregationPageDTO.AggregationField> aggList = (List<AggregationPageDTO.AggregationField>) pageDTO.getAggregations();
+                aggregations = buildAggregationResults(aggList, voList);
             }
             
             EnhancedPageResult<V> enhancedResult = new EnhancedPageResult<>(voList, total, current, size);
@@ -879,28 +896,6 @@ public class EnhancedQueryBuilder {
                fieldName.startsWith("$");
     }
     
-    /**
-     * 驼峰转下划线
-     */
-    private static String camelToUnderline(String camelCase) {
-        if (camelCase == null || camelCase.isEmpty()) {
-            return camelCase;
-        }
-        
-        StringBuilder result = new StringBuilder();
-        for (int i = 0; i < camelCase.length(); i++) {
-            char c = camelCase.charAt(i);
-            if (Character.isUpperCase(c)) {
-                if (i > 0) {
-                    result.append('_');
-                }
-                result.append(Character.toLowerCase(c));
-            } else {
-                result.append(c);
-            }
-        }
-        return result.toString();
-    }
     
     /**
      * SQL构建器 - 统一SQL构建逻辑
@@ -1016,27 +1011,6 @@ public class EnhancedQueryBuilder {
         }
     }
     
-    /**
-     * SQL构建器 - 构建带LIMIT的查询SQL
-     */
-    private static <T> String buildSelectOneSql(IService<T> service, QueryWrapper<T> wrapper, String[] selectFields) {
-        // 获取实体类对应的表名
-        String tableName = getTableNameFromEntity(service);
-        
-        // 构建完整的SQL
-        StringBuilder sql = new StringBuilder();
-        sql.append("SELECT ").append(String.join(", ", selectFields));
-        sql.append(" FROM ").append(tableName);
-        
-        // 获取WHERE条件
-        String whereClause = wrapper.getSqlSegment();
-        if (whereClause != null && !whereClause.trim().isEmpty()) {
-            sql.append(" WHERE ").append(whereClause);
-        }
-        
-        sql.append(" LIMIT 1");
-        return sql.toString();
-    }
     
     /**
      * 构建性能统计信息
@@ -1105,8 +1079,8 @@ public class EnhancedQueryBuilder {
         
         if (records != null && !records.isEmpty() && aggregations != null) {
             // 从第一条记录中提取聚合值
-            Object firstRecord = records.get(0);
-            for (AggregationPageDTO.AggregationField agg : aggregations) {
+            for (Object aggObj : aggregations) {
+                AggregationPageDTO.AggregationField agg = (AggregationPageDTO.AggregationField) aggObj;
                 try {
                     // 这里需要根据实际的记录结构来提取值
                     // 暂时使用模拟数据
@@ -1149,20 +1123,14 @@ public class EnhancedQueryBuilder {
     private static <T, V extends BaseVO> EnhancedVoMapper<T, V> getEnhancedVoMapper(IService<T> service) {
         BaseMapper<T> baseMapper = service.getBaseMapper();
         if (baseMapper instanceof EnhancedVoMapper) {
-            return (EnhancedVoMapper<T, V>) baseMapper;
+            EnhancedVoMapper<T, V> result = (EnhancedVoMapper<T, V>) baseMapper;
+            return result;
         } else {
             log.warn("Mapper {} 没有实现EnhancedVoMapper，将使用基础查询", baseMapper.getClass().getSimpleName());
             return null;
         }
     }
     
-    /**
-     * 创建VO分页对象
-     * 统一分页对象创建逻辑，避免代码重复
-     */
-    private static <V> Page<V> createPage(PageDTO pageDTO) {
-        return new Page<>(pageDTO.getPageNo(), pageDTO.getPageSize());
-    }
     
     /**
      * 创建实体分页对象

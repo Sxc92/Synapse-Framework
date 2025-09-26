@@ -22,6 +22,7 @@ import java.util.Map;
  */
 @Slf4j
 @Component
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class QueryConditionBuilder {
 
     /**
@@ -116,7 +117,7 @@ public class QueryConditionBuilder {
     /**
      * 添加排序条件
      */
-    private static <T> void addOrderByConditions(QueryWrapper<T> wrapper, QueryDTO queryDTO) {
+    private static <T> void addOrderByConditions(QueryWrapper<T> wrapper, QueryDTO<T> queryDTO) {
         if (queryDTO.getOrderByList() != null && !queryDTO.getOrderByList().isEmpty()) {
             for (QueryDTO.OrderBy orderBy : queryDTO.getOrderByList()) {
                 if (StringUtils.isNotBlank(orderBy.getField())) {

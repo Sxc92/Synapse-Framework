@@ -1,42 +1,43 @@
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\entity\result\EnhancedPageResult.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\entity\dto\page\AggregationPageDTO.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\entity\Result.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\utils\CollectionUtils.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\exception\Ex.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\utils\UserContextHolder.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\entity\dto\page\JoinPageDTO.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\entity\dto\PageDTO.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\entity\vo\StandardBaseVO.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\exception\SynapseException.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\utils\TreeUtil.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\constants\StandardErrorCode.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\config\ThreadPoolConfig.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\i18n\MessageResolver.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\config\serialization\JacksonConfig.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\utils\DateTimeUtils.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\exception\handler\WebMvcGlobalExceptionHandler.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\entity\dto\page\EnhancedPageDTO.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\entity\result\PerformancePageResult.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\utils\ZoneUtils.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\annotation\QueryCondition.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\entity\dto\page\PerformancePageDTO.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\entity\dto\page\ComplexPageDTO.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\annotation\FieldMapping.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\entity\dto\QueryDTO.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\constants\BaseErrCode.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\utils\SpringUtils.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\entity\result\PageResult.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\i18n\LocaleContext.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\utils\AssertUtils.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\constants\CommonConstants.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\utils\JsonUtils.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\context\UserContext.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\exception\BaseException.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\constants\ErrorCode.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\entity\result\AggregationPageResult.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\entity\vo\SimpleBaseVO.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\config\serialization\CustomSerializers.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\utils\ThreadUtils.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\entity\TreeNode.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\entity\vo\BaseVO.java
-D:\workspace\Synapse\Synapse\Synapse-Framework\synapse-core\src\main\java\com\indigo\core\utils\MapUtils.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/config/serialization/JacksonConfig.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/constants/ErrorCode.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/utils/ZoneUtils.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/utils/DateTimeUtils.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/i18n/MessageResolver.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/utils/AssertUtils.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/exception/Ex.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/dto/page/AggregationPageDTO.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/annotation/QueryCondition.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/dto/page/ComplexPageDTO.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/utils/CollectionUtils.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/constants/CommonConstants.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/constants/StandardErrorCode.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/vo/StandardBaseVO.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/result/EnhancedPageResult.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/result/PerformancePageResult.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/utils/SpringUtils.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/dto/PageDTO.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/exception/SynapseException.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/constants/BaseErrCode.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/i18n/LocaleContext.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/vo/BaseVO.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/TreeNode.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/utils/MapUtils.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/dto/page/PerformancePageDTO.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/result/PageResult.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/Result.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/exception/BaseException.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/config/ThreadPoolConfig.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/result/AggregationPageResult.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/dto/page/JoinPageDTO.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/dto/BaseDTO.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/context/UserContext.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/utils/TreeUtil.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/utils/ThreadUtils.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/utils/JsonUtils.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/annotation/FieldMapping.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/config/serialization/CustomSerializers.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/utils/UserContextHolder.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/exception/handler/WebMvcGlobalExceptionHandler.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/dto/page/EnhancedPageDTO.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/dto/QueryDTO.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/vo/SimpleBaseVO.java

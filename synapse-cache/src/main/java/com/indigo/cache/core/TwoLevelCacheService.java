@@ -4,6 +4,7 @@ import com.indigo.cache.infrastructure.CaffeineCacheManager;
 import com.indigo.cache.infrastructure.RedisService;
 import com.indigo.cache.manager.CacheKeyGenerator;
 import com.indigo.cache.model.CacheObject;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -18,12 +19,28 @@ import java.util.function.Supplier;
  * @author 史偕成
  * @date 2025/05/16 10:00
  */
+@Getter
 @Service
-@SuppressWarnings({"unchecked", "rawtypes"})
 public class TwoLevelCacheService {
 
+    /**
+     * -- GETTER --
+     *  获取本地缓存管理器
+     *
+     */
     private final CaffeineCacheManager localCache;
+    /**
+     * -- GETTER --
+     *  获取Redis缓存服务
+     *
+     */
     private final CacheService redisCache;
+    /**
+     * -- GETTER --
+     *  获取缓存键生成器
+     *
+     * @return 缓存键生成器
+     */
     private final CacheKeyGenerator keyGenerator;
 
     // 缓存策略
@@ -243,30 +260,4 @@ public class TwoLevelCacheService {
         }
     }
 
-    /**
-     * 获取本地缓存管理器
-     *
-     * @return 本地缓存管理器
-     */
-    public CaffeineCacheManager getLocalCache() {
-        return localCache;
-    }
-
-    /**
-     * 获取Redis缓存服务
-     *
-     * @return Redis缓存服务
-     */
-    public CacheService getRedisCache() {
-        return redisCache;
-    }
-
-    /**
-     * 获取缓存键生成器
-     *
-     * @return 缓存键生成器
-     */
-    public CacheKeyGenerator getKeyGenerator() {
-        return keyGenerator;
-    }
 }

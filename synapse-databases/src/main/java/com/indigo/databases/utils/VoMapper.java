@@ -18,6 +18,7 @@ import java.util.Map;
  * @author 史偕成
  * @date 2025/12/19
  */
+@SuppressWarnings("rawtypes")
 public class VoMapper {
     
     /**

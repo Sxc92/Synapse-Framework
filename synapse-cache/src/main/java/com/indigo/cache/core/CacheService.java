@@ -19,14 +19,13 @@ import java.util.stream.Collectors;
  */
 @Getter
 @Service
-@SuppressWarnings({"unchecked", "rawtypes"})
+@SuppressWarnings({"unchecked"})
 public class CacheService {
 
     /**
      * -- GETTER --
      *  直接访问底层RedisService
      *
-     * @return RedisService
      */
     private final RedisService redisService;
 
@@ -358,7 +357,7 @@ public class CacheService {
     @SuppressWarnings("unchecked")
     public <T> T getObject(String key, Class<T> clazz) {
         Object obj = redisService.get(key);
-        if (obj != null && clazz.isInstance(obj)) {
+        if (clazz.isInstance(obj)) {
             return (T) obj;
         }
         return null;
@@ -387,13 +386,12 @@ public class CacheService {
     
     /**
      * 重置缓存过期时间
-     * 
-     * @param key 缓存键
+     *
+     * @param key           缓存键
      * @param expireSeconds 新的过期时间（秒）
-     * @return 是否成功
      */
-    public boolean resetExpiry(String key, long expireSeconds) {
-        return redisService.expire(key, expireSeconds);
+    public void resetExpiry(String key, long expireSeconds) {
+        redisService.expire(key, expireSeconds);
     }
 
     /**

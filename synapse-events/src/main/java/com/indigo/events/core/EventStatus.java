@@ -1,5 +1,7 @@
 package com.indigo.events.core;
 
+import lombok.Getter;
+
 /**
  * 事件状态枚举
  * 定义事件在生命周期中的各种状态
@@ -7,6 +9,7 @@ package com.indigo.events.core;
  * @author 史偕成
  * @date 2025/01/08
  */
+@Getter
 public enum EventStatus {
     
     /**
@@ -49,11 +52,7 @@ public enum EventStatus {
     EventStatus(String description) {
         this.description = description;
     }
-    
-    public String getDescription() {
-        return description;
-    }
-    
+
     /**
      * 检查是否为终态
      */

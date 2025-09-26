@@ -1,5 +1,7 @@
 package com.indigo.events.core;
 
+import lombok.Getter;
+
 /**
  * 事件优先级枚举
  * 定义事件的处理优先级
@@ -7,6 +9,7 @@ package com.indigo.events.core;
  * @author 史偕成
  * @date 2025/01/08
  */
+@Getter
 public enum EventPriority {
     
     /**
@@ -41,15 +44,7 @@ public enum EventPriority {
         this.level = level;
         this.description = description;
     }
-    
-    public int getLevel() {
-        return level;
-    }
-    
-    public String getDescription() {
-        return description;
-    }
-    
+
     /**
      * 比较优先级
      */

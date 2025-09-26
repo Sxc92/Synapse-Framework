@@ -38,14 +38,11 @@ public class RedisService {
 
     private final RedisTemplate<String, Object> redisTemplate;
     private final StringRedisTemplate stringRedisTemplate;
-    private final ObjectMapper objectMapper;
 
     public RedisService(RedisTemplate<String, Object> redisTemplate, 
-                       StringRedisTemplate stringRedisTemplate, 
-                       @Qualifier("synapseObjectMapper") ObjectMapper objectMapper) {
+                       StringRedisTemplate stringRedisTemplate) {
         this.redisTemplate = redisTemplate;
         this.stringRedisTemplate = stringRedisTemplate;
-        this.objectMapper = objectMapper;
     }
 
     // ==================== 基础键值操作（基础设施层） ====================

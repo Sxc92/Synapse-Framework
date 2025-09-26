@@ -4,10 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.indigo.core.entity.dto.QueryDTO;
 import com.indigo.core.entity.vo.BaseVO;
-import com.indigo.databases.annotation.VoMapping;
 import lombok.extern.slf4j.Slf4j;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,6 +17,7 @@ import java.util.List;
  * @date 2025/12/19
  */
 @Slf4j
+@SuppressWarnings("rawtypes")
 public class MultiTableQueryBuilder {
     
     /**
@@ -30,7 +29,11 @@ public class MultiTableQueryBuilder {
         // 1. 构建SELECT字段
         sql.append("SELECT ");
         String[] selectFields = EnhancedVoFieldSelector.getSelectFields(voClass);
-        sql.append(String.join(", ", selectFields));
+        if (selectFields != null && selectFields.length > 0) {
+            sql.append(String.join(", ", selectFields));
+        } else {
+            sql.append("*");
+        }
         
         // 2. 构建FROM子句
         String mainTable = EnhancedVoFieldSelector.getMainTableName(voClass);
@@ -84,11 +87,12 @@ public class MultiTableQueryBuilder {
      */
     private static String buildOrderByClause(QueryDTO queryDTO) {
         if (queryDTO.getOrderByList() == null || queryDTO.getOrderByList().isEmpty()) {
-            return null;
+            return "";
         }
         
         List<String> orderByList = new ArrayList<>();
-        for (QueryDTO.OrderBy orderBy : queryDTO.getOrderByList()) {
+        for (Object orderByObj : queryDTO.getOrderByList()) {
+            QueryDTO.OrderBy orderBy = (QueryDTO.OrderBy) orderByObj;
             if (StringUtils.isNotBlank(orderBy.getField())) {
                 String columnName = convertFieldToColumn(orderBy.getField());
                 String direction = "DESC".equalsIgnoreCase(orderBy.getDirection()) ? "DESC" : "ASC";

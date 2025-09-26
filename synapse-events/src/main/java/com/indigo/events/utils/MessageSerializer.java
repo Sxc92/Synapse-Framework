@@ -41,16 +41,8 @@ public class MessageSerializer {
             String eventJson = jsonUtils.toJson(event);
             
             // 创建 RocketMQ 消息
-            Message message = new Message(topic, eventJson.getBytes(StandardCharsets.UTF_8));
-            
-            // 设置消息属性
-            message.putUserProperty("eventId", event.getEventId());
-            message.putUserProperty("transactionId", event.getTransactionId());
-            message.putUserProperty("eventType", event.getEventType());
-            message.putUserProperty("sourceService", event.getSourceService());
-            message.putUserProperty("priority", event.getPriority().name());
-            message.putUserProperty("version", event.getVersion());
-            
+            Message message = getMessage(event, topic, eventJson);
+
             // 设置消息标签（用于消息过滤）
             message.setTags(event.getEventType());
             
@@ -65,7 +57,20 @@ public class MessageSerializer {
             throw new RuntimeException("Failed to serialize event", e);
         }
     }
-    
+
+    private static Message getMessage(Event event, String topic, String eventJson) {
+        Message message = new Message(topic, eventJson.getBytes(StandardCharsets.UTF_8));
+
+        // 设置消息属性
+        message.putUserProperty("eventId", event.getEventId());
+        message.putUserProperty("transactionId", event.getTransactionId());
+        message.putUserProperty("eventType", event.getEventType());
+        message.putUserProperty("sourceService", event.getSourceService());
+        message.putUserProperty("priority", event.getPriority().name());
+        message.putUserProperty("version", event.getVersion());
+        return message;
+    }
+
     /**
      * 将 RocketMQ 消息反序列化为事件
      *

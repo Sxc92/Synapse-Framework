@@ -5,7 +5,6 @@ import com.indigo.core.entity.vo.BaseVO;
 import com.indigo.databases.annotation.VoMapping;
 import lombok.extern.slf4j.Slf4j;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,6 +16,7 @@ import java.util.List;
  * @date 2025/12/19
  */
 @Slf4j
+@SuppressWarnings("rawtypes")
 public class EnhancedVoFieldSelector {
     
     /**
