@@ -2,8 +2,10 @@ package com.indigo.cache.config;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -21,6 +23,7 @@ import java.util.Arrays;
 /**
  * Redis连接工厂配置类
  * 支持单机、集群、哨兵模式
+ * 使用synapse.cache.redis前缀配置创建RedisTemplate
  * 
  * @author 史偕成
  * @date 2025/01/08
@@ -36,7 +39,7 @@ public class RedisConnectionConfiguration {
     
     /**
      * 创建Redis连接工厂
-     * 根据配置自动选择单机、集群或哨兵模式
+     * 使用synapse.cache.redis配置
      */
     @Bean("redisConnectionFactory")
     @Primary
@@ -46,13 +49,13 @@ public class RedisConnectionConfiguration {
         
         if (cacheProperties.getRedisCache().getCluster().isEnabled()) {
             factory = createClusterConnectionFactory();
-            log.info("创建Redis集群连接工厂");
+            log.info("使用synapse.cache.redis配置创建Redis集群连接工厂");
         } else if (cacheProperties.getRedisCache().getSentinel().isEnabled()) {
             factory = createSentinelConnectionFactory();
-            log.info("创建Redis哨兵连接工厂");
+            log.info("使用synapse.cache.redis配置创建Redis哨兵连接工厂");
         } else {
             factory = createStandaloneConnectionFactory();
-            log.info("创建Redis单机连接工厂");
+            log.info("使用synapse.cache.redis配置创建Redis单机连接工厂");
         }
         
         return factory;

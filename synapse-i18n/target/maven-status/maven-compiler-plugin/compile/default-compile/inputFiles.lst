@@ -1,10 +1,10 @@
-/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-i18n/src/main/java/com/indigo/i18n/cache/I18nCache.java
-/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-i18n/src/main/java/com/indigo/i18n/utils/MessageUtils.java
-/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-i18n/src/main/java/com/indigo/i18n/resolver/HeaderLocaleResolver.java
-/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-i18n/src/main/java/com/indigo/i18n/config/I18nProperties.java
-/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-i18n/src/main/java/com/indigo/i18n/adapter/MessageResolverAdapter.java
-/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-i18n/src/main/java/com/indigo/i18n/utils/LocaleContextHolder.java
-/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-i18n/src/main/java/com/indigo/i18n/config/I18nAutoConfiguration.java
-/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-i18n/src/main/java/com/indigo/i18n/adapter/LocaleContextAdapter.java
-/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-i18n/src/main/java/com/indigo/i18n/resolver/RedisI18nMessageResolver.java
-/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-i18n/src/main/java/com/indigo/i18n/resolver/I18nMessageResolver.java
+G:\company\indigo\Synapse\synapse-framework\synapse-i18n\src\main\java\com\indigo\i18n\adapter\LocaleContextAdapter.java
+G:\company\indigo\Synapse\synapse-framework\synapse-i18n\src\main\java\com\indigo\i18n\adapter\MessageResolverAdapter.java
+G:\company\indigo\Synapse\synapse-framework\synapse-i18n\src\main\java\com\indigo\i18n\cache\I18nCache.java
+G:\company\indigo\Synapse\synapse-framework\synapse-i18n\src\main\java\com\indigo\i18n\config\I18nProperties.java
+G:\company\indigo\Synapse\synapse-framework\synapse-i18n\src\main\java\com\indigo\i18n\resolver\I18nMessageResolver.java
+G:\company\indigo\Synapse\synapse-framework\synapse-i18n\src\main\java\com\indigo\i18n\resolver\RedisI18nMessageResolver.java
+G:\company\indigo\Synapse\synapse-framework\synapse-i18n\src\main\java\com\indigo\i18n\resolver\HeaderLocaleResolver.java
+G:\company\indigo\Synapse\synapse-framework\synapse-i18n\src\main\java\com\indigo\i18n\config\I18nAutoConfiguration.java
+G:\company\indigo\Synapse\synapse-framework\synapse-i18n\src\main\java\com\indigo\i18n\utils\MessageUtils.java
+G:\company\indigo\Synapse\synapse-framework\synapse-i18n\src\main\java\com\indigo\i18n\utils\LocaleContextHolder.java

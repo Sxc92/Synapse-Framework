@@ -39,7 +39,7 @@ import com.indigo.cache.session.StatisticsManager;
  */
 @Slf4j
 @AutoConfiguration(after = RedisAutoConfiguration.class)
-@Import({RedisConfiguration.class})
+@Import({RedisConnectionConfiguration.class, RedisConfiguration.class})
 @EnableConfigurationProperties(CacheProperties.class)
 @ComponentScan(basePackages = {"com.indigo.cache.aspect", "com.indigo.cache.core", "com.indigo.core"})
 public class CacheAutoConfiguration {
