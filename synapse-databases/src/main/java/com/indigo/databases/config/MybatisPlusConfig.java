@@ -40,6 +40,7 @@ import java.time.LocalDateTime;
 @Slf4j
 @Configuration
 @EnableTransactionManagement
+@MapperScan("com.indigo.**.repository.mapper")
 public class MybatisPlusConfig {
 
     private final AutoDataSourceInterceptor autoDataSourceInterceptor;
@@ -107,9 +108,6 @@ public class MybatisPlusConfig {
         // 配置逻辑删除
         String DELETED = "deleted";
         dbConfig.setLogicDeleteField(DELETED);
-//        dbConfig.setLogicDeleteValue(CommonConstants.ENABLED);
-//        dbConfig.setLogicNotDeleteValue("0");
-
         // 配置主键策略
         dbConfig.setIdType(IdType.ASSIGN_ID);
 
@@ -131,19 +129,19 @@ public class MybatisPlusConfig {
     public SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception {
         MybatisSqlSessionFactoryBean factoryBean = new MybatisSqlSessionFactoryBean();
         factoryBean.setDataSource(dataSource);
-        
+
         // 设置MyBatis-Plus插件
         factoryBean.setPlugins(mybatisPlusInterceptor());
-        
+
         // 设置全局配置
         factoryBean.setGlobalConfig(globalConfig());
-        
+
         // 设置MyBatis-Plus配置
         MybatisConfiguration configuration = new MybatisConfiguration();
         configuration.setMapUnderscoreToCamelCase(true);
         configuration.setLogImpl(org.apache.ibatis.logging.stdout.StdOutImpl.class);
         factoryBean.setConfiguration(configuration);
-        
+
         return factoryBean.getObject();
     }
 
@@ -179,29 +177,12 @@ class MyMetaObjectHandler implements MetaObjectHandler {
     public void insertFill(MetaObject metaObject) {
         LocalDateTime now = LocalDateTime.now();
         UserContext currentUser = UserContext.getCurrentUser();
-        log.debug("执行插入填充: 当前时间={}", now);
-        log.debug("执行插入填充: 当前user={}", currentUser);
-
         // 获取实体类的字段信息
         String className = metaObject.getOriginalObject().getClass().getSimpleName();
-        log.debug("填充实体类: {}", className);
-
         // 填充创建时间
         this.strictInsertFill(metaObject, "createTime", LocalDateTime.class, now);
-        log.debug("填充createTime完成");
-
         // 填充修改时间（插入时也设置）
         this.strictInsertFill(metaObject, "modifyTime", LocalDateTime.class, now);
-        log.debug("填充modifyTime完成");
-
-        // 填充乐观锁版本号
-        this.strictInsertFill(metaObject, "revision", Integer.class, 1);
-        log.debug("填充revision完成");
-
-        // 填充逻辑删除标记
-        this.strictInsertFill(metaObject, "deleted", Boolean.class, false);
-        log.debug("填充deleted完成");
-
         // 填充创建人
         if (currentUser != null) {
             // 优先使用userId，如果为null则使用username
@@ -209,30 +190,12 @@ class MyMetaObjectHandler implements MetaObjectHandler {
             if (userId == null || userId.trim().isEmpty()) {
                 userId = currentUser.getUsername();
             }
-
-            String tenantId = currentUser.getTenantId();
-            if (tenantId == null || tenantId.trim().isEmpty()) {
-                tenantId = "default";
-            }
-
             this.strictInsertFill(metaObject, "createUser", String.class, userId);
-            log.debug("填充createUser完成, 值: {}", userId);
-
             this.strictInsertFill(metaObject, "modifyUser", String.class, userId);
-            log.debug("填充modifyUser完成, 值: {}", userId);
-
-            this.strictInsertFill(metaObject, "tenantId", String.class, tenantId);
-            log.debug("填充tenantId完成, 值: {}", tenantId);
         } else {
             // 如果没有用户上下文，使用默认值
             this.strictInsertFill(metaObject, "createUser", String.class, "system");
-            log.debug("填充createUser完成, 默认值: system");
-
             this.strictInsertFill(metaObject, "modifyUser", String.class, "system");
-            log.debug("填充modifyUser完成, 默认值: system");
-
-            this.strictInsertFill(metaObject, "tenantId", String.class, "default");
-            log.debug("填充tenantId完成, 默认值: default");
         }
 
         log.debug("插入填充完成");
@@ -242,12 +205,8 @@ class MyMetaObjectHandler implements MetaObjectHandler {
     public void updateFill(MetaObject metaObject) {
         LocalDateTime now = LocalDateTime.now();
         UserContext currentUser = UserContext.getCurrentUser();
-
-        log.debug("执行更新填充: 当前时间={}", now);
-
         // 填充修改时间
         this.strictUpdateFill(metaObject, "modifyTime", LocalDateTime.class, now);
-
         // 填充修改人
         if (currentUser != null) {
             // 优先使用userId，如果为null则使用username
@@ -255,12 +214,9 @@ class MyMetaObjectHandler implements MetaObjectHandler {
             if (userId == null || userId.trim().isEmpty()) {
                 userId = currentUser.getUsername();
             }
-
             this.strictUpdateFill(metaObject, "modifyUser", String.class, userId);
-            log.debug("填充modifyUser完成, 值: {}", userId);
         } else {
             this.strictUpdateFill(metaObject, "modifyUser", String.class, "system");
-            log.debug("填充modifyUser完成, 默认值: system");
         }
 
         log.debug("更新填充完成");

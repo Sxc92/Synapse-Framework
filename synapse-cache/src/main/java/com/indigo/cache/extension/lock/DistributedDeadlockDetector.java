@@ -473,7 +473,7 @@ public class DistributedDeadlockDetector extends DeadlockDetector {
                     long lastHeartbeat = Long.parseLong(entry.getValue().toString());
 
                     if (currentTime - lastHeartbeat > properties.getNodeTimeout()) {
-                        log.warn("[DistributedDeadlockDetector] 节点 {} 超时，清理其状态", nodeId);
+                        log.debug("[DistributedDeadlockDetector] 节点 {} 超时，清理其状态", nodeId);
                         cleanupNodeState(nodeId);
                     }
                 }
