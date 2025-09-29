@@ -59,8 +59,8 @@ public class JsonUtils {
         
         // 设置日期格式化
         objectMapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
-        // 忽略空值
-        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        // 包含所有字段，包括 null 值，便于问题排查
+        objectMapper.setSerializationInclusion(JsonInclude.Include.ALWAYS);
         // 忽略未知属性
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         // 允许空对象
@@ -434,7 +434,7 @@ public class JsonUtils {
         // 设置日期格式化
         STATIC_MAPPER.setDateFormat(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
         // 忽略空值
-        STATIC_MAPPER.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        STATIC_MAPPER.setSerializationInclusion(JsonInclude.Include.ALWAYS);
         // 忽略未知属性
         STATIC_MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         // 允许空对象

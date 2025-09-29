@@ -73,7 +73,7 @@ public class Result<T> implements Serializable {
      */
     public static <T> Result<T> error() {
         return Result.<T>builder()
-                .data(null)
+                .data((T) null)  // 显式设置为 null，确保 data 字段存在
                 .code(StandardErrorCode.BASE_ERROR.getCode())
                 .msg(resolveMessage(StandardErrorCode.BASE_ERROR))
                 .build();
@@ -117,7 +117,7 @@ public class Result<T> implements Serializable {
      */
     public static <T> Result<T> error(String code, String msg) {
         return Result.<T>builder()
-                .data(null)
+                .data((T) null)  // 显式设置为 null，确保 data 字段存在
                 .code(code)
                 .msg(msg)
                 .build();
@@ -156,7 +156,7 @@ public class Result<T> implements Serializable {
             MessageResolver messageResolver = SpringUtils.getBean(MessageResolver.class);
             LocaleContext localeContext = SpringUtils.getBean(LocaleContext.class);
             
-            Locale locale = localeContext != null ? localeContext.getCurrentLocale() : Locale.getDefault();
+            Locale locale = localeContext.getCurrentLocale();
             String messageKey = "error." + code.toLowerCase();
             return messageResolver.resolveMessage(messageKey, locale);
         } catch (Exception e) {
@@ -164,17 +164,11 @@ public class Result<T> implements Serializable {
         }
     }
 
-    /**
-     * 判断是否成功
-     */
-    public Boolean isSuccess() {
-        return StandardErrorCode.BASE_SUCCESS.getCode().equals(code);
-    }
+//    /**
+//     * 判断是否成功
+//     */
+//    public Boolean isSuccess() {
+//        return StandardErrorCode.BASE_SUCCESS.getCode().equals(code);
+//    }
 
-    /**
-     * 判断是否失败
-     */
-    public Boolean isError() {
-        return !isSuccess();
-    }
 }

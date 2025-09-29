@@ -47,6 +47,11 @@ public class SynapseDataSourceProperties {
      * 故障转移配置
      */
     private FailoverConfig failover = new FailoverConfig();
+    
+    /**
+     * 健康检查配置
+     */
+    private HealthCheckConfig healthCheck = new HealthCheckConfig();
 
     /**
      * Seata分布式事务配置
@@ -709,6 +714,43 @@ public class SynapseDataSourceProperties {
              */
             private String columnToFieldReplacement;
         }
+    }
+
+    /**
+     * 健康检查配置
+     */
+    @Data
+    public static class HealthCheckConfig {
+        
+        /**
+         * 是否启用健康检查
+         */
+        private boolean enabled = true;
+        
+        /**
+         * 健康检查间隔时间（毫秒）
+         */
+        private long interval = 30000;
+        
+        /**
+         * 健康检查超时时间（毫秒）
+         */
+        private long timeout = 5000;
+        
+        /**
+         * 是否在启动时执行健康检查
+         */
+        private boolean checkOnStartup = true;
+        
+        /**
+         * 最大重试次数（连续失败时的重试次数）
+         */
+        private int maxRetries = 3;
+        
+        /**
+         * 恢复检测间隔（数据源从不可用状态恢复检测的间隔，毫秒）
+         */
+        private long recoveryInterval = 10000;
     }
 
 } 

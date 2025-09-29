@@ -68,10 +68,8 @@ public class MybatisPlusConfig {
         interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
         // 防止全表更新与删除插件
         interceptor.addInnerInterceptor(new BlockAttackInnerInterceptor());
-
         // 自动数据源切换拦截器
         interceptor.addInnerInterceptor(autoDataSourceInterceptor);
-
         return interceptor;
     }
 

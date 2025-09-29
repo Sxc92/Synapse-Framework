@@ -1,9 +1,6 @@
 package com.indigo.databases.entity;
 
-import com.baomidou.mybatisplus.annotation.FieldFill;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableLogic;
-import com.baomidou.mybatisplus.annotation.Version;
+import com.baomidou.mybatisplus.annotation.*;
 import lombok.*;
 import lombok.experimental.Accessors;
 import lombok.experimental.SuperBuilder;
@@ -28,12 +25,14 @@ public class AuditEntity<T> extends CreatedEntity<T> {
      * 乐观锁版本号
      */
     @Version
+    @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.ALWAYS)
     private Integer revision;
 
     /**
      * 逻辑删除标记（true=已删除，false=未删除）
      */
     @TableLogic(delval = "0", value = "1")
+    @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.ALWAYS)
     private Boolean deleted;
 
     /**

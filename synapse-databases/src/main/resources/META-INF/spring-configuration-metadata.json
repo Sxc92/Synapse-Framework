@@ -200,6 +200,42 @@
       "description": "数据源配置"
     },
     {
+      "name": "synapse.datasource.health-check.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用数据源健康检查",
+      "defaultValue": "true"
+    },
+    {
+      "name": "synapse.datasource.health-check.interval",
+      "type": "java.lang.Long",
+      "description": "健康检查间隔时间(毫秒)",
+      "defaultValue": "30000"
+    },
+    {
+      "name": "synapse.datasource.health-check.timeout",
+      "type": "java.lang.Long",
+      "description": "健康检查超时时间(毫秒)",
+      "defaultValue": "5000"
+    },
+    {
+      "name": "synapse.datasource.health-check.check-on-startup",
+      "type": "java.lang.Boolean",
+      "description": "是否在启动时执行健康检查",
+      "defaultValue": "true"
+    },
+    {
+      "name": "synapse.datasource.health-check.max-retries",
+      "type": "java.lang.Integer",
+      "description": "健康检查最大重试次数",
+      "defaultValue": "3"
+    },
+    {
+      "name": "synapse.datasource.health-check.recovery-interval",
+      "type": "java.lang.Long",
+      "description": "数据源恢复检测间隔(毫秒)",
+      "defaultValue": "10000"
+    },
+    {
       "name": "synapse.datasource.datasources.*.type",
       "type": "com.indigo.databases.enums.DatabaseType",
       "description": "数据库类型",

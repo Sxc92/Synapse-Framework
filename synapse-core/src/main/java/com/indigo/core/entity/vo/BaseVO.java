@@ -1,7 +1,11 @@
 package com.indigo.core.entity.vo;
 
 import com.indigo.core.annotation.FieldMapping;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
+import lombok.experimental.SuperBuilder;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -37,6 +41,10 @@ import java.time.LocalDateTime;
  * @date 2025/12/19
  */
 @Data
+@SuperBuilder
+@AllArgsConstructor
+@NoArgsConstructor
+@Accessors(chain = true)
 public abstract class BaseVO<T> implements Serializable {
     
     /**

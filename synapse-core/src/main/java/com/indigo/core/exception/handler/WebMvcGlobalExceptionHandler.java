@@ -9,11 +9,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * WebMVC 全局异常处理器
@@ -44,6 +49,39 @@ public class WebMvcGlobalExceptionHandler {
         String message = resolveMessage(messageKey, locale, e.getArgs());
         
         return Result.error(e.getCode(), message);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Result<?> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
+        log.warn("参数校验失败: {}", e.getMessage());
+        
+        StringBuilder errorMessage = new StringBuilder();
+        for (FieldError fieldError : e.getBindingResult().getFieldErrors()) {
+            errorMessage.append(fieldError.getField())
+                       .append(": ")
+                       .append(fieldError.getDefaultMessage())
+                       .append("; ");
+        }
+        
+        return Result.error("VALIDATION_ERROR", errorMessage.toString());
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Result<?> handleConstraintViolationException(ConstraintViolationException e) {
+        log.warn("约束校验失败: {}", e.getMessage());
+        
+        StringBuilder errorMessage = new StringBuilder();
+        Set<ConstraintViolation<?>> violations = e.getConstraintViolations();
+        for (ConstraintViolation<?> violation : violations) {
+            errorMessage.append(violation.getPropertyPath())
+                       .append(": ")
+                       .append(violation.getMessage())
+                       .append("; ");
+        }
+        
+        return Result.error("VALIDATION_ERROR", errorMessage.toString());
     }
 
     @ExceptionHandler(IllegalStateException.class)

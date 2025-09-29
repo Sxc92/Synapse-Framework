@@ -1,11 +1,11 @@
 package com.indigo.core.config.serialization;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
@@ -121,6 +121,11 @@ public class JacksonConfig {
         // 配置序列化特性
         // Configure serialization features
         objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
+        
+        // 全局配置：包含所有字段，包括 null 值，便于问题排查
+        // Global configuration: include all fields, including null values, for better debugging
+        objectMapper.setSerializationInclusion(JsonInclude.Include.ALWAYS);
+        
         // 注释掉默认类型信息配置，避免HTTP请求JSON格式问题
         // objectMapper.activateDefaultTyping(LaissezFaireSubTypeValidator.instance, 
         //     ObjectMapper.DefaultTyping.NON_FINAL);
