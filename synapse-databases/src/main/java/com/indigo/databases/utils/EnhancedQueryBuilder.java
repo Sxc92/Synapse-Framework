@@ -1123,8 +1123,7 @@ public class EnhancedQueryBuilder {
     private static <T, V extends BaseVO> EnhancedVoMapper<T, V> getEnhancedVoMapper(IService<T> service) {
         BaseMapper<T> baseMapper = service.getBaseMapper();
         if (baseMapper instanceof EnhancedVoMapper) {
-            EnhancedVoMapper<T, V> result = (EnhancedVoMapper<T, V>) baseMapper;
-            return result;
+            return (EnhancedVoMapper<T, V>) baseMapper;
         } else {
             log.warn("Mapper {} 没有实现EnhancedVoMapper，将使用基础查询", baseMapper.getClass().getSimpleName());
             return null;
