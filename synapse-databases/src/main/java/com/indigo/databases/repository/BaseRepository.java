@@ -3,6 +3,7 @@ package com.indigo.databases.repository;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.indigo.core.entity.dto.BaseDTO;
 import com.indigo.core.entity.dto.PageDTO;
 import com.indigo.core.entity.dto.QueryDTO;
 import com.indigo.core.entity.dto.page.*;
@@ -297,7 +298,7 @@ public interface BaseRepository<T, M extends BaseMapper<T>> extends IService<T> 
      * boolean isDuplicate = userRepository.checkKeyUniqueness(userDTO, "username", "email");
      * }</pre>
      */
-    default boolean checkKeyUniqueness(com.indigo.core.entity.dto.BaseDTO<?> dto, String... keyFields) {
+    default boolean checkKeyUniqueness(BaseDTO<?> dto, String... keyFields) {
         if (dto == null || keyFields == null || keyFields.length == 0) {
             return false;
         }
