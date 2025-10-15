@@ -111,9 +111,8 @@ public class SqlAnnotationAutoConfiguration {
                 
                 // 注册为Spring Bean
                 if (!beanFactory.containsBean(beanName)) {
-                    if (beanFactory instanceof DefaultListableBeanFactory) {
-                        DefaultListableBeanFactory defaultListableBeanFactory = (DefaultListableBeanFactory) beanFactory;
-                        
+                    if (beanFactory instanceof DefaultListableBeanFactory defaultListableBeanFactory) {
+
                         // 使用FactoryBean来创建代理
                         BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(ProxyFactoryBean.class);
                         builder.addPropertyValue("targetClass", repositoryInterface);

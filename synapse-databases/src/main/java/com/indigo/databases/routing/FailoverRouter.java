@@ -2,9 +2,17 @@ package com.indigo.databases.routing;
 
 import com.indigo.databases.config.SynapseDataSourceProperties;
 import com.indigo.databases.routing.DataSourceRouter.SqlType;
+import com.indigo.databases.health.DataSourceHealthEvent;
+import com.indigo.databases.dynamic.DynamicRoutingDataSource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.context.event.EventListener;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationEventPublisher;
+import jakarta.annotation.PostConstruct;
 
+import javax.sql.DataSource;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -24,6 +32,11 @@ public class FailoverRouter implements DataSourceRouter {
     
     private final SynapseDataSourceProperties properties;
     
+    private DynamicRoutingDataSource dynamicRoutingDataSource;
+    
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
+    
     // 数据源健康状态缓存
     private final Map<String, Boolean> dataSourceHealth = new ConcurrentHashMap<>();
     
@@ -35,11 +48,74 @@ public class FailoverRouter implements DataSourceRouter {
     
     public FailoverRouter(SynapseDataSourceProperties properties) {
         this.properties = properties;
+        log.info("FailoverRouter 构造函数被调用，故障转移启用状态: {}", properties.getFailover().isEnabled());
+    }
+    
+    // 静态初始化块，用于测试类是否被加载
+    static {
+        System.out.println("=== FailoverRouter 类被加载 ===");
+    }
+    
+    /**
+     * 设置动态路由数据源（用于解决循环依赖）
+     */
+    public void setDynamicRoutingDataSource(DynamicRoutingDataSource dynamicRoutingDataSource) {
+        this.dynamicRoutingDataSource = dynamicRoutingDataSource;
+        log.info("FailoverRouter 已设置动态路由数据源引用");
+        
+        // 初始化所有数据源的健康状态为健康
+        initializeDataSourceHealthStatus();
+    }
+    
+    /**
+     * 初始化数据源健康状态
+     */
+    private void initializeDataSourceHealthStatus() {
+        if (dynamicRoutingDataSource != null) {
+            Map<String, DataSource> dataSources = dynamicRoutingDataSource.getDataSources();
+            dataSources.forEach((name, dataSource) -> {
+                dataSourceHealth.put(name, true); // 默认所有数据源都是健康的
+                log.debug("初始化数据源 [{}] 健康状态为: 健康", name);
+            });
+            log.debug("已初始化 {} 个数据源的健康状态", dataSources.size());
+        }
+    }
+    
+    
+    /**
+     * 监听数据源健康状态事件
+     * 当健康检查器检测到数据源状态变化时，自动更新路由器的健康状态缓存
+     *
+     * @param event 数据源健康状态事件
+     */
+    @EventListener
+    public void handleDataSourceHealthEvent(DataSourceHealthEvent event) {
+        String dataSourceName = event.getDataSourceName();
+        boolean healthy = event.isHealthy();
+        
+        log.debug("接收到数据源健康状态事件: 数据源={}, 健康状态={}, 原因={}", 
+                dataSourceName, healthy ? "健康" : "故障", event.getReason());
+        
+        // 更新本地健康状态缓存
+        dataSourceHealth.put(dataSourceName, healthy);
+        
+        if (healthy) {
+            // 数据源恢复健康
+            log.info("数据源 [{}] 恢复健康状态", dataSourceName);
+        } else {
+            // 数据源出现故障
+            markDataSourceFailure(dataSourceName);
+            log.warn("数据源 [{}] 标记为故障状态，原因: {}", dataSourceName, event.getReason());
+            
+            // 立即触发故障转移检查
+            triggerFailoverIfNeeded(dataSourceName);
+        }
     }
     
     @Override
     public String selectDataSource(List<String> availableDataSources, RoutingContext context) {
         if (!properties.getFailover().isEnabled()) {
+            log.debug("故障转移未启用，使用第一个可用数据源: {}", availableDataSources.get(0));
             return availableDataSources.get(0);
         }
         
@@ -48,12 +124,19 @@ public class FailoverRouter implements DataSourceRouter {
                 .filter(this::isDataSourceHealthy)
                 .toList();
         
+        
         if (healthyDataSources.isEmpty()) {
-            log.warn("没有健康的数据源可用，尝试使用所有数据源");
-            return selectFromAllDataSources(availableDataSources, context);
+            log.warn("没有健康的数据源可用，可用数据源: {}, 尝试使用所有数据源", availableDataSources);
+            String selectedDataSource = selectFromAllDataSources(availableDataSources, context);
+            log.warn("强制选择数据源: {}", selectedDataSource);
+            return selectedDataSource;
         }
         
-        return selectFromHealthyDataSources(healthyDataSources, context);
+        String selectedDataSource = selectFromHealthyDataSources(healthyDataSources, context);
+        log.debug("数据源路由决策: 可用数据源={}, 健康数据源={}, 选择={}", 
+                availableDataSources, healthyDataSources, selectedDataSource);
+        
+        return selectedDataSource;
     }
     
     /**
@@ -275,6 +358,47 @@ public class FailoverRouter implements DataSourceRouter {
         Map<String, Integer> stats = new ConcurrentHashMap<>();
         failureCount.forEach((name, count) -> stats.put(name, count.get()));
         return stats;
+    }
+    
+    /**
+     * 触发故障转移检查
+     * 当检测到数据源故障时，立即检查是否需要切换到其他数据源
+     */
+    private void triggerFailoverIfNeeded(String failedDataSourceName) {
+        if (!properties.getFailover().isEnabled()) {
+            return;
+        }
+        
+        // 获取所有可用的数据源
+        List<String> allDataSources = new ArrayList<>();
+        if (dynamicRoutingDataSource != null) {
+            allDataSources.addAll(dynamicRoutingDataSource.getDataSources().keySet());
+        } else {
+            allDataSources.addAll(dataSourceHealth.keySet());
+        }
+        
+        // 过滤出健康的数据源
+        List<String> healthyDataSources = allDataSources.stream()
+                .filter(this::isDataSourceHealthy)
+                .toList();
+        
+        if (healthyDataSources.isEmpty()) {
+            log.error("所有数据源都不可用，无法进行故障转移");
+            return;
+        }
+        
+        // 执行故障转移，选择最佳的健康数据源
+        String selectedDataSource = selectFromHealthyDataSources(healthyDataSources, null);
+        
+        // 执行实际的切换动作
+        if (dynamicRoutingDataSource != null) {
+            dynamicRoutingDataSource.switchDefaultDataSource(selectedDataSource);
+            log.warn("数据源 [{}] 故障，系统已自动切换到 [{}]", failedDataSourceName, selectedDataSource);
+            log.info("故障转移完成: 从 [{}] 切换到 [{}]", failedDataSourceName, selectedDataSource);
+            log.info("系统现在使用数据源 [{}] 处理所有数据库请求", selectedDataSource);
+        } else {
+            log.error("无法执行故障转移，动态路由数据源未初始化");
+        }
     }
     
     @Override
