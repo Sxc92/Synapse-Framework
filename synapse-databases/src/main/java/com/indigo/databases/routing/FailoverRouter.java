@@ -51,11 +51,6 @@ public class FailoverRouter implements DataSourceRouter {
         log.info("FailoverRouter 构造函数被调用，故障转移启用状态: {}", properties.getFailover().isEnabled());
     }
     
-    // 静态初始化块，用于测试类是否被加载
-    static {
-        System.out.println("=== FailoverRouter 类被加载 ===");
-    }
-    
     /**
      * 设置动态路由数据源（用于解决循环依赖）
      */
@@ -101,7 +96,7 @@ public class FailoverRouter implements DataSourceRouter {
         
         if (healthy) {
             // 数据源恢复健康
-            log.info("数据源 [{}] 恢复健康状态", dataSourceName);
+            log.debug("数据源 [{}] 恢复健康状态", dataSourceName);
         } else {
             // 数据源出现故障
             markDataSourceFailure(dataSourceName);

@@ -2,7 +2,6 @@ package com.indigo.databases.factory;
 
 import com.indigo.databases.config.SynapseDataSourceProperties;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
 
@@ -14,7 +13,6 @@ import javax.sql.DataSource;
  * @date 2025/01/15
  */
 @Slf4j
-@Component
 public class DataSourceFactory {
     
     /**

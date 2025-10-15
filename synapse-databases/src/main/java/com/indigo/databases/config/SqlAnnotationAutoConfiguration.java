@@ -14,6 +14,7 @@ import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.core.Ordered;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationContext;
@@ -120,9 +121,10 @@ public class SqlAnnotationAutoConfiguration {
                         
                         BeanDefinition beanDefinition = builder.getBeanDefinition();
                         beanDefinition.setScope(BeanDefinition.SCOPE_SINGLETON);
+                        beanDefinition.setLazyInit(true);  // 设置延迟初始化
                         
                         defaultListableBeanFactory.registerBeanDefinition(beanName, beanDefinition);
-                        log.info("Registered AutoRepository proxy: {} as {}", beanName, repositoryInterface.getName());
+                        log.info("Registered AutoRepository proxy (lazy): {} as {}", beanName, repositoryInterface.getName());
                     }
                 } else {
                     log.info("Bean {} already exists, skipping registration", beanName);
@@ -137,7 +139,7 @@ public class SqlAnnotationAutoConfiguration {
      * Repository代理注册器
      */
     @Component
-    public static class RepositoryProxyRegistrar implements BeanFactoryPostProcessor {
+    public static class RepositoryProxyRegistrar implements BeanFactoryPostProcessor, Ordered {
         
         @Autowired
         private SqlMethodInterceptor sqlMethodInterceptor;
@@ -145,6 +147,12 @@ public class SqlAnnotationAutoConfiguration {
         @Override
         public void postProcessBeanFactory(org.springframework.beans.factory.config.ConfigurableListableBeanFactory beanFactory) throws BeansException {
             registerProxies((BeanDefinitionRegistry) beanFactory);
+        }
+        
+        @Override
+        public int getOrder() {
+            // 设置较低的优先级，确保在其他BeanPostProcessor之后执行
+            return Ordered.LOWEST_PRECEDENCE;
         }
         
         public void registerProxies() {
@@ -169,6 +177,7 @@ public class SqlAnnotationAutoConfiguration {
                         GenericBeanDefinition beanDef = new GenericBeanDefinition();
                         beanDef.setBeanClass(ProxyFactoryBean.class);
                         beanDef.setAutowireMode(GenericBeanDefinition.AUTOWIRE_BY_TYPE);
+                        beanDef.setLazyInit(true);  // 设置延迟初始化
                         
                         // 设置代理接口
                         beanDef.getPropertyValues().add("proxyInterface", interfaceClass);
@@ -177,7 +186,7 @@ public class SqlAnnotationAutoConfiguration {
                         String beanName = interfaceClass.getSimpleName();
                         if (!registry.containsBeanDefinition(beanName)) {
                             registry.registerBeanDefinition(beanName, beanDef);
-                            log.info("Registered Repository proxy: {}", beanName);
+                            log.info("Registered Repository proxy (lazy): {}", beanName);
                         }
                     }
                 }
@@ -191,7 +200,7 @@ public class SqlAnnotationAutoConfiguration {
      * Service代理注册器
      */
     @Component
-    public static class ServiceProxyRegistrar implements BeanFactoryPostProcessor {
+    public static class ServiceProxyRegistrar implements BeanFactoryPostProcessor, Ordered {
         
         @Autowired
         private SqlMethodInterceptor sqlMethodInterceptor;
@@ -199,6 +208,12 @@ public class SqlAnnotationAutoConfiguration {
         @Override
         public void postProcessBeanFactory(org.springframework.beans.factory.config.ConfigurableListableBeanFactory beanFactory) throws BeansException {
             registerProxies((BeanDefinitionRegistry) beanFactory);
+        }
+        
+        @Override
+        public int getOrder() {
+            // 设置较低的优先级，确保在其他BeanPostProcessor之后执行
+            return Ordered.LOWEST_PRECEDENCE;
         }
         
         public void registerProxies() {
@@ -223,6 +238,7 @@ public class SqlAnnotationAutoConfiguration {
                         GenericBeanDefinition beanDef = new GenericBeanDefinition();
                         beanDef.setBeanClass(ProxyFactoryBean.class);
                         beanDef.setAutowireMode(GenericBeanDefinition.AUTOWIRE_BY_TYPE);
+                        beanDef.setLazyInit(true);  // 设置延迟初始化
                         
                         // 设置代理接口
                         beanDef.getPropertyValues().add("proxyInterface", interfaceClass);
@@ -231,7 +247,7 @@ public class SqlAnnotationAutoConfiguration {
                         String beanName = interfaceClass.getSimpleName();
                         if (!registry.containsBeanDefinition(beanName)) {
                             registry.registerBeanDefinition(beanName, beanDef);
-                            log.info("Registered Service proxy: {}", beanName);
+                            log.info("Registered Service proxy (lazy): {}", beanName);
                         }
                     }
                 }

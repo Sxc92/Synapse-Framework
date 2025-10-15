@@ -9,4 +9,3 @@ com.indigo.databases.routing.FailoverRouter
 com.indigo.databases.config.SqlAnnotationAutoConfiguration
 com.indigo.databases.proxy.SqlMethodInterceptor
 com.indigo.databases.executor.DynamicJdbcTemplate
-com.indigo.databases.factory.DataSourceFactory

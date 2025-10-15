@@ -84,13 +84,13 @@ public class SecurityAutoConfiguration {
         configureSaTokenProperties();
         
         // 使用文本块格式化日志
-        log.info("""
-            ==========================================
-            Synapse Security 模块初始化完成
-            - Sa-Token banner已在静态初始化块中关闭
-            - 配置属性已动态应用
-            ==========================================
-            """);
+//        log.info("""
+//            ==========================================
+//            Synapse Security 模块初始化完成
+//            - Sa-Token banner已在静态初始化块中关闭
+//            - 配置属性已动态应用
+//            ==========================================
+//            """);
         
         // 返回一个占位对象，这个 Bean 的唯一目的是触发初始化
         return new Object();
@@ -134,16 +134,16 @@ public class SecurityAutoConfiguration {
         properties.forEach(prop -> System.setProperty(prop.key(), prop.value()));
         
         // 使用文本块格式化日志信息
-        log.info("""
-            Sa-Token配置已应用:
-            - token-name: {}
-            - timeout: {}
-            - is-print: {}
-            """, 
-            satokenConfig.getTokenName(), 
-            satokenConfig.getTimeout(), 
-            satokenConfig.isPrint()
-        );
+//        log.info("""
+//            Sa-Token配置已应用:
+//            - token-name: {}
+//            - timeout: {}
+//            - is-print: {}
+//            """,
+//            satokenConfig.getTokenName(),
+//            satokenConfig.getTimeout(),
+//            satokenConfig.isPrint()
+//        );
     }
 
     /**

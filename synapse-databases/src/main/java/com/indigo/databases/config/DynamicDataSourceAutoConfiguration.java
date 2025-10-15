@@ -39,25 +39,27 @@ public class DynamicDataSourceAutoConfiguration {
     private final SynapseDataSourceProperties properties;
     private final List<DataSourceRouter> routers;
     private final SmartRouterSelector routerSelector;
-    private final DataSourceFactory dataSourceFactory;
     private final ApplicationContext applicationContext;
     
     public DynamicDataSourceAutoConfiguration(SynapseDataSourceProperties properties,
                                             List<DataSourceRouter> routers,
                                             SmartRouterSelector routerSelector,
-                                            DataSourceFactory dataSourceFactory,
                                             ApplicationContext applicationContext) {
         log.info("DynamicDataSourceAutoConfiguration 被加载");
         this.properties = properties;
         this.routers = routers;
         this.routerSelector = routerSelector;
-        this.dataSourceFactory = dataSourceFactory;
         this.applicationContext = applicationContext;
     }
     
     @Bean
+    public DataSourceFactory dataSourceFactory() {
+        return new DataSourceFactory();
+    }
+    
+    @Bean
     @Primary
-    public DynamicRoutingDataSource dynamicDataSource() {
+    public DynamicRoutingDataSource dynamicDataSource(DataSourceFactory dataSourceFactory) {
         // 创建配置对象
         DynamicRoutingDataSource.DataSourceConfig config = 
                 new DynamicRoutingDataSource.DataSourceConfig(properties.getPrimary());
