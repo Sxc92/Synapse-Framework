@@ -1,4 +1,4 @@
-package com.indigo.databases.annotation;
+package com.indigo.core.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

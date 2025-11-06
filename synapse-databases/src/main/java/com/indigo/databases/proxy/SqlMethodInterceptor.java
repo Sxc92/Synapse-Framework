@@ -363,6 +363,22 @@ public class SqlMethodInterceptor implements InvocationHandler {
                             throw new UnsupportedOperationException("Invalid arguments for pageWithVoMapping");
                         }
 
+                        case "listWithVoMapping" -> {
+                            if (args.length == 2 && args[0] instanceof QueryDTO queryDTO && args[1] instanceof Class<?> voClass) {
+                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
+                                yield EnhancedQueryBuilder.listWithCondition((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            }
+                            throw new UnsupportedOperationException("Invalid arguments for listWithVoMapping");
+                        }
+
+                        case "getOneWithVoMapping" -> {
+                            if (args.length == 2 && args[0] instanceof QueryDTO queryDTO && args[1] instanceof Class<?> voClass) {
+                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
+                                yield EnhancedQueryBuilder.getOneWithCondition((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            }
+                            throw new UnsupportedOperationException("Invalid arguments for getOneWithVoMapping");
+                        }
+
                         case "pageWithComplexQuery" -> {
                             if (args.length == 2 && args[0] instanceof ComplexPageDTO queryDTO && args[1] instanceof Class<?> voClass) {
                                 var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);

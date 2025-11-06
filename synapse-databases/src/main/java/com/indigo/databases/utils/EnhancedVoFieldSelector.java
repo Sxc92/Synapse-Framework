@@ -2,7 +2,7 @@ package com.indigo.databases.utils;
 
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.indigo.core.entity.vo.BaseVO;
-import com.indigo.databases.annotation.VoMapping;
+import com.indigo.core.annotation.VoMapping;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -53,6 +53,7 @@ public class EnhancedVoFieldSelector {
     
     /**
      * 构建字段SQL
+     * 如果指定了target，则使用AS别名；否则直接使用source
      */
     private static String buildFieldSql(VoMapping.Field field) {
         return switch (field.type()) {
@@ -61,7 +62,14 @@ public class EnhancedVoFieldSelector {
                 yield field.source() + " AS " + alias;
             }
             case EXPRESSION -> StringUtils.isNotBlank(field.expression()) ? field.expression() : field.source();
-            default -> field.source();
+            default -> {
+                // DIRECT类型：如果指定了target，使用AS别名；否则直接使用source
+                if (StringUtils.isNotBlank(field.target())) {
+                    yield field.source() + " AS " + field.target();
+                } else {
+                    yield field.source();
+                }
+            }
         };
     }
     

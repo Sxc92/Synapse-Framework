@@ -12,7 +12,9 @@ import com.indigo.core.entity.result.AggregationPageResult;
 import com.indigo.core.entity.result.EnhancedPageResult;
 import com.indigo.core.entity.result.PageResult;
 import com.indigo.core.entity.result.PerformancePageResult;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.indigo.core.annotation.FieldMapping;
+import com.indigo.core.annotation.VoMapping;
 import com.indigo.core.entity.vo.BaseVO;
 import com.indigo.databases.mapper.EnhancedVoMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -225,15 +227,18 @@ public class EnhancedQueryBuilder {
         String sql = MultiTableQueryBuilder.buildMultiTableSql(queryDTO, voClass);
         
         // 执行查询
-        EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service);
+        EnhancedVoMapper<T, ?> mapper = getEnhancedVoMapper(service);
         if (mapper == null) {
             // 如果Mapper没有实现EnhancedVoMapper，多表查询无法正常工作
             log.warn("Mapper {} 没有实现EnhancedVoMapper，多表查询可能无法正常工作", service.getBaseMapper().getClass().getSimpleName());
             throw new UnsupportedOperationException("多表查询需要Mapper实现EnhancedVoMapper接口");
         }
         
-        // 对于多表查询，我们需要使用动态SQL方法
-        return mapper.selectListAsVoWithSql(sql);
+        // 使用列表查询方法，避免分页操作
+        List<Map<String, Object>> mapList = mapper.selectListAsMap(sql);
+        
+        // 手动映射Map到VO
+        return mapMapToVoList(mapList, voClass);
     }
     
     /**
@@ -284,19 +289,30 @@ public class EnhancedQueryBuilder {
      * 多表单个查询
      */
     private static <T, V extends BaseVO> V getOneWithMultiTableQuery(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
-        // 构建多表查询SQL
+        // 构建多表查询SQL，添加 LIMIT 1
         String sql = MultiTableQueryBuilder.buildMultiTableSql(queryDTO, voClass);
+        // 如果SQL中没有LIMIT，添加LIMIT 1
+        if (!sql.toUpperCase().contains("LIMIT")) {
+            sql = sql + " LIMIT 1";
+        }
         
         // 执行查询
-        EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service);
+        EnhancedVoMapper<T, ?> mapper = getEnhancedVoMapper(service);
         if (mapper == null) {
             // 如果Mapper没有实现EnhancedVoMapper，多表查询无法正常工作
             log.warn("Mapper {} 没有实现EnhancedVoMapper，多表查询可能无法正常工作", service.getBaseMapper().getClass().getSimpleName());
             throw new UnsupportedOperationException("多表查询需要Mapper实现EnhancedVoMapper接口");
         }
         
-        // 对于多表查询，我们需要使用动态SQL方法
-        return mapper.selectOneAsVoWithSql(sql);
+        // 使用列表查询方法，只取第一条
+        List<Map<String, Object>> mapList = mapper.selectListAsMap(sql);
+        
+        // 手动映射Map到VO
+        if (mapList == null || mapList.isEmpty()) {
+            return null;
+        }
+        List<V> voList = mapMapToVoList(mapList, voClass);
+        return voList.isEmpty() ? null : voList.get(0);
     }
     
     // ==================== 聚合查询 ====================
@@ -817,9 +833,24 @@ public class EnhancedQueryBuilder {
     /**
      * 将Map列表映射为VO列表
      * 支持父类字段映射
+     * 支持@VoMapping.Field注解和@FieldMapping注解
      */
     private static <V extends BaseVO> List<V> mapMapToVoList(List<Map<String, Object>> mapList, Class<V> voClass) {
         List<V> voList = new ArrayList<>();
+        
+        // 检查是否有@VoMapping注解
+        VoMapping voMapping = voClass.getAnnotation(VoMapping.class);
+        Map<String, String> fieldMappingMap = null;
+        if (voMapping != null && voMapping.fields().length > 0) {
+            // 构建字段映射表：target -> source
+            fieldMappingMap = new HashMap<>();
+            for (VoMapping.Field field : voMapping.fields()) {
+                if (StringUtils.isNotBlank(field.target())) {
+                    // 使用target作为Map的key（因为SQL中使用了AS target）
+                    fieldMappingMap.put(field.target(), field.target());
+                }
+            }
+        }
         
         for (Map<String, Object> map : mapList) {
             try {
@@ -838,23 +869,41 @@ public class EnhancedQueryBuilder {
                         continue;
                     }
                     
-                    FieldMapping mapping = field.getAnnotation(FieldMapping.class);
-                    if (mapping != null && !mapping.ignore()) {
-                        // 使用注解指定的数据库字段名
-                        String dbFieldName = mapping.value();
-                        if (!dbFieldName.isEmpty() && map.containsKey(dbFieldName)) {
-                            field.setAccessible(true);
-                            Object value = map.get(dbFieldName);
-                            field.set(vo, value);
+                    field.setAccessible(true);
+                    Object value = null;
+                    String mapKey = null;
+                    
+                    // 优先处理@VoMapping.Field注解
+                    if (voMapping != null && voMapping.fields().length > 0) {
+                        // 查找对应的@VoMapping.Field配置
+                        for (VoMapping.Field voField : voMapping.fields()) {
+                            if (field.getName().equals(voField.target())) {
+                                // 使用target作为Map的key（因为SQL中使用了AS target）
+                                mapKey = voField.target();
+                                break;
+                            }
                         }
-                    } else {
-                        // 使用配置的字段转换策略
-                        String dbFieldName = FieldConversionUtils.convertFieldToColumn(field.getName());
-                        if (map.containsKey(dbFieldName)) {
-                            field.setAccessible(true);
-                            Object value = map.get(dbFieldName);
-                            field.set(vo, value);
+                    }
+                    
+                    // 如果没找到@VoMapping.Field，尝试@FieldMapping注解
+                    if (mapKey == null) {
+                        FieldMapping mapping = field.getAnnotation(FieldMapping.class);
+                        if (mapping != null && !mapping.ignore()) {
+                            mapKey = mapping.value();
                         }
+                    }
+                    
+                    // 如果还是没找到，使用字段名转换
+                    if (mapKey == null) {
+                        mapKey = FieldConversionUtils.convertFieldToColumn(field.getName());
+                    }
+                    
+                    // 从Map中获取值
+                    if (mapKey != null && map.containsKey(mapKey)) {
+                        value = map.get(mapKey);
+                        // 类型转换：将数据库值转换为目标字段类型
+                        Object convertedValue = convertValue(value, field.getType());
+                        field.set(vo, convertedValue);
                     }
                 }
                 
@@ -865,6 +914,121 @@ public class EnhancedQueryBuilder {
         }
         
         return voList;
+    }
+    
+    /**
+     * 类型转换：将数据库值转换为目标字段类型
+     * 支持常见的类型转换，特别是 tinyint (Integer 0/1) -> Boolean
+     */
+    private static Object convertValue(Object value, Class<?> targetType) {
+        if (value == null) {
+            // 如果目标类型是基本类型，返回默认值
+            if (targetType.isPrimitive()) {
+                if (targetType == boolean.class) return false;
+                if (targetType == int.class) return 0;
+                if (targetType == long.class) return 0L;
+                if (targetType == double.class) return 0.0;
+                if (targetType == float.class) return 0.0f;
+                if (targetType == byte.class) return (byte) 0;
+                if (targetType == short.class) return (short) 0;
+                if (targetType == char.class) return '\u0000';
+            }
+            return null;
+        }
+        
+        // 如果类型已经匹配，直接返回
+        if (targetType.isAssignableFrom(value.getClass())) {
+            return value;
+        }
+        
+        // Boolean/boolean 类型转换（支持 Integer 0/1 -> Boolean）
+        if (targetType == Boolean.class || targetType == boolean.class) {
+            if (value instanceof Integer) {
+                return ((Integer) value) != 0;
+            }
+            if (value instanceof Long) {
+                return ((Long) value) != 0L;
+            }
+            if (value instanceof Byte) {
+                return ((Byte) value) != 0;
+            }
+            if (value instanceof Short) {
+                return ((Short) value) != 0;
+            }
+            if (value instanceof String) {
+                String str = ((String) value).trim().toLowerCase();
+                return "1".equals(str) || "true".equals(str) || "yes".equals(str) || "on".equals(str);
+            }
+        }
+        
+        // Integer/int 类型转换
+        if (targetType == Integer.class || targetType == int.class) {
+            if (value instanceof Number) {
+                return ((Number) value).intValue();
+            }
+            if (value instanceof String) {
+                try {
+                    return Integer.parseInt((String) value);
+                } catch (NumberFormatException e) {
+                    log.warn("无法将字符串 '{}' 转换为 Integer", value);
+                    return 0;
+                }
+            }
+        }
+        
+        // Long/long 类型转换
+        if (targetType == Long.class || targetType == long.class) {
+            if (value instanceof Number) {
+                return ((Number) value).longValue();
+            }
+            if (value instanceof String) {
+                try {
+                    return Long.parseLong((String) value);
+                } catch (NumberFormatException e) {
+                    log.warn("无法将字符串 '{}' 转换为 Long", value);
+                    return 0L;
+                }
+            }
+        }
+        
+        // Double/double 类型转换
+        if (targetType == Double.class || targetType == double.class) {
+            if (value instanceof Number) {
+                return ((Number) value).doubleValue();
+            }
+            if (value instanceof String) {
+                try {
+                    return Double.parseDouble((String) value);
+                } catch (NumberFormatException e) {
+                    log.warn("无法将字符串 '{}' 转换为 Double", value);
+                    return 0.0;
+                }
+            }
+        }
+        
+        // Float/float 类型转换
+        if (targetType == Float.class || targetType == float.class) {
+            if (value instanceof Number) {
+                return ((Number) value).floatValue();
+            }
+            if (value instanceof String) {
+                try {
+                    return Float.parseFloat((String) value);
+                } catch (NumberFormatException e) {
+                    log.warn("无法将字符串 '{}' 转换为 Float", value);
+                    return 0.0f;
+                }
+            }
+        }
+        
+        // String 类型转换
+        if (targetType == String.class) {
+            return value.toString();
+        }
+        
+        // 如果无法转换，记录警告并返回原值
+        log.warn("无法将类型 {} 转换为 {}，返回原值", value.getClass().getName(), targetType.getName());
+        return value;
     }
     
     /**

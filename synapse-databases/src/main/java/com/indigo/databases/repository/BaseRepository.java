@@ -204,12 +204,42 @@ public interface BaseRepository<T, M extends BaseMapper<T>> extends IService<T> 
     }
 
     /**
-     * 多表关联查询 - 基于@VoMapping注解
+     * 多表关联查询 - 基于@VoMapping注解（分页）
      * 自动根据VO类的@VoMapping注解配置进行多表关联查询
      * 这是推荐的多表查询方式
+     * 
+     * @param queryDTO 分页查询条件
+     * @param voClass VO类型（必须包含@VoMapping注解）
+     * @return 分页结果
      */
     default <V extends BaseVO<?>> PageResult<V> pageWithVoMapping(PageDTO<?> queryDTO, Class<V> voClass) {
         return EnhancedQueryBuilder.pageWithCondition(this, queryDTO, voClass);
+    }
+    
+    /**
+     * 多表关联查询 - 基于@VoMapping注解（列表）
+     * 自动根据VO类的@VoMapping注解配置进行多表关联查询
+     * 这是推荐的多表查询方式
+     * 
+     * @param queryDTO 查询条件
+     * @param voClass VO类型（必须包含@VoMapping注解）
+     * @return 列表结果
+     */
+    default <V extends BaseVO<?>> List<V> listWithVoMapping(QueryDTO<?> queryDTO, Class<V> voClass) {
+        return EnhancedQueryBuilder.listWithCondition(this, queryDTO, voClass);
+    }
+    
+    /**
+     * 多表关联查询 - 基于@VoMapping注解（单个）
+     * 自动根据VO类的@VoMapping注解配置进行多表关联查询
+     * 这是推荐的多表查询方式
+     * 
+     * @param queryDTO 查询条件
+     * @param voClass VO类型（必须包含@VoMapping注解）
+     * @return 单个结果
+     */
+    default <V extends BaseVO<?>> V getOneWithVoMapping(QueryDTO<?> queryDTO, Class<V> voClass) {
+        return EnhancedQueryBuilder.getOneWithCondition(this, queryDTO, voClass);
     }
     
     /**

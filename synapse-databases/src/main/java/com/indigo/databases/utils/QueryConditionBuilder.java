@@ -167,7 +167,8 @@ public class QueryConditionBuilder {
     private static <T> void addCondition(QueryWrapper<T> wrapper, Field field, Object value, QueryCondition annotation, Class<?> entityClass) {
         try {
             String fieldName = StringUtils.isNotBlank(annotation.field()) ? annotation.field() : field.getName();
-            String columnName = convertFieldToColumn(fieldName);
+            // 如果字段名已经包含表别名（如 u.account），则不进行转换
+            String columnName = fieldName.contains(".") ? fieldName : convertFieldToColumn(fieldName);
             
             switch (annotation.type()) {
                 case EQ:
