@@ -61,6 +61,11 @@ public class DynamicRoutingDataSource extends AbstractRoutingDataSource {
         setDefaultTargetDataSource(null);
         // 设置数据源映射
         setTargetDataSources(new HashMap<>(dataSourceMap));
+        
+        // 解决循环依赖：设置 FailoverRouter 的动态路由数据源引用
+        if (failoverRouter != null) {
+            failoverRouter.setDynamicRoutingDataSource(this);
+        }
     }
     
     /**
@@ -339,6 +344,19 @@ public class DynamicRoutingDataSource extends AbstractRoutingDataSource {
     public void markDataSourceRecovered(String dataSourceName) {
         if (failoverRouter != null) {
             failoverRouter.markDataSourceRecovered(dataSourceName);
+        }
+    }
+    
+    /**
+     * 切换默认数据源
+     */
+    public void switchDefaultDataSource(String dataSourceName) {
+        DataSource targetDataSource = dataSourceMap.get(dataSourceName);
+        if (targetDataSource != null) {
+            setDefaultTargetDataSource(targetDataSource);
+            log.info("默认数据源已切换到: {}", dataSourceName);
+        } else {
+            log.warn("无法切换到数据源 [{}]，数据源不存在", dataSourceName);
         }
     }
     

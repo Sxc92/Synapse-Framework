@@ -50,9 +50,11 @@ Synapse Framework 数据库模块是一个集成了 MyBatis-Plus 和动态数据
 ### 4. 故障转移与路由
 
 - **智能路由**：自动根据SQL类型选择读写数据源
-- **故障转移**：数据源故障时自动切换
+- **故障转移**：数据源故障时自动切换，支持优雅降级启动
 - **负载均衡**：支持多种负载均衡策略
-- **健康检查**：实时监控数据源健康状态
+- **健康检查**：实时监控数据源健康状态，单线程守护进程
+- **事件驱动**：基于Spring事件机制的故障检测和恢复
+- **动态恢复**：失败数据源自动重试和恢复
 
 ## 快速开始
 
@@ -136,6 +138,8 @@ synapse:
           username: root
           password: your_password
           pool-type: HIKARI
+          role: READ_WRITE
+          weight: 100
           params:
             useUnicode: "true"
             characterEncoding: "utf8"
@@ -148,6 +152,30 @@ synapse:
             max-lifetime: 1800000
             connection-timeout: 30000
             connection-test-query: "SELECT 1"
+            validation-timeout: 5000
+        master2:
+          type: MYSQL
+          host: localhost
+          port: 3307
+          database: synapse_iam
+          username: root
+          password: your_password
+          pool-type: HIKARI
+          role: READ_WRITE
+          weight: 100
+          params:
+            useUnicode: "true"
+            characterEncoding: "utf8"
+            useSSL: "false"
+            serverTimezone: "Asia/Shanghai"
+          hikari:
+            minimum-idle: 5
+            maximum-pool-size: 15
+            idle-timeout: 30000
+            max-lifetime: 1800000
+            connection-timeout: 30000
+            connection-test-query: "SELECT 1"
+            validation-timeout: 5000
 ```
 
 ### 3. 创建实体类
@@ -378,11 +406,21 @@ synapse:
     
     # 故障转移配置
     failover:
-      enabled: false
-      strategy: HEALTHY_FIRST
-      health-check-interval: 30000
-      failure-threshold: 3
-      recovery-timeout: 60000
+      enabled: true
+      strategy: PRIMARY_FIRST
+      max-retry-times: 3
+      retry-interval: 30000
+      detection-interval: 30000
+      recovery-interval: 60000
+    
+    # 健康检查配置
+    health-check:
+      enabled: true
+      interval: 30000
+      timeout: 5000
+      check-on-startup: true
+      max-retries: 3
+      recovery-interval: 60000
     
     # Seata分布式事务配置
     seata:
@@ -993,37 +1031,127 @@ synapse:
 - INSERT/UPDATE/DELETE语句自动路由到主库
 - 无需手动指定数据源，系统智能路由
 
-### 7. 故障转移
+### 7. 健康检查与故障转移
 
-#### 配置示例
+#### 7.1 健康检查功能
+
+健康检查器使用单线程守护进程，定期检查所有数据源的健康状态：
 
 ```yaml
 synapse:
   datasource:
-    failover:
-      enabled: true
-      strategy: HEALTHY_FIRST
-      health-check-interval: 30000
-      failure-threshold: 3
-      recovery-timeout: 60000
-    datasources:
-      master:
-        type: MYSQL
-        host: master-db.example.com
-      slave1:
-        type: MYSQL
-        host: slave1-db.example.com
-      slave2:
-        type: MYSQL
-        host: slave2-db.example.com
+    # 健康检查配置
+    health-check:
+      enabled: true                    # 启用健康检查
+      interval: 30000                  # 检查间隔（毫秒）
+      timeout: 5000                    # 检查超时时间（毫秒）
+      check-on-startup: true           # 启动时执行健康检查
+      max-retries: 3                   # 最大重试次数
+      recovery-interval: 60000         # 恢复检查间隔（毫秒）
 ```
 
-#### 故障转移策略
+#### 7.2 故障转移配置
 
+```yaml
+synapse:
+  datasource:
+    # 故障转移配置
+    failover:
+      enabled: true                    # 启用故障转移
+      strategy: PRIMARY_FIRST          # 故障转移策略
+      max-retry-times: 3               # 最大重试次数
+      retry-interval: 30000            # 重试间隔（毫秒）
+      detection-interval: 30000        # 故障检测间隔（毫秒）
+      recovery-interval: 60000         # 恢复检查间隔（毫秒）
+    
+    # 数据源配置
+    datasources:
+      master1:
+        type: MYSQL
+        host: master1-db.example.com
+        role: READ_WRITE               # 数据源角色
+        weight: 100                    # 权重
+        hikari:
+          connection-test-query: "SELECT 1"
+          validation-timeout: 5000
+      master2:
+        type: MYSQL
+        host: master2-db.example.com
+        role: READ_WRITE
+        weight: 100
+        hikari:
+          connection-test-query: "SELECT 1"
+          validation-timeout: 5000
+```
+
+#### 7.3 故障转移策略
+
+- **PRIMARY_FIRST**：优先选择主数据源，故障时切换到备用数据源
 - **HEALTHY_FIRST**：优先选择健康的数据源
 - **ROUND_ROBIN**：轮询选择数据源
 - **WEIGHTED_ROUND_ROBIN**：基于权重的轮询
-- **LEAST_CONNECTIONS**：选择连接数最少的数据源
+
+#### 7.4 优雅降级启动
+
+当启用故障转移时，系统支持优雅降级启动：
+
+- 如果主数据源不可用，系统会尝试初始化其他数据源
+- 只要有一个数据源可用，应用就会正常启动
+- 失败的数据源会被标记为待恢复状态
+- 健康检查器会定期尝试恢复失败的数据源
+
+#### 7.5 事件驱动架构
+
+系统使用Spring事件机制实现故障检测和恢复：
+
+```java
+// 健康状态事件
+public class DataSourceHealthEvent {
+    private String dataSourceName;     // 数据源名称
+    private boolean healthy;           // 健康状态
+    private String reason;             // 原因
+    private long timestamp;            // 时间戳
+    private int attemptCount;          // 尝试次数
+    private int maxRetries;            // 最大重试次数
+}
+
+// 事件监听器
+@EventListener
+public void handleDataSourceHealthEvent(DataSourceHealthEvent event) {
+    // 处理数据源健康状态变化
+    if (!event.isHealthy()) {
+        // 触发故障转移
+        triggerFailoverIfNeeded(event.getDataSourceName());
+    }
+}
+```
+
+#### 7.6 动态数据源恢复
+
+系统支持动态恢复失败的数据源：
+
+1. **失败检测**：健康检查器检测到数据源故障
+2. **事件发布**：发布数据源故障事件
+3. **故障转移**：FailoverRouter接收事件并触发故障转移
+4. **动态恢复**：健康检查器定期尝试恢复失败的数据源
+5. **恢复通知**：数据源恢复后发布恢复事件
+
+#### 7.7 监控和日志
+
+```yaml
+# 日志配置
+logging:
+  level:
+    com.indigo.databases: INFO
+    com.indigo.databases.health: INFO
+    com.indigo.databases.routing: INFO
+```
+
+关键日志信息：
+- 数据源健康状态变化
+- 故障转移执行
+- 数据源恢复成功
+- 健康检查执行情况
 
 ### 8. 分布式事务
 
@@ -1151,14 +1279,54 @@ synapse:
    - 检查SQL执行计划
    - 优化查询条件和索引
 
+6. **健康检查不工作**
+   - 确保 `health-check.enabled=true`
+   - 检查健康检查间隔配置是否合理
+   - 验证数据源连接测试查询是否正确
+   - 查看健康检查器是否正常启动
+
+7. **故障转移不触发**
+   - 确保 `failover.enabled=true`
+   - 检查故障转移策略配置
+   - 验证事件监听器是否正常工作
+   - 查看FailoverRouter是否正确初始化
+
+8. **数据源恢复失败**
+   - 检查失败数据源配置是否正确传递
+   - 验证数据源工厂是否正常工作
+   - 查看恢复间隔配置是否合理
+   - 检查网络连接是否正常
+
+9. **应用启动失败**
+   - 检查是否启用了优雅降级启动
+   - 验证至少有一个数据源可用
+   - 查看Seata配置是否正确
+   - 检查循环依赖问题
+
 ### 日志配置
 
 ```yaml
 logging:
   level:
+    com.indigo.databases: INFO
+    com.indigo.databases.health: INFO
+    com.indigo.databases.routing: INFO
+    com.indigo.databases.factory: INFO
+    com.indigo.databases.config: INFO
+    com.zaxxer.hikari: INFO
+    com.alibaba.druid: INFO
+```
+
+#### 调试模式日志配置
+
+```yaml
+logging:
+  level:
     com.indigo.databases: DEBUG
-    com.indigo.databases.utils: DEBUG
+    com.indigo.databases.health: DEBUG
     com.indigo.databases.routing: DEBUG
+    com.indigo.databases.factory: DEBUG
+    com.indigo.databases.config: DEBUG
     com.zaxxer.hikari: DEBUG
     com.alibaba.druid: DEBUG
 ```
@@ -1193,9 +1361,27 @@ public void checkConfiguration() {
 @Autowired
 private FailoverRouter failoverRouter;
 
+@Autowired
+private DataSourceHealthChecker healthChecker;
+
 public void checkDataSourceHealth() {
+    // 获取数据源健康状态
+    Map<String, Boolean> healthStatus = healthChecker.getHealthStatus();
+    log.info("Data source health status: {}", healthStatus);
+    
+    // 获取数据源类型信息
+    Map<String, DatabaseType> dataSourceTypes = healthChecker.getDataSourceTypes();
+    log.info("Data source types: {}", dataSourceTypes);
+    
+    // 获取故障统计信息
     Map<String, Integer> stats = failoverRouter.getFailureStatistics();
     log.info("Data source failure statistics: {}", stats);
+}
+
+// 手动触发健康检查
+public void triggerHealthCheck() {
+    healthChecker.checkHealthAndWait();
+    log.info("Manual health check completed");
 }
 ```
 
@@ -1206,6 +1392,11 @@ public void checkDataSourceHealth() {
 3. **类型安全**: 使用枚举类型确保配置的正确性
 4. **异步查询**: 异步查询功能目前处于实验阶段，请谨慎使用
 5. **性能监控**: 建议在生产环境中启用性能监控功能
+6. **健康检查**: 健康检查使用单线程守护进程，避免资源竞争
+7. **故障转移**: 故障转移基于事件驱动架构，确保及时响应
+8. **优雅降级**: 启用故障转移时支持优雅降级启动，提高可用性
+9. **数据源恢复**: 失败的数据源会自动尝试恢复，无需手动干预
+10. **日志级别**: 生产环境建议使用INFO级别，调试时使用DEBUG级别
 
 ## 迁移指南
 
@@ -1217,6 +1408,16 @@ public void checkDataSourceHealth() {
 4. 验证所有功能是否正常工作
 
 ## 更新日志
+
+### v1.1.0 (最新)
+- ✅ 健康检查功能：单线程守护进程，实时监控数据源状态
+- ✅ 故障转移优化：基于Spring事件机制的故障检测和恢复
+- ✅ 优雅降级启动：支持部分数据源失败时的应用启动
+- ✅ 动态数据源恢复：失败数据源自动重试和恢复机制
+- ✅ 事件驱动架构：解耦健康检查和故障转移逻辑
+- ✅ 日志优化：精简日志输出，提供清晰的故障信息
+- ✅ JDK 17兼容：更新注解导入，支持现代Java版本
+- ✅ 循环依赖解决：优化Bean初始化顺序，避免循环依赖
 
 ### v1.0.0
 - ✅ 初始版本发布

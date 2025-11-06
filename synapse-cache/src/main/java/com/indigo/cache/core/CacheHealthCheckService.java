@@ -87,7 +87,7 @@ public class CacheHealthCheckService {
 
             if (overallHealthy) {
                 if (!isHealthy.get()) {
-                    log.info("缓存服务已恢复健康状态");
+                    log.debug("缓存服务已恢复健康状态");
                 }
                 isHealthy.set(true);
                 failureCount.set(0);

@@ -146,8 +146,17 @@ public class SqlMethodInterceptor implements InvocationHandler {
                 }
             };
 
-            // 自动装配依赖
-            beanFactory.autowireBean(serviceImpl);
+            // 手动设置baseMapper字段，避免Spring自动装配时的歧义
+            try {
+                Field baseMapperField = ServiceImpl.class.getDeclaredField("baseMapper");
+                baseMapperField.setAccessible(true);
+                baseMapperField.set(serviceImpl, mapper);
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+                log.warn("Failed to set baseMapper field directly, falling back to autowire: {}", e.getMessage());
+                // 如果直接设置失败，回退到自动装配
+                beanFactory.autowireBean(serviceImpl);
+            }
+            
             beanFactory.initializeBean(serviceImpl, "serviceImpl");
 
             log.debug("Created ServiceImpl instance for entity: {}, mapper: {} using Spring BeanFactory",

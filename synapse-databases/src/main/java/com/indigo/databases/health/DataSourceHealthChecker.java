@@ -3,6 +3,7 @@ package com.indigo.databases.health;
 import com.indigo.databases.config.SynapseDataSourceProperties;
 import com.indigo.databases.dynamic.DynamicRoutingDataSource;
 import com.indigo.databases.enums.DatabaseType;
+import com.indigo.databases.factory.DataSourceFactory;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -10,6 +11,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Autowired;
+import java.util.concurrent.CompletableFuture;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -35,10 +37,21 @@ public class DataSourceHealthChecker {
     private final DynamicRoutingDataSource routingDataSource;
     @Autowired
     private SynapseDataSourceProperties dataSourceProperties;
+    @Autowired
+    private DataSourceHealthEventPublisher eventPublisher;
+    @Autowired
+    private DataSourceFactory dataSourceFactory;
     
     private final Map<String, Boolean> dataSourceHealth = new ConcurrentHashMap<>();
     private final Map<String, DatabaseType> dataSourceTypes = new ConcurrentHashMap<>();
-    private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(2);
+    private final ScheduledExecutorService healthCheckExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "DataSourceHealthChecker");
+        t.setDaemon(true);  // 设置为守护线程
+        return t;
+    });
+    
+    // 存储失败的数据源配置，用于动态恢复
+    private final Map<String, SynapseDataSourceProperties.DataSourceConfig> failedDataSourceConfigs = new ConcurrentHashMap<>();
     
     /**
      * 各数据库类型的心跳SQL
@@ -65,66 +78,185 @@ public class DataSourceHealthChecker {
     }
     
     /**
-     * 初始化时执行一次健康检查
+     * 设置失败的数据源配置，用于动态恢复
+     */
+    public void setFailedDataSourceConfigs(Map<String, SynapseDataSourceProperties.DataSourceConfig> failedConfigs) {
+        this.failedDataSourceConfigs.clear();
+        this.failedDataSourceConfigs.putAll(failedConfigs);
+        log.info("设置失败数据源配置，共 {} 个: {}", failedConfigs.size(), failedConfigs.keySet());
+    }
+    
+    /**
+     * 初始化时启动健康检查守护线程
      */
     @PostConstruct
     public void init() {
-        if (dataSourceProperties.getHealthCheck().isCheckOnStartup()) {
-            checkHealth();
+        if (dataSourceProperties.getHealthCheck().isEnabled()) {
+            // 启动时执行一次健康检查
+            if (dataSourceProperties.getHealthCheck().isCheckOnStartup()) {
+                performHealthCheckOnce();
+            }
+            
+            // 启动定时健康检查守护线程
+            startHealthCheckDaemon();
+            log.info("数据源健康检查守护线程已启动，检查间隔: {}ms", 
+                    dataSourceProperties.getHealthCheck().getInterval());
         }
         initialized = true;
     }
     
     /**
-     * 根据配置的间隔时间检查数据源健康状态
+     * 启动健康检查守护线程
      */
-    @Scheduled(fixedRateString = "${synapse.datasource.health-check.interval:30000}")
-    public void checkHealth() {
-        // 检查是否启用健康检查
-        if (!dataSourceProperties.getHealthCheck().isEnabled()) {
+    private void startHealthCheckDaemon() {
+        long interval = dataSourceProperties.getHealthCheck().getInterval();
+        healthCheckExecutor.scheduleWithFixedDelay(
+            this::performHealthCheckOnce,
+            interval,  // 初始延迟
+            interval,  // 执行间隔
+            java.util.concurrent.TimeUnit.MILLISECONDS
+        );
+    }
+    
+    /**
+     * 执行一次完整的健康检查
+     */
+    private void performHealthCheckOnce() {
+        try {
+            Map<String, DataSource> dataSources = routingDataSource.getDataSources();
+            log.debug("开始执行数据源健康检查，共{}个数据源", dataSources.size());
+            
+            // 在守护线程中顺序检查所有数据源
+            dataSources.forEach((name, dataSource) -> {
+                try {
+                    performSingleHealthCheck(name, dataSource);
+                } catch (Exception e) {
+                    log.error("健康检查数据源[{}]时发生异常: {}", name, e.getMessage());
+                }
+            });
+            
+            // 尝试恢复失败的数据源
+            if (!failedDataSourceConfigs.isEmpty()) {
+                log.info("尝试恢复失败的数据源，共{}个: {}", failedDataSourceConfigs.size(), failedDataSourceConfigs.keySet());
+                attemptRecoverFailedDataSources();
+            }
+            
+        } catch (Exception e) {
+            log.error("执行健康检查时发生异常: {}", e.getMessage());
+        }
+    }
+    
+    /**
+     * 执行单个数据源的健康检查（单线程同步执行）
+     *
+     * @param name       数据源名称
+     * @param dataSource 数据源
+     */
+    private void performSingleHealthCheck(String name, DataSource dataSource) {
+        // 检查是否为占位符数据源
+        if (isPlaceholderDataSource(dataSource)) {
+            log.debug("跳过占位符数据源 [{}] 的健康检查", name);
+            dataSourceHealth.put(name, false);
             return;
         }
-        Map<String, DataSource> dataSources = routingDataSource.getDataSources();
-        // 异步执行健康检查，避免阻塞主线程
-        dataSources.forEach(this::scheduleHealthCheck);
+        
+        executeHealthCheckWithRetry(name, dataSource);
     }
     
     /**
-     * 调度单个数据源的健康检查（异步）
-     *
-     * @param name       数据源名称
-     * @param dataSource 数据源
+     * 检查是否为占位符数据源
      */
-    private void scheduleHealthCheck(String name, DataSource dataSource) {
-        CompletableFuture.runAsync(() -> performHealthCheck(name, dataSource), executorService)
-                .exceptionally(throwable -> {
-                    log.error("Failed to execute health check for dataSource [{}]: {}", name, throwable.getMessage());
-                    return null;
-                });
+    private boolean isPlaceholderDataSource(DataSource dataSource) {
+        return dataSource.getClass().getSimpleName().equals("PlaceholderDataSource");
     }
     
     /**
-     * 执行单个数据源的健康检查
-     *
-     * @param name       数据源名称
-     * @param dataSource 数据源
+     * 检查数据源是否存在于动态路由数据源中
      */
-    private void performHealthCheck(String name, DataSource dataSource) {
-        var healthCheckConfig = dataSourceProperties.getHealthCheck();
-        scheduleRetryWithBackoff(name, dataSource, 0, healthCheckConfig.getMaxRetries());
+    private boolean isDataSourceExists(String name) {
+        return routingDataSource.getDataSources().containsKey(name);
     }
     
     /**
-     * 使用退避策略调度重试
+     * 尝试恢复失败的数据源
+     */
+    private void attemptRecoverFailedDataSources() {
+        // 使用迭代器安全地遍历和修改集合
+        var iterator = failedDataSourceConfigs.entrySet().iterator();
+        while (iterator.hasNext()) {
+            var entry = iterator.next();
+            String name = entry.getKey();
+            SynapseDataSourceProperties.DataSourceConfig config = entry.getValue();
+            
+            try {
+                log.info("尝试恢复数据源 [{}]", name);
+                
+                // 尝试创建数据源
+                DataSource dataSource = createDataSourceFromConfig(config);
+                
+                // 测试连接
+                testDataSourceConnection(dataSource);
+                
+                // 恢复成功，添加到动态路由
+                routingDataSource.addDataSource(name, dataSource);
+                dataSourceHealth.put(name, true);
+                
+                // 从失败列表中移除
+                iterator.remove();
+                
+                // 发布恢复事件
+                eventPublisher.publishDataSourceRecovered(name);
+                
+                log.info("数据源 [{}] 恢复成功，已添加到动态路由", name);
+                
+            } catch (Exception e) {
+                log.warn("数据源 [{}] 恢复失败: {}", name, e.getMessage());
+                // 继续尝试其他数据源
+            }
+        }
+    }
+    
+    /**
+     * 从配置创建数据源
+     */
+    private DataSource createDataSourceFromConfig(SynapseDataSourceProperties.DataSourceConfig config) throws Exception {
+        return dataSourceFactory.createDataSource(config);
+    }
+    
+    /**
+     * 测试数据源连接
+     */
+    private void testDataSourceConnection(DataSource dataSource) throws Exception {
+        try (var connection = dataSource.getConnection()) {
+            // 简单的连接测试
+            connection.isValid(5); // 5秒超时
+        }
+    }
+    
+    /**
+     * 执行健康检查并处理重试（同步执行）
      *
      * @param name        数据源名称
      * @param dataSource  数据源
      * @param attempt     当前尝试次数
      * @param maxRetries  最大重试次数
      */
-    private void scheduleRetryWithBackoff(String name, DataSource dataSource, int attempt, int maxRetries) {
-        executorService.schedule(() -> executeHealthCheckAttempt(name, dataSource, attempt, maxRetries), 
-                calculateBackoffDelay(attempt), TimeUnit.MILLISECONDS);
+    private void executeHealthCheckWithRetry(String name, DataSource dataSource) {
+        try {
+            executeHealthCheckAttempt(name, dataSource);
+        } catch (Exception e) {
+            // 立即标记为不健康，触发故障转移
+            dataSourceHealth.put(name, false);
+            log.warn("数据源 [{}] 健康检查失败，已标记为不健康: {}", name, e.getMessage());
+            
+            // 发布故障事件
+            if (eventPublisher != null) {
+                eventPublisher.publishDataSourceFailure(name, e.getMessage());
+                log.debug("已发布数据源 [{}] 故障事件", name);
+            } else {
+                log.error("事件发布器未初始化，无法发布数据源 [{}] 故障事件", name);
+            }
+        }
     }
     
     /**
@@ -132,35 +264,31 @@ public class DataSourceHealthChecker {
      *
      * @param name        数据源名称
      * @param dataSource  数据源
-     * @param attempt     当前尝试次数
-     * @param maxRetries  最大重试次数
      */
-    private void executeHealthCheckAttempt(String name, DataSource dataSource, int attempt, int maxRetries) {
-        try {
-            JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-            var healthCheckConfig = dataSourceProperties.getHealthCheck();
-            
-            // 设置查询超时时间
-            jdbcTemplate.setQueryTimeout((int) (healthCheckConfig.getTimeout() / 1000));
-            
-            DatabaseType dbType = detectDatabaseType(dataSource, name);
-            String healthCheckSql = HEALTH_CHECK_SQL.get(dbType);
-            
-            jdbcTemplate.queryForObject(healthCheckSql, Integer.class);
-            dataSourceHealth.put(name, true);
+    private void executeHealthCheckAttempt(String name, DataSource dataSource) throws Exception {
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+        var healthCheckConfig = dataSourceProperties.getHealthCheck();
+        
+        // 设置查询超时时间
+        jdbcTemplate.setQueryTimeout((int) (healthCheckConfig.getTimeout() / 1000));
+        
+        DatabaseType dbType = detectDatabaseType(dataSource, name);
+        String healthCheckSql = HEALTH_CHECK_SQL.get(dbType);
+        
+        jdbcTemplate.queryForObject(healthCheckSql, Integer.class);
+        
+        // ✅ 健康检查成功 - 更新状态并发布事件
+        boolean wasUnhealthy = Boolean.FALSE.equals(dataSourceHealth.get(name));
+        dataSourceHealth.put(name, true);
+        
+        if (wasUnhealthy) {
+            // 数据源从故障状态恢复
+            eventPublisher.publishDataSourceRecovered(name);
+            log.info("DataSource [{}] ({}) recovered from failure", name, dbType);
+        } else {
+            // 数据源保持健康状态
+            eventPublisher.publishHealthStatus(name, true, "Health check passed");
             log.debug("DataSource [{}] ({}) is healthy", name, dbType);
-            
-        } catch (Exception e) {
-            if (attempt >= maxRetries) {
-                dataSourceHealth.put(name, false);
-                log.error("DataSource [{}] is unhealthy after {} retries: {}", 
-                         name, maxRetries + 1, e.getMessage());
-            } else {
-                log.warn("DataSource [{}] health check failed (attempt {}/{}): {}", 
-                        name, attempt + 1, maxRetries + 1, e.getMessage());
-                // 使用退避策略调度下次重试
-                scheduleRetryWithBackoff(name, dataSource, attempt + 1, maxRetries);
-            }
         }
     }
     
@@ -342,13 +470,32 @@ public class DataSourceHealthChecker {
      * 手动触发健康检查并等待完成
      */
     public void checkHealthAndWait() {
-        checkHealth();
+        performHealthCheckOnce();
         // 等待健康检查完成
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+    }
+    
+    /**
+     * 应用关闭时清理资源
+     */
+    @PreDestroy
+    public void destroy() {
+        log.info("正在关闭数据源健康检查守护线程...");
+        healthCheckExecutor.shutdown();
+        try {
+            if (!healthCheckExecutor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                log.warn("健康检查守护线程未能在5秒内正常关闭，强制关闭");
+                healthCheckExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            healthCheckExecutor.shutdownNow();
+        }
+        log.info("数据源健康检查守护线程已关闭");
     }
     
     /**
@@ -360,6 +507,12 @@ public class DataSourceHealthChecker {
     public boolean isHealthy(String dataSourceName) {
         if (dataSourceName == null || dataSourceName.trim().isEmpty()) {
             log.warn("DataSource name is null or empty, returning false");
+            return false;
+        }
+        
+        // 如果数据源不存在，返回 false
+        if (!isDataSourceExists(dataSourceName)) {
+            log.debug("数据源 [{}] 不存在，返回不健康状态", dataSourceName);
             return false;
         }
         
@@ -398,27 +551,6 @@ public class DataSourceHealthChecker {
      */
     public Map<String, DatabaseType> getDataSourceTypes() {
         return new ConcurrentHashMap<>(dataSourceTypes);
-    }
-    
-    /**
-     * 销毁时清理资源
-     */
-    @PreDestroy
-    public void destroy() {
-        if (!executorService.isShutdown()) {
-            executorService.shutdown();
-            try {
-                if (!executorService.awaitTermination(30, TimeUnit.SECONDS)) {
-                    executorService.shutdownNow();
-                    if (!executorService.awaitTermination(10, TimeUnit.SECONDS)) {
-                        log.warn("Health checker executor did not terminate gracefully");
-                    }
-                }
-            } catch (InterruptedException e) {
-                executorService.shutdownNow();
-                Thread.currentThread().interrupt();
-            }
-        }
     }
 
 } 
