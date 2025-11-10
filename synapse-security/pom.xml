@@ -38,7 +38,12 @@
             <artifactId>sa-token-spring-boot3-starter</artifactId>
             <optional>true</optional>
         </dependency>
-        
+
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-core</artifactId>
+        </dependency>
+
         <!-- Sa-Token JWT支持 -->
         <dependency>
             <groupId>cn.dev33</groupId>

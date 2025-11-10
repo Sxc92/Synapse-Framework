@@ -123,7 +123,7 @@ public class EnhancedQueryBuilder {
      * 通过字段选择避免内存转换，提升性能
      * 支持多表关联查询
      */
-    public static <T, V extends BaseVO> PageResult<V> pageWithCondition(IService<T> service, PageDTO pageDTO, Class<V> voClass) {
+    public static <T, V extends BaseVO<?>> PageResult<V> pageWithCondition(IService<T> service, PageDTO pageDTO, Class<V> voClass) {
         try {
             // 检查是否需要多表查询
             if (EnhancedVoFieldSelector.hasJoinQuery(voClass)) {
@@ -143,7 +143,7 @@ public class EnhancedQueryBuilder {
      * 注意：MyBatis-Plus的IService.page()有泛型限制，无法直接返回Page<V>
      * 这里我们使用EnhancedVoMapper来实现真正的智能映射
      */
-    private static <T, V extends BaseVO> PageResult<V> pageWithSingleTableQuery(IService<T> service, PageDTO pageDTO, Class<V> voClass) {
+    private static <T, V extends BaseVO<?>> PageResult<V> pageWithSingleTableQuery(IService<T> service, PageDTO pageDTO, Class<V> voClass) {
         // 构建基础查询条件
         QueryWrapper<T> wrapper = QueryConditionBuilder.buildQueryWrapper(pageDTO);
         
@@ -154,7 +154,7 @@ public class EnhancedQueryBuilder {
     /**
      * 多表查询
      */
-    private static <T, V extends BaseVO> PageResult<V> pageWithMultiTableQuery(IService<T> service, PageDTO pageDTO, Class<V> voClass) {
+    private static <T, V extends BaseVO<?>> PageResult<V> pageWithMultiTableQuery(IService<T> service, PageDTO pageDTO, Class<V> voClass) {
         // 构建多表查询SQL
         String sql = MultiTableQueryBuilder.buildMultiTableSql(pageDTO, voClass);
         
@@ -162,7 +162,7 @@ public class EnhancedQueryBuilder {
         Page<Map<String, Object>> page = createMapPage(pageDTO);
         
         // 执行查询（需要强制转换为EnhancedVoMapper）
-        EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service);
+        EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service, voClass);
         if (mapper == null) {
             // 如果Mapper没有实现EnhancedVoMapper，多表查询无法正常工作
             log.warn("Mapper {} 没有实现EnhancedVoMapper，多表查询可能无法正常工作", service.getBaseMapper().getClass().getSimpleName());
@@ -180,7 +180,7 @@ public class EnhancedQueryBuilder {
      * 通过字段选择避免内存转换，提升性能
      * 支持多表关联查询
      */
-    public static <T, V extends BaseVO> List<V> listWithCondition(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
+    public static <T, V extends BaseVO<?>> List<V> listWithCondition(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
         try {
             // 检查是否需要多表查询
             if (EnhancedVoFieldSelector.hasJoinQuery(voClass)) {
@@ -198,12 +198,12 @@ public class EnhancedQueryBuilder {
     /**
      * 单表列表查询 - 使用智能映射
      */
-    private static <T, V extends BaseVO> List<V> listWithSingleTableQuery(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
+    private static <T, V extends BaseVO<?>> List<V> listWithSingleTableQuery(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
         // 构建基础查询条件
         QueryWrapper<T> wrapper = QueryConditionBuilder.buildQueryWrapper(queryDTO);
         
         // 获取Mapper
-        EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service);
+        EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service, voClass);
         
         if (mapper == null) {
             // 基础查询
@@ -222,12 +222,12 @@ public class EnhancedQueryBuilder {
     /**
      * 多表列表查询
      */
-    private static <T, V extends BaseVO> List<V> listWithMultiTableQuery(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
+    private static <T, V extends BaseVO<?>> List<V> listWithMultiTableQuery(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
         // 构建多表查询SQL
         String sql = MultiTableQueryBuilder.buildMultiTableSql(queryDTO, voClass);
         
         // 执行查询
-        EnhancedVoMapper<T, ?> mapper = getEnhancedVoMapper(service);
+        EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service, voClass);
         if (mapper == null) {
             // 如果Mapper没有实现EnhancedVoMapper，多表查询无法正常工作
             log.warn("Mapper {} 没有实现EnhancedVoMapper，多表查询可能无法正常工作", service.getBaseMapper().getClass().getSimpleName());
@@ -246,7 +246,7 @@ public class EnhancedQueryBuilder {
      * 通过字段选择避免内存转换，提升性能
      * 支持多表关联查询
      */
-    public static <T, V extends BaseVO> V getOneWithCondition(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
+    public static <T, V extends BaseVO<?>> V getOneWithCondition(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
         try {
             // 检查是否需要多表查询
             if (EnhancedVoFieldSelector.hasJoinQuery(voClass)) {
@@ -264,12 +264,12 @@ public class EnhancedQueryBuilder {
     /**
      * 单表单个查询 - 使用智能映射
      */
-    private static <T, V extends BaseVO> V getOneWithSingleTableQuery(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
+    private static <T, V extends BaseVO<?>> V getOneWithSingleTableQuery(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
         // 构建基础查询条件
         QueryWrapper<T> wrapper = QueryConditionBuilder.buildQueryWrapper(queryDTO);
         
         // 获取Mapper
-        EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service);
+        EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service, voClass);
         
         if (mapper == null) {
             // 基础查询
@@ -288,7 +288,7 @@ public class EnhancedQueryBuilder {
     /**
      * 多表单个查询
      */
-    private static <T, V extends BaseVO> V getOneWithMultiTableQuery(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
+    private static <T, V extends BaseVO<?>> V getOneWithMultiTableQuery(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
         // 构建多表查询SQL，添加 LIMIT 1
         String sql = MultiTableQueryBuilder.buildMultiTableSql(queryDTO, voClass);
         // 如果SQL中没有LIMIT，添加LIMIT 1
@@ -297,7 +297,7 @@ public class EnhancedQueryBuilder {
         }
         
         // 执行查询
-        EnhancedVoMapper<T, ?> mapper = getEnhancedVoMapper(service);
+        EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service, voClass);
         if (mapper == null) {
             // 如果Mapper没有实现EnhancedVoMapper，多表查询无法正常工作
             log.warn("Mapper {} 没有实现EnhancedVoMapper，多表查询可能无法正常工作", service.getBaseMapper().getClass().getSimpleName());
@@ -321,7 +321,7 @@ public class EnhancedQueryBuilder {
      * 聚合查询 - 支持VO映射
      * 使用 IService 的 list 方法
      */
-    public static <T, V extends BaseVO> AggregationPageResult<V> pageWithAggregation(IService<T> service, AggregationPageDTO pageDTO, Class<V> voClass) {
+    public static <T, V extends BaseVO<?>> AggregationPageResult<V> pageWithAggregation(IService<T> service, AggregationPageDTO pageDTO, Class<V> voClass) {
         try {
             // 构建基础查询条件
             QueryWrapper<T> wrapper = QueryConditionBuilder.buildQueryWrapper(pageDTO);
@@ -364,7 +364,7 @@ public class EnhancedQueryBuilder {
                 Page<Map<String, Object>> page = createMapPage(pageDTO);
                 
                 // 使用EnhancedVoMapper执行查询，实现智能映射
-                EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service);
+                EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service, voClass);
                 if (mapper == null) {
                     // 如果Mapper没有实现EnhancedVoMapper，使用基础查询
                     log.warn("Mapper {} 没有实现EnhancedVoMapper，使用基础查询", service.getBaseMapper().getClass().getSimpleName());
@@ -392,7 +392,7 @@ public class EnhancedQueryBuilder {
      * 分组查询 - 支持VO映射
      * 使用 IService 的 list 方法
      */
-    public static <T, V extends BaseVO> AggregationPageResult<V> pageWithGroupBy(IService<T> service, AggregationPageDTO pageDTO, Class<V> voClass) {
+    public static <T, V extends BaseVO<?>> AggregationPageResult<V> pageWithGroupBy(IService<T> service, AggregationPageDTO pageDTO, Class<V> voClass) {
         try {
             // 构建基础查询条件
             QueryWrapper<T> wrapper = QueryConditionBuilder.buildQueryWrapper(pageDTO);
@@ -434,7 +434,7 @@ public class EnhancedQueryBuilder {
      * 性能监控查询 - 支持VO映射
      * 返回查询执行时间和执行计划
      */
-    public static <T, V extends BaseVO> PerformancePageResult<V> pageWithPerformance(IService<T> service, PerformancePageDTO pageDTO, Class<V> voClass) {
+    public static <T, V extends BaseVO<?>> PerformancePageResult<V> pageWithPerformance(IService<T> service, PerformancePageDTO pageDTO, Class<V> voClass) {
         // 构建基础查询条件
         QueryWrapper<T> wrapper = QueryConditionBuilder.buildQueryWrapper(pageDTO);
         
@@ -450,7 +450,7 @@ public class EnhancedQueryBuilder {
      * 字段选择查询 - 支持VO映射
      * 支持指定返回字段，提高查询性能
      */
-    public static <T, V extends BaseVO> PerformancePageResult<V> pageWithSelectFields(IService<T> service, PerformancePageDTO pageDTO, Class<V> voClass) {
+    public static <T, V extends BaseVO<?>> PerformancePageResult<V> pageWithSelectFields(IService<T> service, PerformancePageDTO pageDTO, Class<V> voClass) {
         // 构建基础查询条件
         QueryWrapper<T> wrapper = QueryConditionBuilder.buildQueryWrapper(pageDTO);
         
@@ -483,7 +483,7 @@ public class EnhancedQueryBuilder {
      *             基于@VoMapping注解的方式更简洁、维护性更好
      */
     @Deprecated(since = "1.0.0", forRemoval = true)
-    public static <T, V extends BaseVO> PageResult<V> pageWithJoin(IService<T> service, JoinPageDTO pageDTO, Class<V> voClass) {
+    public static <T, V extends BaseVO<?>> PageResult<V> pageWithJoin(IService<T> service, JoinPageDTO pageDTO, Class<V> voClass) {
         try {
             // 构建基础查询条件
             QueryWrapper<T> wrapper = QueryConditionBuilder.buildQueryWrapper(pageDTO);
@@ -516,7 +516,7 @@ public class EnhancedQueryBuilder {
             Page<Map<String, Object>> page = createMapPage(pageDTO);
             
             // 使用EnhancedVoMapper执行查询，实现智能映射
-            EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service);
+            EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service, voClass);
             if (mapper == null) {
                 // 如果Mapper没有实现EnhancedVoMapper，使用基础查询
                 log.warn("Mapper {} 没有实现EnhancedVoMapper，使用基础查询", service.getBaseMapper().getClass().getSimpleName());
@@ -543,7 +543,7 @@ public class EnhancedQueryBuilder {
      * 复杂查询 - 支持VO映射
      * 支持自定义SQL查询
      */
-    public static <T, V extends BaseVO> PageResult<V> pageWithComplexQuery(IService<T> service, ComplexPageDTO pageDTO, Class<V> voClass) {
+    public static <T, V extends BaseVO<?>> PageResult<V> pageWithComplexQuery(IService<T> service, ComplexPageDTO pageDTO, Class<V> voClass) {
         try {
             // 构建基础查询条件
             QueryWrapper<T> wrapper = QueryConditionBuilder.buildQueryWrapper(pageDTO);
@@ -564,7 +564,7 @@ public class EnhancedQueryBuilder {
             Page<Map<String, Object>> page = createMapPage(pageDTO);
             
             // 使用EnhancedVoMapper执行查询，实现智能映射
-            EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service);
+            EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service, voClass);
             if (mapper == null) {
                 // 如果Mapper没有实现EnhancedVoMapper，使用基础查询
                 log.warn("Mapper {} 没有实现EnhancedVoMapper，使用基础查询", service.getBaseMapper().getClass().getSimpleName());
@@ -592,7 +592,7 @@ public class EnhancedQueryBuilder {
     /**
      * 增强查询（组合聚合和性能优化）- 支持VO映射
      */
-    public static <T, V extends BaseVO> EnhancedPageResult<V> pageWithEnhanced(IService<T> service, EnhancedPageDTO pageDTO, Class<V> voClass) {
+    public static <T, V extends BaseVO<?>> EnhancedPageResult<V> pageWithEnhanced(IService<T> service, EnhancedPageDTO pageDTO, Class<V> voClass) {
         try {
             long startTime = System.currentTimeMillis();
             
@@ -632,7 +632,7 @@ public class EnhancedQueryBuilder {
             Page<Map<String, Object>> page = createMapPage(pageDTO);
             
             // 使用EnhancedVoMapper执行查询，实现智能映射
-            EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service);
+            EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service, voClass);
             List<V> voList;
             long total;
             long current;
@@ -687,7 +687,7 @@ public class EnhancedQueryBuilder {
      * 快速分页查询 - 支持VO映射
      * 简化版分页查询，自动处理单表/多表查询
      */
-    public static <T, V extends BaseVO> PageResult<V> quickPage(IService<T> service, PageDTO pageDTO, Class<V> voClass) {
+    public static <T, V extends BaseVO<?>> PageResult<V> quickPage(IService<T> service, PageDTO pageDTO, Class<V> voClass) {
         return pageWithCondition(service, pageDTO, voClass);
     }
     
@@ -695,7 +695,7 @@ public class EnhancedQueryBuilder {
      * 快速列表查询 - 支持VO映射
      * 简化版列表查询，自动处理单表/多表查询
      */
-    public static <T, V extends BaseVO> List<V> quickList(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
+    public static <T, V extends BaseVO<?>> List<V> quickList(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
         return listWithCondition(service, queryDTO, voClass);
     }
     
@@ -703,7 +703,7 @@ public class EnhancedQueryBuilder {
      * 快速单个查询 - 支持VO映射
      * 简化版单个查询，自动处理单表/多表查询
      */
-    public static <T, V extends BaseVO> V quickGetOne(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
+    public static <T, V extends BaseVO<?>> V quickGetOne(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
         return getOneWithCondition(service, queryDTO, voClass);
     }
     
@@ -711,7 +711,7 @@ public class EnhancedQueryBuilder {
      * 统计查询 - 支持VO映射
      * 返回符合条件的记录数量
      */
-    public static <T, V extends BaseVO> Long countWithCondition(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
+    public static <T, V extends BaseVO<?>> Long countWithCondition(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
         try {
             // 构建基础查询条件
             QueryWrapper<T> wrapper = QueryConditionBuilder.buildQueryWrapper(queryDTO);
@@ -729,7 +729,7 @@ public class EnhancedQueryBuilder {
      * 存在性查询 - 支持VO映射
      * 检查是否存在符合条件的记录
      */
-    public static <T, V extends BaseVO> boolean existsWithCondition(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
+    public static <T, V extends BaseVO<?>> boolean existsWithCondition(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
         try {
             // 构建基础查询条件
             QueryWrapper<T> wrapper = QueryConditionBuilder.buildQueryWrapper(queryDTO);
@@ -749,7 +749,7 @@ public class EnhancedQueryBuilder {
      * 执行带性能监控的查询
      * 统一处理性能监控逻辑，减少重复代码
      */
-    private static <T, V extends BaseVO> PerformancePageResult<V> executeWithPerformanceMonitoring(
+    private static <T, V extends BaseVO<?>> PerformancePageResult<V> executeWithPerformanceMonitoring(
             IService<T> service, 
             QueryWrapper<T> wrapper, 
             PageDTO pageDTO, 
@@ -792,14 +792,14 @@ public class EnhancedQueryBuilder {
      * 统一的查询执行方法
      * 处理Mapper获取和查询执行逻辑
      */
-    private static <T, V extends BaseVO> PageResult<V> executeQuery(
+    private static <T, V extends BaseVO<?>> PageResult<V> executeQuery(
             IService<T> service, 
             QueryWrapper<T> wrapper, 
             PageDTO pageDTO, 
             Class<V> voClass) {
         
         // 获取Mapper
-        EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service);
+        EnhancedVoMapper<T, V> mapper = getEnhancedVoMapper(service, voClass);
         
         if (mapper == null) {
             // 基础查询
@@ -835,7 +835,7 @@ public class EnhancedQueryBuilder {
      * 支持父类字段映射
      * 支持@VoMapping.Field注解和@FieldMapping注解
      */
-    private static <V extends BaseVO> List<V> mapMapToVoList(List<Map<String, Object>> mapList, Class<V> voClass) {
+    private static <V extends BaseVO<?>> List<V> mapMapToVoList(List<Map<String, Object>> mapList, Class<V> voClass) {
         List<V> voList = new ArrayList<>();
         
         // 检查是否有@VoMapping注解
@@ -1284,9 +1284,11 @@ public class EnhancedQueryBuilder {
     /**
      * 安全获取EnhancedVoMapper，如果不存在则使用基础查询
      */
-    private static <T, V extends BaseVO> EnhancedVoMapper<T, V> getEnhancedVoMapper(IService<T> service) {
+    private static <T, V extends BaseVO<?>> EnhancedVoMapper<T, V> getEnhancedVoMapper(IService<T> service, Class<V> voClass) {
         BaseMapper<T> baseMapper = service.getBaseMapper();
+        // 由于类型擦除，instanceof 检查使用原始类型
         if (baseMapper instanceof EnhancedVoMapper) {
+            // 类型转换是安全的，因为 EnhancedVoMapper<T, V> 在运行时就是 EnhancedVoMapper
             return (EnhancedVoMapper<T, V>) baseMapper;
         } else {
             log.warn("Mapper {} 没有实现EnhancedVoMapper，将使用基础查询", baseMapper.getClass().getSimpleName());
@@ -1338,7 +1340,7 @@ public class EnhancedQueryBuilder {
      * }</pre>
      * 
      */
-    public static <T, V extends BaseVO> CompletableFuture<PageResult<V>> pageWithConditionAsync(
+    public static <T, V extends BaseVO<?>> CompletableFuture<PageResult<V>> pageWithConditionAsync(
             IService<T> service, PageDTO pageDTO, Class<V> voClass) {
         
         return CompletableFuture.supplyAsync(() -> {
@@ -1358,7 +1360,7 @@ public class EnhancedQueryBuilder {
      * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
      * 
      */
-    public static <T, V extends BaseVO> CompletableFuture<List<V>> listWithConditionAsync(
+    public static <T, V extends BaseVO<?>> CompletableFuture<List<V>> listWithConditionAsync(
             IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
         
         return CompletableFuture.supplyAsync(() -> {
@@ -1378,7 +1380,7 @@ public class EnhancedQueryBuilder {
      * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
      * 
      */
-    public static <T, V extends BaseVO> CompletableFuture<V> getOneWithConditionAsync(
+    public static <T, V extends BaseVO<?>> CompletableFuture<V> getOneWithConditionAsync(
             IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
         
         return CompletableFuture.supplyAsync(() -> {
@@ -1398,7 +1400,7 @@ public class EnhancedQueryBuilder {
      * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
      * 
      */
-    public static <T, V extends BaseVO> CompletableFuture<PerformancePageResult<V>> pageWithPerformanceAsync(
+    public static <T, V extends BaseVO<?>> CompletableFuture<PerformancePageResult<V>> pageWithPerformanceAsync(
             IService<T> service, PerformancePageDTO pageDTO, Class<V> voClass) {
         
         return CompletableFuture.supplyAsync(() -> {
@@ -1418,7 +1420,7 @@ public class EnhancedQueryBuilder {
      * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
      * 
      */
-    public static <T, V extends BaseVO> CompletableFuture<AggregationPageResult<V>> pageWithAggregationAsync(
+    public static <T, V extends BaseVO<?>> CompletableFuture<AggregationPageResult<V>> pageWithAggregationAsync(
             IService<T> service, AggregationPageDTO pageDTO, Class<V> voClass) {
         
         return CompletableFuture.supplyAsync(() -> {
@@ -1438,7 +1440,7 @@ public class EnhancedQueryBuilder {
      * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
      * 
      */
-    public static <T, V extends BaseVO> CompletableFuture<EnhancedPageResult<V>> pageWithEnhancedAsync(
+    public static <T, V extends BaseVO<?>> CompletableFuture<EnhancedPageResult<V>> pageWithEnhancedAsync(
             IService<T> service, EnhancedPageDTO pageDTO, Class<V> voClass) {
         
         return CompletableFuture.supplyAsync(() -> {
@@ -1458,7 +1460,7 @@ public class EnhancedQueryBuilder {
      * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
      * 
      */
-    public static <T, V extends BaseVO> CompletableFuture<Long> countWithConditionAsync(
+    public static <T, V extends BaseVO<?>> CompletableFuture<Long> countWithConditionAsync(
             IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
         
         return CompletableFuture.supplyAsync(() -> {
@@ -1478,7 +1480,7 @@ public class EnhancedQueryBuilder {
      * <p><strong>⚠️ 实验性功能</strong>：此方法目前处于实验阶段，API可能会在后续版本中调整。</p>
      * 
      */
-    public static <T, V extends BaseVO> CompletableFuture<Boolean> existsWithConditionAsync(
+    public static <T, V extends BaseVO<?>> CompletableFuture<Boolean> existsWithConditionAsync(
             IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
         
         return CompletableFuture.supplyAsync(() -> {

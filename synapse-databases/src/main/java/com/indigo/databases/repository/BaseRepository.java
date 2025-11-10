@@ -12,6 +12,8 @@ import com.indigo.core.entity.result.EnhancedPageResult;
 import com.indigo.core.entity.result.PageResult;
 import com.indigo.core.entity.result.PerformancePageResult;
 import com.indigo.core.entity.vo.BaseVO;
+import com.indigo.core.utils.ReflectionUtils;
+import com.indigo.databases.utils.EntityMapper;
 import com.indigo.databases.utils.EnhancedQueryBuilder;
 import com.indigo.databases.utils.QueryConditionBuilder;
 
@@ -664,4 +666,140 @@ public interface BaseRepository<T, M extends BaseMapper<T>> extends IService<T> 
     default <V extends BaseVO<?>> CompletableFuture<V> quickGetOneAsync(QueryDTO<?> queryDTO, Class<V> voClass) {
         return EnhancedQueryBuilder.getOneWithConditionAsync(this, queryDTO, voClass);
     }
+    
+    // ==================== DTO 到 Entity 映射方法 ====================
+    
+    /**
+     * 从 DTO 保存或更新实体（新增或更新）
+     * 自动判断是新增还是更新：
+     * - 如果 DTO 的 id 为空，执行新增（使用传入的 Class 创建实体实例）
+     * - 如果 DTO 的 id 不为空，先查询实体，再执行更新
+     * 
+     * <p><strong>注意</strong>：此方法的实际实现由 {@link com.indigo.databases.proxy.SqlMethodInterceptor} 处理。
+     * 由于使用了动态代理，此 default 方法实现不会被直接调用，仅作为接口定义和文档说明。</p>
+     * 
+     * <h3>使用示例：</h3>
+     * <pre>{@code
+     * // 在 Service 中使用
+     * AddOrModifyMenuDTO dto = new AddOrModifyMenuDTO();
+     * dto.setCode("MENU_001");
+     * dto.setName("菜单名称");
+     * 
+     * // 新增场景：传入实体 Class
+     * boolean result = iMenuService.saveOrUpdateFromDTO(dto, Menu.class);
+     * 
+     * // 更新场景：DTO 包含 id，自动执行更新
+     * dto.setId("123");
+     * boolean result = iMenuService.saveOrUpdateFromDTO(dto, Menu.class);
+     * }</pre>
+     * 
+     * @param dto DTO 对象（必须继承 BaseDTO）
+     * @param entityClass 实体类 Class（新增场景时用于创建实例，更新场景时忽略）
+     * @return 操作结果
+     * @throws IllegalArgumentException 如果实体类为 null 或无法创建实例
+     */
+    default boolean saveOrUpdateFromDTO(BaseDTO<?> dto, Class<T> entityClass) {
+        // 实际实现由 SqlMethodInterceptor 处理，此方法仅作为接口定义和备用实现
+        // 如果拦截器失效，此简化实现作为备用（通常不会执行）
+        if (dto == null) return false;
+        if (dto.getId() == null || String.valueOf(dto.getId()).trim().isEmpty()) {
+            return entityClass != null && saveFromDTO(dto, entityClass);
+        }
+        return updateFromDTO(dto);
+    }
+    
+
+    
+    /**
+     * 从 DTO 创建实体（仅新增）
+     * 使用传入的 Class 自动创建实体实例
+     * 
+     * <p><strong>注意</strong>：此方法的实际实现由 {@link com.indigo.databases.proxy.SqlMethodInterceptor} 处理。
+     * 由于使用了动态代理，此 default 方法实现不会被直接调用，仅作为接口定义和文档说明。</p>
+     * 
+     * <h3>使用示例：</h3>
+     * <pre>{@code
+     * // 传入实体 Class，框架自动创建实例
+     * boolean result = iMenuService.saveFromDTO(dto, Menu.class);
+     * }</pre>
+     * 
+     * @param dto DTO 对象
+     * @param entityClass 实体类 Class
+     * @return 操作结果
+     * @throws IllegalArgumentException 如果实体类为 null 或无法创建实例
+     */
+    default boolean saveFromDTO(BaseDTO<?> dto, Class<T> entityClass) {
+        // 实际实现由 SqlMethodInterceptor 处理，此方法仅作为接口定义和备用实现
+        // 如果拦截器失效，此简化实现作为备用（通常不会执行）
+        if (dto == null || entityClass == null) return false;
+        T entity = ReflectionUtils.createEntityInstance(entityClass);
+        return saveFromDTO(dto, entity);
+    }
+    
+    /**
+     * 从 DTO 创建实体（仅新增）
+     * 使用传入的实体实例
+     * 
+     * <h3>使用示例：</h3>
+     * <pre>{@code
+     * // 方式1：使用 Builder 模式
+     * Menu menu = Menu.builder().build();
+     * boolean result = iMenuService.saveFromDTO(dto, menu);
+     * 
+     * // 方式2：使用 EntityMapper 工具类
+     * Menu menu = Menu.builder().build();
+     * EntityMapper.copyFromDTO(dto, menu);
+     * boolean result = iMenuService.save(menu);
+     * }</pre>
+     * 
+     * @param dto DTO 对象
+     * @param entity 实体对象实例（已创建但未设置属性）
+     * @return 操作结果
+     */
+    default boolean saveFromDTO(BaseDTO<?> dto, T entity) {
+        if (dto == null || entity == null) {
+            return false;
+        }
+        
+        EntityMapper.copyFromDTO(dto, entity, EntityMapper.CopyMode.INSERT);
+        return save(entity);
+    }
+    
+    /**
+     * 从 DTO 更新实体（仅更新）
+     * 
+     * <p><strong>注意</strong>：此方法的实际实现由 {@link com.indigo.databases.proxy.SqlMethodInterceptor} 处理。
+     * 由于使用了动态代理，此 default 方法实现不会被直接调用，仅作为接口定义和文档说明。</p>
+     * 
+     * <h3>使用示例：</h3>
+     * <pre>{@code
+     * // 自动查询实体并更新
+     * boolean result = iMenuService.updateFromDTO(dto);
+     * 
+     * // 等价于：
+     * Menu menu = iMenuService.getById(dto.getId());
+     * if (menu != null) {
+     *     EntityMapper.copyFromDTOForUpdate(dto, menu);
+     *     iMenuService.updateById(menu);
+     * }
+     * }</pre>
+     * 
+     * @param dto DTO 对象（必须包含 id）
+     * @return 操作结果
+     * @throws IllegalArgumentException 如果 DTO id 为空或实体不存在
+     */
+    default boolean updateFromDTO(BaseDTO<?> dto) {
+        // 实际实现由 SqlMethodInterceptor 处理，此方法仅作为接口定义和备用实现
+        // 如果拦截器失效，此简化实现作为备用（通常不会执行）
+        if (dto == null || dto.getId() == null) {
+            throw new IllegalArgumentException("DTO id cannot be null for update operation");
+        }
+        T entity = getById((java.io.Serializable) dto.getId());
+        if (entity == null) {
+            throw new IllegalArgumentException("Entity not found with id: " + dto.getId());
+        }
+        EntityMapper.copyFromDTOForUpdate(dto, entity);
+        return updateById(entity);
+    }
+
 } 

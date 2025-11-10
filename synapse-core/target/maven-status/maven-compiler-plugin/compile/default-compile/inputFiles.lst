@@ -18,6 +18,8 @@
 /Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/dto/PageDTO.java
 /Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/exception/SynapseException.java
 /Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/constants/BaseErrCode.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/annotation/VoMapping.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/annotation/IgnoreOnCopy.java
 /Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/i18n/LocaleContext.java
 /Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/vo/BaseVO.java
 /Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/TreeNode.java
@@ -25,6 +27,7 @@
 /Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/dto/page/PerformancePageDTO.java
 /Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/result/PageResult.java
 /Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/Result.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/utils/ReflectionUtils.java
 /Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/exception/BaseException.java
 /Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/config/ThreadPoolConfig.java
 /Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/result/AggregationPageResult.java

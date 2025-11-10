@@ -7,8 +7,6 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 import lombok.experimental.SuperBuilder;
 
-import java.util.List;
-
 /**
  * 基础分页查询DTO
  *

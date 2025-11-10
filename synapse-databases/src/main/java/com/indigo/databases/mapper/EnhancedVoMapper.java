@@ -17,7 +17,7 @@ import java.util.Map;
  * @author 史偕成
  * @date 2025/12/19
  */
-public interface EnhancedVoMapper<T, V extends BaseVO> extends BaseMapper<T> {
+public interface EnhancedVoMapper<T, V extends BaseVO<?>> extends BaseMapper<T> {
     
     /**
      * 分页查询 - 直接映射到VO（支持多表关联）

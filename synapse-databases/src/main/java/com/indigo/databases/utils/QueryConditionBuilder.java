@@ -9,7 +9,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -92,13 +94,15 @@ public class QueryConditionBuilder {
 
     /**
      * 添加实体类字段的查询条件
+     * 支持处理父类字段（包括继承的字段）
      */
     private static <T> void addEntityConditions(QueryWrapper<T> wrapper, Object entity) {
         try {
             Class<?> entityClass = entity.getClass();
-            Field[] fields = entityClass.getDeclaredFields();
+            // 获取所有字段（包括父类字段）
+            List<Field> allFields = getAllFields(entityClass);
             
-            for (Field field : fields) {
+            for (Field field : allFields) {
                 QueryCondition annotation = field.getAnnotation(QueryCondition.class);
                 if (annotation != null) {
                     field.setAccessible(true);
@@ -112,6 +116,48 @@ public class QueryConditionBuilder {
         } catch (Exception e) {
             log.error("构建实体查询条件失败", e);
         }
+    }
+    
+    /**
+     * 获取类及其所有父类的字段（包括继承的字段）
+     * 
+     * @param clazz 类
+     * @return 所有字段列表
+     */
+    private static List<Field> getAllFields(Class<?> clazz) {
+        List<Field> fields = new ArrayList<>();
+        Class<?> currentClass = clazz;
+        
+        // 递归获取所有父类的字段
+        while (currentClass != null && currentClass != Object.class) {
+            Field[] declaredFields = currentClass.getDeclaredFields();
+            for (Field field : declaredFields) {
+                // 避免重复添加（虽然理论上不会重复，但为了安全）
+                if (!containsField(fields, field)) {
+                    fields.add(field);
+                }
+            }
+            currentClass = currentClass.getSuperclass();
+        }
+        
+        return fields;
+    }
+    
+    /**
+     * 检查字段列表中是否已包含指定字段
+     * 
+     * @param fields 字段列表
+     * @param field 要检查的字段
+     * @return 是否已包含
+     */
+    private static boolean containsField(List<Field> fields, Field field) {
+        for (Field f : fields) {
+            if (f.getName().equals(field.getName()) && 
+                f.getDeclaringClass().equals(field.getDeclaringClass())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

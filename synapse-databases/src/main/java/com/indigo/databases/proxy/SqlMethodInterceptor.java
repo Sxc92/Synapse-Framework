@@ -1,31 +1,33 @@
 package com.indigo.databases.proxy;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.indigo.core.entity.dto.BaseDTO;
 import com.indigo.core.entity.dto.PageDTO;
 import com.indigo.core.entity.dto.QueryDTO;
-import com.indigo.core.entity.dto.page.*;
+import com.indigo.core.entity.dto.page.AggregationPageDTO;
+import com.indigo.core.entity.dto.page.ComplexPageDTO;
+import com.indigo.core.entity.dto.page.EnhancedPageDTO;
+import com.indigo.core.entity.dto.page.PerformancePageDTO;
 import com.indigo.core.entity.vo.BaseVO;
-import com.indigo.databases.utils.EnhancedQueryBuilder;
+import com.indigo.core.utils.ReflectionUtils;
 import com.indigo.databases.repository.BaseRepository;
+import com.indigo.databases.utils.EntityMapper;
+import com.indigo.databases.utils.EnhancedQueryBuilder;
 import com.indigo.databases.utils.QueryConditionBuilder;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
-import jakarta.annotation.PostConstruct;
-
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
-import java.util.Arrays;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.Arrays;
 import java.util.Optional;
 
 /**
@@ -67,6 +69,34 @@ public class SqlMethodInterceptor implements InvocationHandler {
             if (method.getDeclaringClass() == Object.class) {
                 return method.invoke(this, args);
             }
+            
+            // ⚠️ 关键：在 Debug 模式下，IDE 可能会检查 default 方法，导致 JVM 断言失败
+            // 必须在最早的地方拦截非 BaseRepository 的 default 方法
+            if (method.isDefault()) {
+                // 检查是否是 BaseRepository 中定义的 default 方法
+                Class<?> declaringClass = method.getDeclaringClass();
+                boolean isBaseRepositoryMethod = false;
+                try {
+                    BaseRepository.class.getMethod(method.getName(), method.getParameterTypes());
+                    isBaseRepositoryMethod = true;
+                } catch (NoSuchMethodException e) {
+                    // 方法不在 BaseRepository 中定义
+                }
+                
+                // 如果不是 BaseRepository 的方法，立即抛出异常，避免任何可能触发 JVM 断言的操作
+                if (!isBaseRepositoryMethod && !BaseRepository.class.equals(declaringClass)) {
+                    throw new UnsupportedOperationException(
+                        String.format("不支持在 Repository 接口中定义 default 方法 %s(%s)。" +
+                            "\n推荐方式：在 Mapper 接口中定义方法，然后通过 getMapper() 调用。" +
+                            "\n示例：在 Mapper 中定义 %s(%s) 方法，然后使用 repository.getMapper().%s(...) 调用",
+                            method.getName(),
+                            java.util.Arrays.toString(method.getParameterTypes()),
+                            method.getName(),
+                            java.util.Arrays.toString(method.getParameterTypes()),
+                            method.getName()));
+                }
+            }
+            
             // 检查是否是BaseRepository的方法
             if (isBaseRepositoryMethod(method)) {
                 return handleBaseRepositoryMethod(proxy, method, args);
@@ -75,14 +105,36 @@ public class SqlMethodInterceptor implements InvocationHandler {
             if (isMapperMethod(method)) {
                 return callMapperMethod(method, args);
             }
-            // 如果没有SQL注解，尝试调用默认实现
-            if (method.isDefault()) {
-                return method.invoke(proxy, args);
-            }
             // 如果既没有SQL注解也不是默认方法，抛出异常
             throw new UnsupportedOperationException(
-                    "Method " + method.getName() + " has no default implementation"
+                    "Method " + method.getName() + " has no default implementation. " +
+                    "Please define the method in Mapper interface and call it via getMapper()."
             );
+        } catch (UnsupportedOperationException e) {
+            // 重新抛出 UnsupportedOperationException，不包装
+            throw e;
+        } catch (AssertionError e) {
+            // 捕获 JVM 断言失败（通常在 Debug 模式下触发）
+            // 这通常是因为尝试调用 default 方法导致的
+            if (method.isDefault()) {
+                log.error("JVM 断言失败：检测到 default 方法调用 {}。这通常发生在 Debug 模式下。" +
+                    "请确保 Repository 接口中没有定义 default 方法。", method.getName());
+                throw new UnsupportedOperationException(
+                    String.format("""
+                                    不支持在 Repository 接口中定义 default 方法 %s(%s)。\
+                                    
+                                    推荐方式：在 Mapper 接口中定义方法，然后通过 getMapper() 调用。\
+                                    
+                                    示例：在 Mapper 中定义 %s(%s) 方法，然后使用 repository.getMapper().%s(...) 调用""",
+                        method.getName(),
+                        Arrays.toString(method.getParameterTypes()),
+                        method.getName(),
+                        Arrays.toString(method.getParameterTypes()),
+                        method.getName()),
+                    e);
+            }
+            // 如果不是 default 方法导致的断言失败，重新抛出
+            throw e;
         } catch (Exception e) {
             log.error("Critical error invoking method: {}", method.getName(), e);
             // 重新抛出原始异常，不要包装
@@ -231,24 +283,71 @@ public class SqlMethodInterceptor implements InvocationHandler {
     }
 
     /**
+     * 创建 Service 实例并执行 EnhancedQueryBuilder 方法（辅助方法，消除重复代码）
+     * 
+     * @param proxy 代理对象
+     * @param mapper Mapper 实例
+     * @param queryDTO 查询DTO
+     * @param voClass VO类型
+     * @param queryExecutor 查询执行器（接收 service 和 voClass，返回查询结果）
+     * @return 查询结果
+     */
+    @SuppressWarnings("unchecked")
+    private Object executeEnhancedQuery(Object proxy, Object mapper, Object queryDTO, Class<?> voClass, 
+                                        java.util.function.BiFunction<IService<?>, Class<? extends BaseVO>, Object> queryExecutor) {
+        var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
+        return queryExecutor.apply((IService<?>) service, (Class<? extends BaseVO>) voClass);
+    }
+
+    /**
      * 处理BaseRepository的方法
      */
     private Object handleBaseRepositoryMethod(Object proxy, Method method, Object[] args) throws Exception {
         log.info("Handling BaseRepository method: {}", method.getName());
         log.info("Method isDefault: {}, declaringClass: {}", method.isDefault(), method.getDeclaringClass().getName());
 
-        // 特殊处理getBaseMapper方法
+        // 特殊处理getBaseMapper和getMapper方法
         if ("getBaseMapper".equals(method.getName())) {
             return handleGetBaseMapper(proxy);
+        }
+        
+        // 特殊处理getMapper方法（BaseRepository中定义的方法）
+        if ("getMapper".equals(method.getName())) {
+            return handleGetMapper(proxy);
         }
 
         // 处理default方法
         if (method.isDefault()) {
-            log.info("Calling default method: {} with args: {}", method.getName(), args);
-
-
-            // 对于其他default方法，我们需要直接执行其实现逻辑，而不是通过代理调用
-            return executeDefaultMethod(proxy, method, args);
+            // 检查是否是 BaseRepository 中定义的 default 方法
+            Class<?> declaringClass = method.getDeclaringClass();
+            boolean isBaseRepositoryMethod = false;
+            try {
+                BaseRepository.class.getMethod(method.getName(), method.getParameterTypes());
+                isBaseRepositoryMethod = true;
+            } catch (NoSuchMethodException e) {
+                // 方法不在 BaseRepository 中定义
+            }
+            
+            // 如果是 BaseRepository 中定义的 default 方法，正常处理
+            if (isBaseRepositoryMethod || BaseRepository.class.equals(declaringClass)) {
+                log.info("Calling BaseRepository default method: {} with args: {}", method.getName(), args);
+                return executeDefaultMethod(proxy, method, args);
+            }
+            
+            // 如果是 Repository 接口中自定义的 default 方法，直接抛出异常，避免 JVM 断言失败
+            log.warn("检测到 Repository 接口中自定义的 default 方法: {}，不再支持", method.getName());
+            throw new UnsupportedOperationException(
+                String.format("""
+                                不支持在 Repository 接口中定义 default 方法 %s(%s)。\
+                                
+                                推荐方式：在 Mapper 接口中定义方法，然后通过 getMapper() 调用。\
+                                
+                                示例：在 Mapper 中定义 %s(%s) 方法，然后使用 repository.getMapper().%s(...) 调用""",
+                    method.getName(),
+                    java.util.Arrays.toString(method.getParameterTypes()),
+                    method.getName(),
+                    java.util.Arrays.toString(method.getParameterTypes()),
+                    method.getName()));
         }
 
         // 对于非default方法（如IService的方法），直接调用IService实现
@@ -287,9 +386,11 @@ public class SqlMethodInterceptor implements InvocationHandler {
                         // BaseRepository default 方法处理
                         case "pageWithCondition" -> {
                             if (args.length == 1 && args[0] instanceof PageDTO<?> queryDTO) {
-                                yield EnhancedQueryBuilder.pageWithCondition((IService<?>) createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper), queryDTO);
+                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
+                                yield EnhancedQueryBuilder.pageWithCondition((IService<?>) service, queryDTO);
                             } else if (args.length == 2 && args[0] instanceof PageDTO<?> queryDTO && args[1] instanceof Class<?> voClass) {
-                                yield EnhancedQueryBuilder.pageWithCondition((IService<?>) createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper), queryDTO, (Class<? extends BaseVO>) voClass);
+                                yield executeEnhancedQuery(proxy, mapper, queryDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.pageWithCondition(service, (PageDTO<?>) queryDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for pageWithCondition");
                         }
@@ -299,7 +400,8 @@ public class SqlMethodInterceptor implements InvocationHandler {
                                 var wrapper = QueryConditionBuilder.buildQueryWrapper(args[0]);
                                 yield callIServiceMethod(proxy, "list", new Object[]{wrapper});
                             } else if (args.length == 2 && args[1] instanceof Class<?> voClass) {
-                                yield EnhancedQueryBuilder.listWithCondition((IService<?>) createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper), (QueryDTO) args[0], (Class<? extends BaseVO>) voClass);
+                                yield executeEnhancedQuery(proxy, mapper, args[0], voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.listWithCondition(service, (QueryDTO<?>) args[0], vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for " + methodName);
                         }
@@ -309,7 +411,8 @@ public class SqlMethodInterceptor implements InvocationHandler {
                                 var wrapper = QueryConditionBuilder.buildQueryWrapper(args[0]);
                                 yield callIServiceMethod(proxy, "getOne", new Object[]{wrapper});
                             } else if (args.length == 2 && args[1] instanceof Class<?> voClass) {
-                                yield EnhancedQueryBuilder.getOneWithCondition((IService<?>) createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper), (QueryDTO) args[0], (Class<? extends BaseVO>) voClass);
+                                yield executeEnhancedQuery(proxy, mapper, args[0], voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.getOneWithCondition(service, (QueryDTO<?>) args[0], vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for " + methodName);
                         }
@@ -324,187 +427,187 @@ public class SqlMethodInterceptor implements InvocationHandler {
 
                         // 增强查询方法
                         case "pageWithAggregation" -> {
-                            if (args.length == 2 && args[0] instanceof AggregationPageDTO queryDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.pageWithAggregation((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof AggregationPageDTO<?> queryDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, queryDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.pageWithAggregation(service, (AggregationPageDTO<?>) queryDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for pageWithAggregation - requires AggregationPageDTO and VO class");
                         }
 
                         case "pageWithGroupBy" -> {
-                            if (args.length == 2 && args[0] instanceof AggregationPageDTO queryDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.pageWithGroupBy((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof AggregationPageDTO<?> queryDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, queryDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.pageWithGroupBy(service, (AggregationPageDTO<?>) queryDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for pageWithGroupBy - requires AggregationPageDTO and VO class");
                         }
 
                         case "pageWithPerformance" -> {
-                            if (args.length == 2 && args[0] instanceof PerformancePageDTO queryDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.pageWithPerformance((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof PerformancePageDTO<?> queryDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, queryDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.pageWithPerformance(service, (PerformancePageDTO<?>) queryDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for pageWithPerformance - requires PerformancePageDTO and VO class");
                         }
 
                         case "pageWithSelectFields" -> {
-                            if (args.length == 2 && args[0] instanceof PerformancePageDTO queryDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.pageWithSelectFields((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof PerformancePageDTO<?> queryDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, queryDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.pageWithSelectFields(service, (PerformancePageDTO<?>) queryDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for pageWithSelectFields - requires PerformancePageDTO and VO class");
                         }
 
                         case "pageWithVoMapping" -> {
-                            if (args.length == 2 && args[0] instanceof PageDTO queryDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.pageWithCondition((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof PageDTO<?> queryDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, queryDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.pageWithCondition(service, (PageDTO<?>) queryDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for pageWithVoMapping");
                         }
 
                         case "listWithVoMapping" -> {
-                            if (args.length == 2 && args[0] instanceof QueryDTO queryDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.listWithCondition((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof QueryDTO<?> queryDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, queryDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.listWithCondition(service, (QueryDTO<?>) queryDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for listWithVoMapping");
                         }
 
                         case "getOneWithVoMapping" -> {
-                            if (args.length == 2 && args[0] instanceof QueryDTO queryDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.getOneWithCondition((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof QueryDTO<?> queryDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, queryDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.getOneWithCondition(service, (QueryDTO<?>) queryDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for getOneWithVoMapping");
                         }
 
                         case "pageWithComplexQuery" -> {
-                            if (args.length == 2 && args[0] instanceof ComplexPageDTO queryDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.pageWithComplexQuery((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof ComplexPageDTO<?> queryDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, queryDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.pageWithComplexQuery(service, (ComplexPageDTO<?>) queryDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for pageWithComplexQuery - requires ComplexPageDTO and VO class");
                         }
 
                         case "pageWithEnhanced" -> {
-                            if (args.length == 2 && args[0] instanceof EnhancedPageDTO queryDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.pageWithEnhanced((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof EnhancedPageDTO<?> queryDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, queryDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.pageWithEnhanced(service, (EnhancedPageDTO<?>) queryDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for pageWithEnhanced - requires EnhancedPageDTO and VO class");
                         }
 
                         // 便捷查询方法
                         case "quickPage" -> {
-                            if (args.length == 2 && args[0] instanceof PageDTO pageDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.quickPage((IService<?>) service, pageDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof PageDTO<?> pageDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, pageDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.quickPage(service, (PageDTO<?>) pageDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for quickPage");
                         }
 
                         case "quickList" -> {
-                            if (args.length == 2 && args[0] instanceof QueryDTO queryDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.quickList((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof QueryDTO<?> queryDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, queryDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.quickList(service, (QueryDTO<?>) queryDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for quickList");
                         }
 
                         case "quickGetOne" -> {
-                            if (args.length == 2 && args[0] instanceof QueryDTO queryDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.quickGetOne((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof QueryDTO<?> queryDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, queryDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.quickGetOne(service, (QueryDTO<?>) queryDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for quickGetOne");
                         }
 
                         // 异步查询方法
                         case "pageWithConditionAsync" -> {
-                            if (args.length == 2 && args[0] instanceof PageDTO pageDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.pageWithConditionAsync((IService<?>) service, pageDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof PageDTO<?> pageDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, pageDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.pageWithConditionAsync(service, (PageDTO<?>) pageDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for pageWithConditionAsync");
                         }
 
                         case "listWithConditionAsync" -> {
-                            if (args.length == 2 && args[0] instanceof QueryDTO queryDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.listWithConditionAsync((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof QueryDTO<?> queryDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, queryDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.listWithConditionAsync(service, (QueryDTO<?>) queryDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for listWithConditionAsync");
                         }
 
                         case "getOneWithConditionAsync" -> {
-                            if (args.length == 2 && args[0] instanceof QueryDTO queryDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.getOneWithConditionAsync((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof QueryDTO<?> queryDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, queryDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.getOneWithConditionAsync(service, (QueryDTO<?>) queryDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for getOneWithConditionAsync");
                         }
 
                         case "pageWithPerformanceAsync" -> {
-                            if (args.length == 2 && args[0] instanceof PerformancePageDTO pageDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.pageWithPerformanceAsync((IService<?>) service, pageDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof PerformancePageDTO<?> pageDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, pageDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.pageWithPerformanceAsync(service, (PerformancePageDTO<?>) pageDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for pageWithPerformanceAsync");
                         }
 
                         case "pageWithAggregationAsync" -> {
-                            if (args.length == 2 && args[0] instanceof AggregationPageDTO pageDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.pageWithAggregationAsync((IService<?>) service, pageDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof AggregationPageDTO<?> pageDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, pageDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.pageWithAggregationAsync(service, (AggregationPageDTO<?>) pageDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for pageWithAggregationAsync");
                         }
 
                         case "pageWithEnhancedAsync" -> {
-                            if (args.length == 2 && args[0] instanceof EnhancedPageDTO pageDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.pageWithEnhancedAsync((IService<?>) service, pageDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof EnhancedPageDTO<?> pageDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, pageDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.pageWithEnhancedAsync(service, (EnhancedPageDTO<?>) pageDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for pageWithEnhancedAsync");
                         }
 
                         case "countWithConditionAsync" -> {
-                            if (args.length == 2 && args[0] instanceof QueryDTO queryDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.countWithConditionAsync((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof QueryDTO<?> queryDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, queryDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.countWithConditionAsync(service, (QueryDTO<?>) queryDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for countWithConditionAsync");
                         }
 
                         case "existsWithConditionAsync" -> {
-                            if (args.length == 2 && args[0] instanceof QueryDTO queryDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.existsWithConditionAsync((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof QueryDTO<?> queryDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, queryDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.existsWithConditionAsync(service, (QueryDTO<?>) queryDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for existsWithConditionAsync");
                         }
 
                         case "quickPageAsync" -> {
-                            if (args.length == 2 && args[0] instanceof PageDTO pageDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.pageWithConditionAsync((IService<?>) service, pageDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof PageDTO<?> pageDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, pageDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.pageWithConditionAsync(service, (PageDTO<?>) pageDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for quickPageAsync");
                         }
 
                         case "quickListAsync" -> {
-                            if (args.length == 2 && args[0] instanceof QueryDTO queryDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.listWithConditionAsync((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof QueryDTO<?> queryDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, queryDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.listWithConditionAsync(service, (QueryDTO<?>) queryDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for quickListAsync");
                         }
 
                         case "quickGetOneAsync" -> {
-                            if (args.length == 2 && args[0] instanceof QueryDTO queryDTO && args[1] instanceof Class<?> voClass) {
-                                var service = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
-                                yield EnhancedQueryBuilder.getOneWithConditionAsync((IService<?>) service, queryDTO, (Class<? extends BaseVO>) voClass);
+                            if (args.length == 2 && args[0] instanceof QueryDTO<?> queryDTO && args[1] instanceof Class<?> voClass) {
+                                yield executeEnhancedQuery(proxy, mapper, queryDTO, voClass, 
+                                    (service, vo) -> EnhancedQueryBuilder.getOneWithConditionAsync(service, (QueryDTO<?>) queryDTO, vo));
                             }
                             throw new UnsupportedOperationException("Invalid arguments for quickGetOneAsync");
                         }
@@ -530,9 +633,8 @@ public class SqlMethodInterceptor implements InvocationHandler {
                                     log.debug("Processing arg: type={}, value={}", 
                                              arg != null ? arg.getClass().getName() : "null", arg);
                                     
-                                    if (arg instanceof String[]) {
+                                    if (arg instanceof String[] stringArray) {
                                         // 如果参数本身就是String[]，直接添加
-                                        String[] stringArray = (String[]) arg;
                                         log.debug("Arg is String[], adding {} elements", stringArray.length);
                                         keyFieldsList.addAll(java.util.Arrays.asList(stringArray));
                                     } else {
@@ -582,9 +684,8 @@ public class SqlMethodInterceptor implements InvocationHandler {
                                             String actualFieldName;
                                             if (fieldItem instanceof String) {
                                                 actualFieldName = (String) fieldItem;
-                                            } else if (fieldItem instanceof String[]) {
+                                            } else if (fieldItem instanceof String[] array) {
                                                 // 如果fieldItem是String[]，取第一个元素
-                                                String[] array = (String[]) fieldItem;
                                                 actualFieldName = array.length > 0 ? array[0] : "";
                                                 log.warn("Field item was String[], extracting first element: '{}'", actualFieldName);
                                             } else {
@@ -652,11 +753,155 @@ public class SqlMethodInterceptor implements InvocationHandler {
                             throw new UnsupportedOperationException("Invalid arguments for checkKeyUniqueness");
                         }
 
-                        default ->
-                                throw new UnsupportedOperationException("Default method not implemented: " + methodName);
+                        // DTO 操作方法
+                        case "saveOrUpdateFromDTO" -> {
+                            if (args.length == 2 && args[0] instanceof BaseDTO<?> dto && args[1] instanceof Class<?> entityClass) {
+                                // 判断是新增还是更新
+                                if (dto.getId() == null || String.valueOf(dto.getId()).trim().isEmpty()) {
+                                    // 新增场景：使用传入的 Class 创建实体实例
+                                    var serviceObj = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
+                                    IService<Object> service = (IService<Object>) serviceObj;
+                                    
+                                    // 创建实体实例
+                                    Object entity = ReflectionUtils.createEntityInstance((Class<?>) entityClass);
+                                    
+                                    // 从 DTO 复制属性到实体（新增模式）
+                                    EntityMapper.copyFromDTO(dto, entity, EntityMapper.CopyMode.INSERT);
+                                    
+                                    // 使用 MyBatis-Plus 的 save 方法
+                                    yield service.save((Object) entity);
+                                } else {
+                                    // 更新场景：自动查询实体并更新
+                                    var serviceObj = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
+                                    IService<Object> service = (IService<Object>) serviceObj;
+                                    
+                                    // 查询实体
+                                    Object entity = service.getById((java.io.Serializable) dto.getId());
+                                    if (entity == null) {
+                                        throw new IllegalArgumentException("Entity not found with id: " + dto.getId());
+                                    }
+                                    
+                                    // 从 DTO 复制属性到实体（更新模式）
+                                    EntityMapper.copyFromDTOForUpdate(dto, entity);
+                                    
+                                    // 使用 MyBatis-Plus 的 updateById 方法
+                                    yield service.updateById((Object) entity);
+                                }
+                            }
+                            throw new UnsupportedOperationException("Invalid arguments for saveOrUpdateFromDTO - requires BaseDTO and Class");
+                        }
+
+                        case "saveFromDTO" -> {
+                            if (args.length == 2 && args[0] instanceof BaseDTO<?> dto && args[1] instanceof Class<?> entityClass) {
+                                // 创建实体实例
+                                var serviceObj = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
+                                IService<Object> service = (IService<Object>) serviceObj;
+                                
+                                Object entity = ReflectionUtils.createEntityInstance((Class<?>) entityClass);
+                                
+                                // 从 DTO 复制属性到实体（新增模式）
+                                EntityMapper.copyFromDTO(dto, entity, EntityMapper.CopyMode.INSERT);
+                                
+                                // 使用 MyBatis-Plus 的 save 方法
+                                yield service.save((Object) entity);
+                            } else if (args.length == 2 && args[0] instanceof BaseDTO<?> dto && args[1] != null) {
+                                // 使用传入的实体实例
+                                var serviceObj = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
+                                IService<Object> service = (IService<Object>) serviceObj;
+                                
+                                Object entity = args[1];
+                                
+                                // 从 DTO 复制属性到实体（新增模式）
+                                EntityMapper.copyFromDTO(dto, entity, EntityMapper.CopyMode.INSERT);
+                                
+                                // 使用 MyBatis-Plus 的 save 方法
+                                yield service.save((Object) entity);
+                            }
+                            throw new UnsupportedOperationException("Invalid arguments for saveFromDTO - requires BaseDTO and Class or Entity instance");
+                        }
+
+                        case "updateFromDTO" -> {
+                            if (args.length == 1 && args[0] instanceof BaseDTO<?> dto) {
+                                if (dto.getId() == null) {
+                                    throw new IllegalArgumentException("DTO id cannot be null for update operation");
+                                }
+                                
+                                var serviceObj = createServiceImplWithReflection(getEntityClass(proxy), getMapperClass(proxy), mapper);
+                                IService<Object> service = (IService<Object>) serviceObj;
+                                
+                                // 查询实体
+                                Object entity = service.getById((java.io.Serializable) dto.getId());
+                                if (entity == null) {
+                                    throw new IllegalArgumentException("Entity not found with id: " + dto.getId());
+                                }
+                                
+                                // 从 DTO 复制属性到实体（更新模式）
+                                EntityMapper.copyFromDTOForUpdate(dto, entity);
+                                
+                                // 使用 MyBatis-Plus 的 updateById 方法
+                                yield service.updateById((Object) entity);
+                            }
+                            throw new UnsupportedOperationException("Invalid arguments for updateFromDTO - requires BaseDTO with id");
+                        }
+
+                        default -> {
+                            // 检查方法是否在 Repository 接口中定义（而不是在 BaseRepository 中）
+                            // 如果是 Repository 接口中自定义的 default 方法，直接调用其默认实现
+                            Class<?> declaringClass = method.getDeclaringClass();
+                            
+                            // 检查方法是否在 BaseRepository 中定义
+                            boolean isInBaseRepository = false;
+                            try {
+                                BaseRepository.class.getMethod(methodName, method.getParameterTypes());
+                                isInBaseRepository = true;
+                            } catch (NoSuchMethodException e) {
+                                // 方法不在 BaseRepository 中定义
+                            }
+                            
+                            // 如果方法不在 BaseRepository 中定义，且声明类是接口
+                            // 说明是 Repository 接口中自定义的方法
+                            if (!isInBaseRepository && declaringClass.isInterface() && 
+                                !BaseRepository.class.equals(declaringClass)) {
+                                // 不再支持 default 方法，避免 JVM 断言失败
+                                // 推荐方式：在 Mapper 中定义方法，通过 getMapper() 调用
+                                throw new UnsupportedOperationException(
+                                    String.format("""
+                                                    不支持在 Repository 接口中定义 default 方法 %s(%s)。\
+                                                    
+                                                    推荐方式：在 Mapper 接口中定义方法，然后通过 getMapper() 调用。\
+                                                    
+                                                    示例：在 %s 中定义 %s(%s) 方法，然后使用 repository.getMapper().%s(...) 调用""",
+                                        methodName,
+                                        java.util.Arrays.toString(method.getParameterTypes()),
+                                            mapper.getClass().getSimpleName(),
+                                        methodName,
+                                        java.util.Arrays.toString(method.getParameterTypes()),
+                                        methodName));
+                            }
+                            // 如果是在 BaseRepository 中定义但未实现的方法，抛出异常
+                            throw new UnsupportedOperationException("Default method not implemented: " + methodName);
+                        }
                     };
                 }
             }
+        }
+
+        // 不再支持 default 方法，避免 JVM 断言失败
+        // 如果方法不在 BaseRepository 的泛型接口中，且是 default 方法，抛出异常
+        Class<?> declaringClass = method.getDeclaringClass();
+        if (declaringClass.isInterface() && method.isDefault()) {
+            throw new UnsupportedOperationException(
+                String.format("""
+                                不支持在 Repository 接口中定义 default 方法 %s(%s)。\
+                                
+                                推荐方式：在 Mapper 接口中定义方法，然后通过 getMapper() 调用。\
+                                
+                                示例：在 Mapper 中定义 %s(%s) 方法，然后使用 repository.getMapper().%s(...) 调用""",
+                    methodName,
+                    Arrays.toString(method.getParameterTypes()),
+                    methodName,
+                    Arrays.toString(method.getParameterTypes()),
+                    methodName));
         }
 
         throw new UnsupportedOperationException("Default method not implemented: " + methodName);
@@ -716,6 +961,14 @@ public class SqlMethodInterceptor implements InvocationHandler {
             }
         }
         throw new RuntimeException("Cannot resolve Mapper for getBaseMapper method");
+    }
+    
+    /**
+     * 处理getMapper方法（BaseRepository中定义的方法）
+     */
+    private Object handleGetMapper(Object proxy) throws Exception {
+        // getMapper 和 getBaseMapper 逻辑相同，都是返回 Mapper 实例
+        return handleGetBaseMapper(proxy);
     }
 
     /**
@@ -830,38 +1083,33 @@ public class SqlMethodInterceptor implements InvocationHandler {
                  fieldNameParam != null ? fieldNameParam.getClass().getName() : "null",
                  fieldNameParam);
                  
-        if (fieldNameParam instanceof String[]) {
+        if (fieldNameParam instanceof String[] fieldArray) {
             // 如果本身就是String[]，直接使用
-            String[] fieldArray = (String[]) fieldNameParam;
             log.debug("fieldNameParam is String[], returning: {}", Arrays.toString(fieldArray));
             
             // 但我们需要确保返回的数组中每个元素都是String，而不是String[]
             for (int i = 0; i < fieldArray.length; i++) {
                 Object item = fieldArray[i];
-                if (!(item instanceof String)) {
+                if (item == null) {
                     log.error("String[] contains non-String element at index {}: class={}, value={}", 
-                             i, item != null ? item.getClass().getName() : "null", item);
+                             i, "null", item);
                     throw new RuntimeException("String[] contains non-String element at index " + i);
                 }
             }
             
             return fieldArray;
-        } else if (fieldNameParam instanceof String) {
+        } else if (fieldNameParam instanceof String fieldName) {
             // 如果是String，包装成数组
-            String fieldName = (String) fieldNameParam;
             String[] result = {fieldName};
             log.debug("fieldNameParam is String '{}', wrapping to Array", fieldName);
             return result;
-        } else if (fieldNameParam instanceof java.util.List) {
+        } else if (fieldNameParam instanceof @SuppressWarnings("rawtypes")java.util.List list) {
             // 如果是List，转换为String数组
-            @SuppressWarnings("rawtypes")
-            java.util.List list = (java.util.List) fieldNameParam;
             String[] result = new String[list.size()];
             for (int i = 0; i < list.size(); i++) {
                 Object item = list.get(i);
-                if (item instanceof String[]) {
+                if (item instanceof String[] innerArray) {
                     // 如果List中包含String[]，取第一个元素
-                    String[] innerArray = (String[]) item;
                     result[i] = innerArray.length > 0 ? innerArray[0] : "";
                     log.debug("List[{}] contains String[], extracting first element: {}", i, result[i]);
                 } else {
@@ -877,9 +1125,8 @@ public class SqlMethodInterceptor implements InvocationHandler {
             String[] result = new String[array.length];
             for (int i = 0; i < array.length; i++) {
                 Object item = array[i];
-                if (item instanceof String[]) {
+                if (item instanceof String[] innerArray) {
                     // 嵌套数组情况
-                    String[] innerArray = (String[]) item;
                     result[i] = innerArray.length > 0 ? innerArray[0] : "";
                     log.debug("Array[{}] contains String[], extracting first element: {}", i, result[i]);
                 } else {

@@ -1,5 +1,6 @@
 package com.indigo.core.entity.dto;
 
+import com.indigo.core.annotation.QueryCondition;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -23,6 +24,7 @@ import java.util.List;
 @AllArgsConstructor
 public class QueryDTO<T> implements Serializable {
 
+    @QueryCondition(field = "id", type = QueryCondition.QueryType.EQ)
     private T id;
 
     /**
