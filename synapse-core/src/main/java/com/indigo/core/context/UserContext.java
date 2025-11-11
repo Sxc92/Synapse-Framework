@@ -1,15 +1,17 @@
 package com.indigo.core.context;
 
-import java.util.List;
-
 import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.Builder;
+import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.io.Serializable;
+import java.util.List;
 
 /**
  * 用户上下文信息
  * 用于存储JWT token中的用户信息
+ * 实现 Serializable 接口以支持 Redis 序列化
  *
  * @author 史偕成
  * @date 2025/03/21
@@ -18,7 +20,9 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class UserContext {
+public class UserContext implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     /**
      * 线程本地变量，用于存储当前用户上下文
@@ -34,12 +38,12 @@ public class UserContext {
     /**
      * 用户名
      */
-    private String username;
+    private String account;
 
     /**
      * 用户昵称
      */
-    private String nickname;
+    private String realName;
 
     /**
      * 电子邮箱
@@ -49,22 +53,12 @@ public class UserContext {
     /**
      * 手机号码
      */
-    private String phone;
+    private String mobile;
 
     /**
      * 头像URL
      */
     private String avatar;
-
-    /**
-     * 租户ID
-     */
-    private String tenantId;
-
-    /**
-     * 租户名称
-     */
-    private String tenantName;
 
     /**
      * 部门ID
@@ -122,16 +116,6 @@ public class UserContext {
     private Long loginTime;
 
     /**
-     * 客户端IP
-     */
-    private String clientIp;
-
-    /**
-     * 用户代理
-     */
-    private String userAgent;
-
-    /**
      * 访问令牌
      */
     private String token;
@@ -181,19 +165,9 @@ public class UserContext {
      *
      * @return 用户名，如果没有当前用户则返回null
      */
-    public static String getCurrentUsername() {
+    public static String getCurrentAccount() {
         UserContext userContext = getCurrentUser();
-        return userContext != null ? userContext.getUsername() : null;
-    }
-
-    /**
-     * 获取当前租户ID
-     *
-     * @return 租户ID，如果没有当前用户则返回null
-     */
-    public static String getCurrentTenantId() {
-        UserContext userContext = getCurrentUser();
-        return userContext != null ? userContext.getTenantId() : null;
+        return userContext != null ? userContext.getAccount() : null;
     }
 
     /**
@@ -233,7 +207,9 @@ public class UserContext {
     @Builder
     @AllArgsConstructor
     @NoArgsConstructor
-    public static class UserDeptPositionInfo {
+    public static class UserDeptPositionInfo implements Serializable {
+
+        private static final long serialVersionUID = 1L;
         /**
          * 部门ID
          */

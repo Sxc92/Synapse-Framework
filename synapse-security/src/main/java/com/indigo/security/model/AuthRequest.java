@@ -1,15 +1,20 @@
 package com.indigo.security.model;
 
+import cn.hutool.core.collection.CollUtil;
+import com.indigo.core.exception.Ex;
 import com.indigo.security.model.auth.OAuth2Auth;
 import com.indigo.security.model.auth.RefreshTokenAuth;
 import com.indigo.security.model.auth.TokenAuth;
 import com.indigo.security.model.auth.UsernamePasswordAuth;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
-import jakarta.validation.constraints.NotNull;
+
 import java.util.List;
+
+import static com.indigo.security.constants.SecurityError.*;
 
 /**
  * 认证请求模型
@@ -116,7 +121,7 @@ public class AuthRequest {
     /**
      * 获取用户名密码认证信息
      */
-    public com.indigo.security.model.auth.UsernamePasswordAuth getUsernamePasswordAuth() {
+    public UsernamePasswordAuth getUsernamePasswordAuth() {
         if (authType == AuthType.USERNAME_PASSWORD) {
             return usernamePasswordAuth;
         }
@@ -126,7 +131,7 @@ public class AuthRequest {
     /**
      * 获取Token认证信息
      */
-    public com.indigo.security.model.auth.TokenAuth getTokenAuth() {
+    public TokenAuth getTokenAuth() {
         if (authType == AuthType.TOKEN_VALIDATION) {
             return tokenAuth;
         }
@@ -136,7 +141,7 @@ public class AuthRequest {
     /**
      * 获取OAuth2认证信息
      */
-    public com.indigo.security.model.auth.OAuth2Auth getOauth2Auth() {
+    public OAuth2Auth getOauth2Auth() {
         if (authType == AuthType.OAUTH2_AUTHORIZATION_CODE || 
             authType == AuthType.OAUTH2_CLIENT_CREDENTIALS) {
             return oauth2Auth;
@@ -147,7 +152,7 @@ public class AuthRequest {
     /**
      * 获取刷新Token认证信息
      */
-    public com.indigo.security.model.auth.RefreshTokenAuth getRefreshTokenAuth() {
+    public RefreshTokenAuth getRefreshTokenAuth() {
         if (authType == AuthType.REFRESH_TOKEN) {
             return refreshTokenAuth;
         }
@@ -160,33 +165,28 @@ public class AuthRequest {
      *
      * @return 是否有效
      */
-    public boolean isValid() {
-        if (authType == null) {
-            return false;
+    public static void isValid(AuthRequest authRequest) {
+        if (authRequest.authType == null) {
+            Ex.throwEx(AUTH_REQUEST_INVALID);
         }
-        
         // 验证认证信息完整性
-        boolean authInfoValid = switch (authType) {
-            case USERNAME_PASSWORD -> usernamePasswordAuth != null && usernamePasswordAuth.isValid();
-            case TOKEN_VALIDATION -> tokenAuth != null && tokenAuth.isValid();
-            case OAUTH2_AUTHORIZATION_CODE, OAUTH2_CLIENT_CREDENTIALS -> oauth2Auth != null && oauth2Auth.isValid();
-            case REFRESH_TOKEN -> refreshTokenAuth != null && refreshTokenAuth.isValid();
+        boolean authInfoValid = switch (authRequest.authType) {
+            case USERNAME_PASSWORD -> authRequest.usernamePasswordAuth != null && authRequest.usernamePasswordAuth.isValid();
+            case TOKEN_VALIDATION -> authRequest.tokenAuth != null && authRequest.tokenAuth.isValid();
+            case OAUTH2_AUTHORIZATION_CODE, OAUTH2_CLIENT_CREDENTIALS -> authRequest.oauth2Auth != null && authRequest.oauth2Auth.isValid();
+            case REFRESH_TOKEN -> authRequest.refreshTokenAuth != null && authRequest.refreshTokenAuth.isValid();
         };
         
         if (!authInfoValid) {
-            return false;
+            Ex.throwEx(AUTH_REQUEST_INCOMPLETE);
         }
-        
+        if (CollUtil.isEmpty(authRequest.roles)) {
+            Ex.throwEx(AUTH_USER_HAS_NO_ROLE);
+        }
         // 验证用户信息完整性（角色和权限由业务模块传入）
-        if (roles == null || roles.isEmpty()) {
-            return false;
+        if (CollUtil.isEmpty(authRequest.permissions)) {
+            Ex.throwEx(AUTH_USER_HAS_NO_RESOURCE);
         }
-        
-        if (permissions == null || permissions.isEmpty()) {
-            return false;
-        }
-        
-        return true;
     }
 
     /**

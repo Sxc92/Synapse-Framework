@@ -82,4 +82,70 @@ public class DefaultCachePermissionManager implements CachePermissionManager {
         cacheService.resetExpiry(rolesKey, expiration);
         log.info("Extended user permissions and roles for token: {}", token);
     }
+
+    // ========== 菜单、资源、系统管理相关方法实现 ==========
+
+    @Override
+    public <T> void storeUserMenus(String token, List<T> menus, long expiration) {
+        String menusKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "menus", token);
+        cacheService.setObject(menusKey, menus, expiration);
+        log.debug("Stored user menus for token: {}, count: {}", token, menus != null ? menus.size() : 0);
+    }
+
+    @Override
+    public <T> void storeUserResources(String token, List<T> resources, long expiration) {
+        String resourcesKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "resources", token);
+        cacheService.setObject(resourcesKey, resources, expiration);
+        log.debug("Stored user resources for token: {}, count: {}", token, resources != null ? resources.size() : 0);
+    }
+
+    @Override
+    public <T> void storeUserSystems(String token, List<T> systems, long expiration) {
+        String systemsKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "systems", token);
+        cacheService.setObject(systemsKey, systems, expiration);
+        log.debug("Stored user systems for token: {}, count: {}", token, systems != null ? systems.size() : 0);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T> List<T> getUserMenus(String token, Class<T> clazz) {
+        String menusKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "menus", token);
+        return cacheService.getObject(menusKey, List.class);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T> List<T> getUserResources(String token, Class<T> clazz) {
+        String resourcesKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "resources", token);
+        return cacheService.getObject(resourcesKey, List.class);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T> List<T> getUserSystems(String token, Class<T> clazz) {
+        String systemsKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "systems", token);
+        return cacheService.getObject(systemsKey, List.class);
+    }
+
+    @Override
+    public void removeUserMenusAndResources(String token) {
+        String menusKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "menus", token);
+        String resourcesKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "resources", token);
+        String systemsKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "systems", token);
+        cacheService.delete(menusKey);
+        cacheService.delete(resourcesKey);
+        cacheService.delete(systemsKey);
+        log.info("Removed user menus, resources and systems for token: {}", token);
+    }
+
+    @Override
+    public void extendUserMenusAndResources(String token, long expiration) {
+        String menusKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "menus", token);
+        String resourcesKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "resources", token);
+        String systemsKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "systems", token);
+        cacheService.resetExpiry(menusKey, expiration);
+        cacheService.resetExpiry(resourcesKey, expiration);
+        cacheService.resetExpiry(systemsKey, expiration);
+        log.debug("Extended user menus, resources and systems for token: {}", token);
+    }
 } 

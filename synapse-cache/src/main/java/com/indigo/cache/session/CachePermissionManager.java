@@ -77,4 +77,81 @@ public interface CachePermissionManager {
      * @param expiration 新的过期时间（秒）
      */
     void extendUserPermissions(String token, long expiration);
+
+    // ========== 菜单、资源、系统管理相关方法 ==========
+
+    /**
+     * 存储用户菜单列表
+     *
+     * @param token      访问令牌
+     * @param menus      菜单列表（泛型，支持任意类型）
+     * @param expiration 过期时间（秒）
+     * @param <T>        菜单类型
+     */
+    <T> void storeUserMenus(String token, List<T> menus, long expiration);
+
+    /**
+     * 存储用户资源列表
+     *
+     * @param token      访问令牌
+     * @param resources  资源列表（泛型，支持任意类型）
+     * @param expiration 过期时间（秒）
+     * @param <T>        资源类型
+     */
+    <T> void storeUserResources(String token, List<T> resources, long expiration);
+
+    /**
+     * 存储用户系统列表
+     *
+     * @param token      访问令牌
+     * @param systems    系统列表（泛型，支持任意类型）
+     * @param expiration 过期时间（秒）
+     * @param <T>        系统类型
+     */
+    <T> void storeUserSystems(String token, List<T> systems, long expiration);
+
+    /**
+     * 获取用户菜单列表
+     *
+     * @param token 访问令牌
+     * @param clazz 菜单类型
+     * @param <T>   菜单类型
+     * @return 菜单列表
+     */
+    <T> List<T> getUserMenus(String token, Class<T> clazz);
+
+    /**
+     * 获取用户资源列表
+     *
+     * @param token 访问令牌
+     * @param clazz 资源类型
+     * @param <T>   资源类型
+     * @return 资源列表
+     */
+    <T> List<T> getUserResources(String token, Class<T> clazz);
+
+    /**
+     * 获取用户系统列表
+     *
+     * @param token 访问令牌
+     * @param clazz 系统类型
+     * @param <T>   系统类型
+     * @return 系统列表
+     */
+    <T> List<T> getUserSystems(String token, Class<T> clazz);
+
+    /**
+     * 删除用户菜单、资源、系统信息
+     *
+     * @param token 访问令牌
+     */
+    void removeUserMenusAndResources(String token);
+
+    /**
+     * 延长用户菜单、资源、系统过期时间
+     *
+     * @param token      访问令牌
+     * @param expiration 新的过期时间（秒）
+     */
+    void extendUserMenusAndResources(String token, long expiration);
 } 

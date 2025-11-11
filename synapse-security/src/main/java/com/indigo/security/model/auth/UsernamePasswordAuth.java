@@ -18,6 +18,11 @@ public class UsernamePasswordAuth {
 
     /**
      * 用户名
+     * -- GETTER --
+     *  获取用户名
+     *
+     * @return 用户名
+
      */
     @NotBlank(message = "用户名不能为空")
     private String username;
@@ -34,16 +39,10 @@ public class UsernamePasswordAuth {
      * @return 是否有效
      */
     public boolean isValid() {
+        System.out.println(username != null && !username.trim().isEmpty() );
+        System.out.println(password != null && !password.trim().isEmpty());
         return username != null && !username.trim().isEmpty() 
             && password != null && !password.trim().isEmpty();
     }
 
-    /**
-     * 获取用户名
-     *
-     * @return 用户名
-     */
-    public String getUsername() {
-        return username;
-    }
-} 
+}

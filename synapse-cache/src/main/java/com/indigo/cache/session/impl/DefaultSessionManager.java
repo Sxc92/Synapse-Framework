@@ -100,8 +100,8 @@ public class DefaultSessionManager implements SessionManager {
     @Override
     public String validateToken(String token) {
         String tokenKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "token", token);
-        Object result = cacheService.getValue(tokenKey);
-        return result != null ? result.toString() : null;
+        String result = cacheService.getValue(tokenKey);
+        return result != null && !result.isEmpty() ? result : null;
     }
     
     @Override

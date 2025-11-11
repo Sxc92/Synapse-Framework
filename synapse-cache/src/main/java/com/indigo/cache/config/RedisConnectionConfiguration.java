@@ -1,24 +1,22 @@
 package com.indigo.cache.config;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.data.redis.connection.RedisClusterConfiguration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.RedisSentinelConfiguration;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettucePoolingClientConfiguration;
-import org.springframework.data.redis.connection.RedisSentinelConfiguration;
-import org.springframework.data.redis.connection.RedisClusterConfiguration;
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 
 import java.time.Duration;
-import java.util.Arrays;
 
 /**
  * Redis连接工厂配置类
@@ -31,7 +29,7 @@ import java.util.Arrays;
 @Slf4j
 @Configuration
 @ConditionalOnClass(RedisConnectionFactory.class)
-@SuppressWarnings("deprecation")
+@AutoConfigureBefore(RedisAutoConfiguration.class)
 public class RedisConnectionConfiguration {
     
     @Autowired
@@ -40,10 +38,11 @@ public class RedisConnectionConfiguration {
     /**
      * 创建Redis连接工厂
      * 使用synapse.cache.redis配置
+     * 使用 @Primary 确保此 Bean 优先于 Spring Boot 自动配置的 Bean
+     * 使用 @AutoConfigureBefore 确保此配置在 RedisAutoConfiguration 之前加载
      */
     @Bean("redisConnectionFactory")
     @Primary
-    @ConditionalOnMissingBean(name = "redisConnectionFactory")
     public RedisConnectionFactory redisConnectionFactory() {
         RedisConnectionFactory factory;
         
@@ -64,7 +63,6 @@ public class RedisConnectionConfiguration {
     /**
      * 创建单机Redis连接工厂
      */
-    @SuppressWarnings("deprecation")
     private RedisConnectionFactory createStandaloneConnectionFactory() {
         CacheProperties.RedisCache.Connection conn = cacheProperties.getRedisCache().getConnection();
         CacheProperties.RedisCache.Pool pool = cacheProperties.getRedisCache().getPool();
@@ -89,9 +87,14 @@ public class RedisConnectionConfiguration {
     private RedisConnectionFactory createSentinelConnectionFactory() {
         CacheProperties.RedisCache.Sentinel sentinel = cacheProperties.getRedisCache().getSentinel();
         CacheProperties.RedisCache.Pool pool = cacheProperties.getRedisCache().getPool();
+        CacheProperties.RedisCache.Connection conn = cacheProperties.getRedisCache().getConnection();
         
         RedisSentinelConfiguration config = new RedisSentinelConfiguration();
         config.master(sentinel.getMaster());
+        
+        // 设置数据库索引（重要！）
+        config.setDatabase(conn.getDatabase());
+        
         // 将String数组转换为RedisNode列表
         for (String node : sentinel.getNodes()) {
             String[] parts = node.split(":");
@@ -99,11 +102,21 @@ public class RedisConnectionConfiguration {
             int port = parts.length > 1 ? Integer.parseInt(parts[1]) : 26379;
             config.sentinel(host, port);
         }
+        
+        // 设置哨兵密码（如果有）
         if (sentinel.getPassword() != null && !sentinel.getPassword().isEmpty()) {
             config.setSentinelPassword(sentinel.getPassword());
         }
         
+        // 设置主节点密码（重要！这是 Redis 主节点的密码，不是哨兵密码）
+        if (conn.getPassword() != null && !conn.getPassword().isEmpty()) {
+            config.setPassword(conn.getPassword());
+        }
+        
         LettucePoolingClientConfiguration clientConfig = createLettuceClientConfiguration(pool);
+        
+        log.info("创建哨兵连接工厂 - Master: {}, Database: {}, Sentinel Nodes: {}", 
+                sentinel.getMaster(), conn.getDatabase(), sentinel.getNodes().length);
         
         return new LettuceConnectionFactory(config, clientConfig);
     }
@@ -133,6 +146,7 @@ public class RedisConnectionConfiguration {
     /**
      * 创建Lettuce客户端配置
      */
+    @SuppressWarnings("deprecation")
     private LettucePoolingClientConfiguration createLettuceClientConfiguration(CacheProperties.RedisCache.Pool pool) {
         // 创建连接池配置
         @SuppressWarnings("rawtypes")
@@ -140,9 +154,13 @@ public class RedisConnectionConfiguration {
         poolConfig.setMaxTotal(pool.getMaxActive());
         poolConfig.setMaxIdle(pool.getMaxIdle());
         poolConfig.setMinIdle(pool.getMinIdle());
-        poolConfig.setMaxWaitMillis(pool.getMaxWait().toMillis());
-        poolConfig.setTimeBetweenEvictionRunsMillis(pool.getTimeBetweenEvictionRuns().toMillis());
-        poolConfig.setMinEvictableIdleTimeMillis(pool.getMinEvictableIdleTime().toMillis());
+        // 使用新的 Duration API（替代已废弃的 setMaxWaitMillis）
+        poolConfig.setMaxWait(pool.getMaxWait());
+        // 使用新的 Duration API（替代已废弃的 setTimeBetweenEvictionRunsMillis）
+        poolConfig.setTimeBetweenEvictionRuns(pool.getTimeBetweenEvictionRuns());
+        // 使用新的 Duration API（替代已废弃的 setMinEvictableIdleTimeMillis）
+        // 注意：setMinEvictableIdleTime(Duration) 在新版本中也被标记为废弃，但暂无替代方法
+        poolConfig.setMinEvictableIdleTime(pool.getMinEvictableIdleTime());
         // 注意：GenericObjectPoolConfig没有setMaxEvictableIdleTimeMillis方法
         poolConfig.setTestOnBorrow(pool.isTestOnBorrow());
         poolConfig.setTestOnReturn(pool.isTestOnReturn());

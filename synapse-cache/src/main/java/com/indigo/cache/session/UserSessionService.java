@@ -70,7 +70,8 @@ public class UserSessionService {
     public void removeUserSession(String token) {
         sessionManager.removeUserSession(token);
         permissionManager.removeUserPermissions(token);
-        log.info("Removed complete user session and permissions for token: {}", token);
+        permissionManager.removeUserMenusAndResources(token);
+        log.info("Removed complete user session, permissions, menus, resources and systems for token: {}", token);
     }
 
     /**
@@ -82,7 +83,8 @@ public class UserSessionService {
     public void extendUserSession(String token, long expiration) {
         sessionManager.extendUserSession(token, expiration);
         permissionManager.extendUserPermissions(token, expiration);
-        log.info("Extended complete user session and permissions for token: {}", token);
+        permissionManager.extendUserMenusAndResources(token, expiration);
+        log.info("Extended complete user session, permissions, menus, resources and systems for token: {}", token);
     }
 
     /**
@@ -270,6 +272,99 @@ public class UserSessionService {
      */
     public boolean hasRole(String token, String role) {
         return permissionManager.hasRole(token, role);
+    }
+
+    // ========== 菜单、资源、系统管理相关方法 ==========
+
+    /**
+     * 存储用户菜单列表
+     *
+     * @param token      访问令牌
+     * @param menus      菜单列表（泛型，支持任意类型）
+     * @param expiration 过期时间（秒）
+     * @param <T>        菜单类型
+     */
+    public <T> void storeUserMenus(String token, List<T> menus, long expiration) {
+        permissionManager.storeUserMenus(token, menus, expiration);
+    }
+
+    /**
+     * 存储用户资源列表
+     *
+     * @param token      访问令牌
+     * @param resources  资源列表（泛型，支持任意类型）
+     * @param expiration 过期时间（秒）
+     * @param <T>        资源类型
+     */
+    public <T> void storeUserResources(String token, List<T> resources, long expiration) {
+        permissionManager.storeUserResources(token, resources, expiration);
+    }
+
+    /**
+     * 存储用户系统列表
+     *
+     * @param token      访问令牌
+     * @param systems    系统列表（泛型，支持任意类型）
+     * @param expiration 过期时间（秒）
+     * @param <T>        系统类型
+     */
+    public <T> void storeUserSystems(String token, List<T> systems, long expiration) {
+        permissionManager.storeUserSystems(token, systems, expiration);
+    }
+
+    /**
+     * 获取用户菜单列表
+     *
+     * @param token 访问令牌
+     * @param clazz 菜单类型
+     * @param <T>   菜单类型
+     * @return 菜单列表
+     */
+    public <T> List<T> getUserMenus(String token, Class<T> clazz) {
+        return permissionManager.getUserMenus(token, clazz);
+    }
+
+    /**
+     * 获取用户资源列表
+     *
+     * @param token 访问令牌
+     * @param clazz 资源类型
+     * @param <T>   资源类型
+     * @return 资源列表
+     */
+    public <T> List<T> getUserResources(String token, Class<T> clazz) {
+        return permissionManager.getUserResources(token, clazz);
+    }
+
+    /**
+     * 获取用户系统列表
+     *
+     * @param token 访问令牌
+     * @param clazz 系统类型
+     * @param <T>   系统类型
+     * @return 系统列表
+     */
+    public <T> List<T> getUserSystems(String token, Class<T> clazz) {
+        return permissionManager.getUserSystems(token, clazz);
+    }
+
+    /**
+     * 删除用户菜单、资源、系统信息
+     *
+     * @param token 访问令牌
+     */
+    public void removeUserMenusAndResources(String token) {
+        permissionManager.removeUserMenusAndResources(token);
+    }
+
+    /**
+     * 延长用户菜单、资源、系统过期时间
+     *
+     * @param token      访问令牌
+     * @param expiration 新的过期时间（秒）
+     */
+    public void extendUserMenusAndResources(String token, long expiration) {
+        permissionManager.extendUserMenusAndResources(token, expiration);
     }
 
     // ========== 统计管理相关方法 ==========

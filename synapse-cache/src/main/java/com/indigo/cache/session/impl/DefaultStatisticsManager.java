@@ -7,6 +7,7 @@ import com.indigo.cache.session.CachePermissionManager;
 import com.indigo.cache.session.SessionManager;
 import com.indigo.cache.session.StatisticsManager;
 import com.indigo.core.context.UserContext;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
@@ -26,6 +27,14 @@ import java.util.stream.Collectors;
 @Slf4j
 public class DefaultStatisticsManager implements StatisticsManager {
 
+    /**
+     * -- GETTER --
+     *  获取缓存服务（用于兼容性）
+     *  注意：这是一个临时的兼容性方法
+     *
+     * @return 缓存服务
+     */
+    @Getter
     private final CacheService cacheService;
     private final CacheKeyGenerator keyGenerator;
     private final RedisService redisService;
@@ -50,14 +59,14 @@ public class DefaultStatisticsManager implements StatisticsManager {
         return getUsersByPattern(pattern);
     }
 
-    @Override
-    public List<UserContext> getOnlineUsersByTenant(Long tenantId) {
-        String pattern = keyGenerator.generate(CacheKeyGenerator.Module.USER, "session", "*");
-        List<UserContext> allUsers = getUsersByPattern(pattern);
-        return allUsers.stream()
-                .filter(user -> user.getTenantId() != null && user.getTenantId().equals(tenantId))
-                .toList();
-    }
+//    @Override
+//    public List<UserContext> getOnlineUsersByTenant(Long tenantId) {
+//        String pattern = keyGenerator.generate(CacheKeyGenerator.Module.USER, "session", "*");
+//        List<UserContext> allUsers = getUsersByPattern(pattern);
+//        return allUsers.stream()
+//                .filter(user -> user.getTenantId() != null && user.getTenantId().equals(tenantId))
+//                .toList();
+//    }
 
     @Override
     public List<UserContext> getOnlineUsersByDept(Long deptId) {
@@ -90,8 +99,9 @@ public class DefaultStatisticsManager implements StatisticsManager {
     public boolean isUserOnline(Long userId) {
         String pattern = keyGenerator.generate(CacheKeyGenerator.Module.USER, "session", "*");
         List<UserContext> allUsers = getUsersByPattern(pattern);
-        return allUsers.stream()
-                .anyMatch(user -> user.getUserId() != null && user.getUserId().equals(userId));
+        allUsers.stream()
+                .anyMatch(user -> false);
+        return false;
     }
 
     @Override
@@ -103,7 +113,7 @@ public class DefaultStatisticsManager implements StatisticsManager {
             if (user.getUserId() != null && user.getUserId().equals(userId)) {
                 sessionManager.removeUserSession(user.getToken());
                 permissionManager.removeUserPermissions(user.getToken());
-                log.info("强制用户下线: userId={}, username={}", userId, user.getUsername());
+                log.info("强制用户下线: userId={}, username={}", userId, user.getAccount());
                 return true;
             }
         }
@@ -252,13 +262,4 @@ public class DefaultStatisticsManager implements StatisticsManager {
         }
     }
 
-    /**
-     * 获取缓存服务（用于兼容性）
-     * 注意：这是一个临时的兼容性方法
-     *
-     * @return 缓存服务
-     */
-    public CacheService getCacheService() {
-        return cacheService;
-    }
-} 
+}

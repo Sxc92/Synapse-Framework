@@ -174,13 +174,19 @@ public class SecurityAutoConfiguration {
     /**
      * 认证服务（默认版本）
      * 使用JDK17的现代特性
+     * 如果 UserSessionService 存在，则注入；否则使用无参构造函数
      */
     @Bean
     @Primary
     @ConditionalOnMissingBean(AuthenticationService.class)
-    public AuthenticationService authenticationService() {
-        log.debug("初始化认证服务（默认版本）");
-        return new DefaultAuthenticationService();
+    public AuthenticationService authenticationService(@Autowired(required = false) UserSessionService userSessionService) {
+        if (userSessionService != null) {
+            log.debug("初始化认证服务（默认版本），UserSessionService: 已注入");
+            return new DefaultAuthenticationService(userSessionService);
+        } else {
+            log.warn("初始化认证服务（默认版本），UserSessionService: 未配置，将使用无参构造函数");
+            return new DefaultAuthenticationService();
+        }
     }
 
     /**

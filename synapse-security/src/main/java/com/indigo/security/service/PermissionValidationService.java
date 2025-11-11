@@ -63,7 +63,7 @@ public class PermissionValidationService {
 
             // 2. 检查是否有匹配的权限规则
             boolean hasPermission = rules.stream()
-                .filter(rule -> rule.getEnabled())
+                .filter(DataPermissionRule::getEnabled)
                 .anyMatch(rule -> PermissionCode.matches(rule.getPermissionCode(), permissionCode));
 
             log.debug("权限校验结果: userId={}, permissionCode={}, hasPermission={}", 

@@ -122,12 +122,13 @@ public class CacheService {
     }
 
     /**
-     * 获取值
+     * 获取值（字符串格式）
+     * 使用 StringRedisTemplate，返回 JSON 字符串
      *
      * @param key 键
-     * @return 值
+     * @return 值（JSON 字符串）
      */
-    public Object getValue(String key) {
+    public String getValue(String key) {
         return redisService.get(key);
     }
 
@@ -332,9 +333,11 @@ public class CacheService {
     
     /**
      * 设置对象到缓存
+     * 使用 StringRedisTemplate，自动将对象序列化为 JSON 字符串存储
+     * 这样可以确保 key 和 value 都是可读的字符串格式
      * 
-     * @param key 缓存键
-     * @param value 缓存值
+     * @param key 缓存键（字符串）
+     * @param value 缓存值（对象会被序列化为 JSON）
      * @param expireSeconds 过期时间（秒）
      * @param <T> 数据类型
      */
@@ -348,19 +351,15 @@ public class CacheService {
     
     /**
      * 从缓存获取对象
+     * 使用 StringRedisTemplate，自动将 JSON 字符串反序列化为对象
      * 
      * @param key 缓存键
      * @param clazz 数据类型
      * @param <T> 数据类型
      * @return 缓存对象
      */
-    @SuppressWarnings("unchecked")
     public <T> T getObject(String key, Class<T> clazz) {
-        Object obj = redisService.get(key);
-        if (clazz.isInstance(obj)) {
-            return (T) obj;
-        }
-        return null;
+        return redisService.get(key, clazz);
     }
     
     /**

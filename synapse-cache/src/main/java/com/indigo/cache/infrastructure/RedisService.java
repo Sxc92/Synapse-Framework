@@ -1,8 +1,9 @@
 package com.indigo.cache.infrastructure;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.indigo.core.utils.JsonUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ScanOptions;
@@ -38,132 +39,214 @@ public class RedisService {
 
     private final RedisTemplate<String, Object> redisTemplate;
     private final StringRedisTemplate stringRedisTemplate;
+    private final JsonUtils jsonUtils;
 
     public RedisService(RedisTemplate<String, Object> redisTemplate, 
-                       StringRedisTemplate stringRedisTemplate) {
+                       StringRedisTemplate stringRedisTemplate,
+                       @Autowired(required = false) JsonUtils jsonUtils) {
         this.redisTemplate = redisTemplate;
         this.stringRedisTemplate = stringRedisTemplate;
+        this.jsonUtils = jsonUtils;
     }
 
     // ==================== 基础键值操作（基础设施层） ====================
 
     /**
      * 设置键值（无过期时间）
+     * 使用 StringRedisTemplate，确保 key 和 value 都是字符串格式（可读）
+     * 如果 value 是对象，会自动序列化为 JSON 字符串
      *
-     * @param key   键
-     * @param value 值
+     * @param key   键（必须是字符串）
+     * @param value 值（如果是对象，会序列化为 JSON）
      */
     public void set(String key, Object value) {
-        redisTemplate.opsForValue().set(key, value);
+        try {
+            // 使用 JsonUtils 静态方法进行序列化，支持 Java 8 日期时间类型
+            String jsonValue = value instanceof String ? (String) value : JsonUtils.toJsonString(value);
+            stringRedisTemplate.opsForValue().set(key, jsonValue);
+        } catch (Exception e) {
+            log.error("设置 Redis 值失败，key: {}", key, e);
+            throw new RuntimeException("设置 Redis 值失败", e);
+        }
     }
 
     /**
      * 设置键值并设置过期时间
+     * 使用 StringRedisTemplate，确保 key 和 value 都是字符串格式（可读）
+     * 如果 value 是对象，会自动序列化为 JSON 字符串
      *
-     * @param key     键
-     * @param value   值
+     * @param key     键（必须是字符串）
+     * @param value   值（如果是对象，会序列化为 JSON）
      * @param timeout 过期时间（秒）
      */
     public void set(String key, Object value, long timeout) {
-        redisTemplate.opsForValue().set(key, value, timeout, TimeUnit.SECONDS);
+        try {
+            // 使用 JsonUtils 静态方法进行序列化，支持 Java 8 日期时间类型
+            String jsonValue = value instanceof String ? (String) value : JsonUtils.toJsonString(value);
+            stringRedisTemplate.opsForValue().set(key, jsonValue, timeout, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            log.error("设置 Redis 值失败，key: {}", key, e);
+            throw new RuntimeException("设置 Redis 值失败", e);
+        }
     }
 
     /**
-     * 获取值
+     * 获取值（字符串格式）
+     * 使用 StringRedisTemplate，返回 JSON 字符串
      *
      * @param key 键
-     * @return 值
+     * @return 值（JSON 字符串）
      */
-    public Object get(String key) {
-        return redisTemplate.opsForValue().get(key);
+    public String get(String key) {
+        return stringRedisTemplate.opsForValue().get(key);
+    }
+
+    /**
+     * 获取值并反序列化为对象
+     * 使用 StringRedisTemplate，自动将 JSON 字符串反序列化为对象
+     *
+     * @param key   键
+     * @param clazz 目标类型
+     * @param <T>   类型
+     * @return 对象
+     */
+    public <T> T get(String key, Class<T> clazz) {
+        String jsonValue = stringRedisTemplate.opsForValue().get(key);
+        if (jsonValue == null) {
+            return null;
+        }
+        // 使用 JsonUtils 静态方法进行反序列化，支持 Java 8 日期时间类型
+        return JsonUtils.fromJson(jsonValue, clazz);
+    }
+
+    /**
+     * 获取值并反序列化为对象（支持泛型）
+     * 使用 StringRedisTemplate，自动将 JSON 字符串反序列化为对象
+     *
+     * @param key           键
+     * @param typeReference 类型引用（用于泛型）
+     * @param <T>           类型
+     * @return 对象
+     */
+    public <T> T get(String key, TypeReference<T> typeReference) {
+        String jsonValue = stringRedisTemplate.opsForValue().get(key);
+        if (jsonValue == null) {
+            return null;
+        }
+        // 使用 JsonUtils 实例方法进行反序列化（支持泛型）
+        if (jsonUtils != null) {
+            return jsonUtils.fromJsonToGeneric(jsonValue, typeReference);
+        } else {
+            // 如果 JsonUtils 不可用，使用静态方法（不支持 TypeReference，返回 null）
+            log.warn("JsonUtils Bean 不可用，无法反序列化泛型类型，key: {}", key);
+            return null;
+        }
     }
 
     /**
      * 删除键
+     * 使用 StringRedisTemplate
      *
      * @param key 键
      * @return 是否成功
      */
     public Boolean delete(String key) {
-        return redisTemplate.delete(key);
+        return stringRedisTemplate.delete(key);
     }
 
     /**
      * 批量删除键
+     * 使用 StringRedisTemplate
      *
      * @param keys 键集合
      * @return 成功删除的数量
      */
     public Long delete(List<String> keys) {
-        return redisTemplate.delete(keys);
+        if (keys == null || keys.isEmpty()) {
+            return 0L;
+        }
+        return stringRedisTemplate.delete(keys);
     }
 
     /**
      * 设置过期时间
+     * 使用 StringRedisTemplate
      *
      * @param key     键
      * @param timeout 过期时间（秒）
      * @return 是否成功
      */
     public Boolean expire(String key, long timeout) {
-        return redisTemplate.expire(key, timeout, TimeUnit.SECONDS);
+        return stringRedisTemplate.expire(key, timeout, TimeUnit.SECONDS);
     }
 
     /**
      * 获取过期时间
+     * 使用 StringRedisTemplate
      *
      * @param key 键
      * @return 过期时间（秒）
      */
     public Long getExpire(String key) {
-        return redisTemplate.getExpire(key, TimeUnit.SECONDS);
+        return stringRedisTemplate.getExpire(key, TimeUnit.SECONDS);
     }
 
     /**
      * 判断键是否存在
+     * 使用 StringRedisTemplate
      *
      * @param key 键
      * @return 是否存在
      */
     public Boolean hasKey(String key) {
-        return redisTemplate.hasKey(key);
+        return stringRedisTemplate.hasKey(key);
     }
 
     // ==================== 原子操作（基础设施层） ====================
 
     /**
      * 递增
+     * 使用 StringRedisTemplate
      *
      * @param key   键
      * @param delta 增加的值
      * @return 增加后的值
      */
     public Long increment(String key, long delta) {
-        return redisTemplate.opsForValue().increment(key, delta);
+        return stringRedisTemplate.opsForValue().increment(key, delta);
     }
 
     /**
      * 递减
+     * 使用 StringRedisTemplate
      *
      * @param key   键
      * @param delta 减少的值
      * @return 减少后的值
      */
     public Long decrement(String key, long delta) {
-        return redisTemplate.opsForValue().decrement(key, delta);
+        return stringRedisTemplate.opsForValue().decrement(key, delta);
     }
 
     // ==================== Hash操作（基础设施层） ====================
 
     /**
      * 设置Hash字段
+     * 使用 StringRedisTemplate，value 如果是对象会序列化为 JSON 字符串
      *
      * @param key     键
      * @param hashKey hash键
-     * @param value   值
+     * @param value   值（如果是对象，会序列化为 JSON）
      */
     public void hashSet(String key, String hashKey, Object value) {
-        redisTemplate.opsForHash().put(key, hashKey, value);
+        try {
+            // 使用 JsonUtils 静态方法进行序列化，支持 Java 8 日期时间类型
+            String jsonValue = value instanceof String ? (String) value : JsonUtils.toJsonString(value);
+            stringRedisTemplate.opsForHash().put(key, hashKey, jsonValue);
+        } catch (Exception e) {
+            log.error("设置 Hash 值失败，key: {}, hashKey: {}", key, hashKey, e);
+            throw new RuntimeException("设置 Hash 值失败", e);
+        }
     }
 
     /**
@@ -171,34 +254,37 @@ public class RedisService {
      *
      * @param key     键
      * @param hashKey hash键
-     * @param value   值
+     * @param value   值（如果是对象，会序列化为 JSON）
      */
     public void hset(String key, String hashKey, Object value) {
         hashSet(key, hashKey, value);
     }
 
     /**
-     * 获取Hash字段值
+     * 获取Hash字段值（字符串格式）
+     * 使用 StringRedisTemplate，返回 JSON 字符串
      *
      * @param key     键
      * @param hashKey hash键
-     * @return 值
+     * @return 值（JSON 字符串）
      */
-    public Object hashGet(String key, String hashKey) {
-        return redisTemplate.opsForHash().get(key, hashKey);
+    public String hashGet(String key, String hashKey) {
+        Object value = stringRedisTemplate.opsForHash().get(key, hashKey);
+        return value != null ? value.toString() : null;
     }
 
     /**
      * 获取Hash的所有键值（别名方法，用于兼容）
+     * 使用 StringRedisTemplate，返回的 value 是 JSON 字符串
      *
      * @param key 键
-     * @return 所有键值
+     * @return 所有键值（value 是 JSON 字符串）
      */
     public Map<String, Object> hashGetAll(String key) {
-        Map<Object, Object> rawMap = redisTemplate.opsForHash().entries(key);
+        Map<Object, Object> rawMap = stringRedisTemplate.opsForHash().entries(key);
         Map<String, Object> result = new HashMap<>();
         for (Map.Entry<Object, Object> entry : rawMap.entrySet()) {
-            result.put(entry.getKey().toString(), entry.getValue());
+            result.put(entry.getKey().toString(), entry.getValue() != null ? entry.getValue().toString() : null);
         }
         return result;
     }

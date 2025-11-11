@@ -1,6 +1,7 @@
 package com.indigo.cache.session;
 
 import com.indigo.core.context.UserContext;
+import lombok.Getter;
 
 import java.util.List;
 import java.util.Map;
@@ -21,13 +22,6 @@ public interface StatisticsManager {
      */
     List<UserContext> getOnlineUsers();
 
-    /**
-     * 获取指定租户的在线用户列表
-     *
-     * @param tenantId 租户ID
-     * @return 在线用户列表
-     */
-    List<UserContext> getOnlineUsersByTenant(Long tenantId);
 
     /**
      * 获取指定部门的在线用户列表
@@ -131,6 +125,7 @@ public interface StatisticsManager {
     /**
      * 用户会话统计信息
      */
+    @Getter
     class UserSessionStats {
         private final long totalUsers;
         private final long activeUsers;
@@ -140,18 +135,12 @@ public interface StatisticsManager {
             this.activeUsers = activeUsers;
         }
 
-        public long getTotalUsers() {
-            return totalUsers;
-        }
-
-        public long getActiveUsers() {
-            return activeUsers;
-        }
     }
 
     /**
      * 登录统计信息
      */
+    @Getter
     class LoginStats {
         private final long hourlyLogins;
         private final long dailyLogins;
@@ -163,16 +152,5 @@ public interface StatisticsManager {
             this.totalOnlineUsers = totalOnlineUsers;
         }
 
-        public long getHourlyLogins() {
-            return hourlyLogins;
-        }
-
-        public long getDailyLogins() {
-            return dailyLogins;
-        }
-
-        public long getTotalOnlineUsers() {
-            return totalOnlineUsers;
-        }
     }
 } 

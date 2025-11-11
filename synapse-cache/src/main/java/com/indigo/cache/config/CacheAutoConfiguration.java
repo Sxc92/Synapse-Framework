@@ -1,6 +1,5 @@
 package com.indigo.cache.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.indigo.cache.aspect.CacheAspect;
 import com.indigo.cache.manager.CacheKeyGenerator;
 import com.indigo.cache.core.CacheService;
@@ -10,18 +9,16 @@ import com.indigo.cache.core.TwoLevelCacheService;
 import com.indigo.cache.extension.ratelimit.RateLimitService;
 import com.indigo.cache.session.UserSessionService;
 import com.indigo.cache.session.UserSessionServiceFactory;
-import com.indigo.core.utils.ThreadUtils;
+import com.indigo.core.utils.JsonUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import com.indigo.cache.session.SessionManager;
@@ -30,15 +27,15 @@ import com.indigo.cache.session.StatisticsManager;
 
 /**
  * 缓存自动配置类，用于自动注册缓存服务
- * 基于 Spring Boot 的 Redis 自动配置进行扩展
+ * 使用自定义的 Redis 配置，排除 Spring Boot 的默认 Redis 自动配置
  * <p>
- * 注意：该配置类在RedisAutoConfiguration之后运行，确保RedisTemplate等依赖已经可用
+ * 注意：此配置类排除了 Spring Boot 的 RedisAutoConfiguration，使用我们自定义的 RedisConnectionConfiguration
  *
  * @author 史偕成
  * @date 2025/05/16 10:30
  */
 @Slf4j
-@AutoConfiguration(after = RedisAutoConfiguration.class)
+@AutoConfiguration
 @Import({RedisConnectionConfiguration.class, RedisConfiguration.class})
 @EnableConfigurationProperties(CacheProperties.class)
 @ComponentScan(basePackages = {"com.indigo.cache.aspect", "com.indigo.cache.core", "com.indigo.core"})
@@ -65,19 +62,22 @@ public class CacheAutoConfiguration {
     /**
      * 注册Redis缓存服务
      * 使用@Qualifier指定具体的RedisTemplate bean
+     * 注入 JsonUtils 用于 JSON 序列化/反序列化（复用 core 模块的工具类）
      */
     @Bean
     @ConditionalOnMissingBean
     @SuppressWarnings("unchecked")
     public RedisService redisService(@Qualifier("redisTemplate") @SuppressWarnings("rawtypes") RedisTemplate redisTemplate,
-                                     @Qualifier("stringRedisTemplate") StringRedisTemplate stringRedisTemplate) {
-        log.info("创建RedisService Bean，RedisTemplate: {}, StringRedisTemplate: {}",
+                                     @Qualifier("stringRedisTemplate") StringRedisTemplate stringRedisTemplate,
+                                     @Autowired(required = false) JsonUtils jsonUtils) {
+        log.info("创建RedisService Bean，RedisTemplate: {}, StringRedisTemplate: {}, JsonUtils: {}",
                 redisTemplate != null ? redisTemplate.getClass().getSimpleName() : "null",
-                stringRedisTemplate != null ? stringRedisTemplate.getClass().getSimpleName() : "null");
+                stringRedisTemplate != null ? stringRedisTemplate.getClass().getSimpleName() : "null",
+                jsonUtils != null ? "已注入" : "未注入（将使用静态方法）");
 
         // 类型转换为我们需要的泛型类型
         RedisTemplate<String, Object> typedRedisTemplate = (RedisTemplate<String, Object>) redisTemplate;
-        return new RedisService(typedRedisTemplate, stringRedisTemplate);
+        return new RedisService(typedRedisTemplate, stringRedisTemplate, jsonUtils);
     }
 
     /**
