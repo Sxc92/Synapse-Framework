@@ -1,36 +1,92 @@
 # ===========================================
 # Synapse Security 配置示例
-# 正确的 Sa-Token Banner 关闭配置
 # ===========================================
+# 使用自研的 TokenService 和 PermissionService
 
 synapse:
   security:
     # 启用安全模块
     enabled: true
     
-    # 安全模式
+    # 安全模式：STRICT(严格) | PERMISSIVE(宽松) | DISABLED(关闭)
     mode: STRICT
     
-    # Sa-Token 配置
-    satoken:
-      # 启用 Sa-Token
+    # 是否启用安全日志
+    security-logging: true
+    
+    # 安全日志级别
+    security-log-level: INFO
+    
+    # ===========================================
+    # 白名单路径配置
+    # ===========================================
+    white-list:
+      # 是否启用白名单
       enabled: true
       
-      # 关闭 Sa-Token 的 banner 和版本信息打印
-      # 这是控制 Sa-Token 启动时显示 banner 的关键配置
-      is-print: false
+      # 白名单路径列表（支持 Ant 风格路径匹配）
+      paths:
+        - /api/auth/login
+        - /api/auth/logout
+        - /actuator/**
+        - /swagger-ui/**
+        - /v3/api-docs/**
+
+synapse:
+  security:
+    # ===========================================
+    # Token 配置
+    # ===========================================
+    token:
+      # Token 前缀（用于 Authorization 请求头）
+      prefix: "Bearer "
       
-      # 其他配置
-      token-name: "satoken"
-      timeout: 2592000
-      activity-timeout: 1800
-      is-concurrent: true
-      is-share: false
-      is-log: true
-      is-read-header: true
-      is-write-header: true
-      token-prefix: "Bearer"
-      token-style: "uuid"
+      # Token 查询参数名
+      query-param: "token"
+      
+      # Authorization 请求头名称
+      header-name: "Authorization"
+      
+      # X-Auth-Token 请求头名称
+      x-auth-token-header: "X-Auth-Token"
+    
+    # ===========================================
+    # Gateway 签名配置
+    # ===========================================
+    gateway-signature:
+      # 是否启用 Gateway 签名验证
+      enabled: true
+      
+      # Gateway 签名密钥（生产环境必须修改为强密钥）
+      secret: "synapse-gateway-secret-key-change-in-production"
+      
+      # 签名有效期窗口（毫秒），默认 5 分钟
+      validity-window: 300000
+      
+      # 是否启用用户上下文传递
+      enable-context-passing: true
+    
+    # ===========================================
+    # 内部服务调用配置（服务间通信）
+    # ===========================================
+    internal-service:
+      # 是否启用内部服务调用签名验证
+      enabled: true
+      
+      # 当前服务名称（用于标识调用来源）
+      service-name: "iam-service"
+      
+      # 当前服务密钥（用于生成签名，生产环境必须修改为强密钥）
+      secret: "iam-service-secret-key-change-in-production"
+      
+      # 签名有效期窗口（毫秒），默认 5 分钟
+      validity-window: 300000
+      
+      # 允许调用的服务白名单（key: 服务名称, value: 服务密钥）
+      # 如果为空，则允许所有服务调用（不推荐）
+      allowed-services:
+        "mdm-service": "mdm-service-secret-key-change-in-production"
+        "business-service": "business-service-secret-key-change-in-production"
 
 # ===========================================
 # 日志配置
@@ -38,11 +94,19 @@ synapse:
 logging:
   level:
     com.indigo.security: INFO
-    cn.dev33.satoken: INFO
 
 # ===========================================
-# 验证配置是否生效的方法：
-# 1. 启动应用后，控制台不应该显示 Sa-Token 的 banner
-# 2. 检查日志中是否有 "Sa-Token配置已应用" 的信息
-# 3. 确认 is-print=false 的配置被正确应用
+# 配置说明
 # ===========================================
+# 1. Token 通过 TokenService 生成和管理，存储在 Redis 中
+# 2. 权限检查通过 PermissionService 和 PermissionAspect 实现
+# 3. 用户上下文通过 UserContextInterceptor 自动设置
+# 4. Gateway 会将用户上下文和签名注入到请求头，减少微服务的 Redis 查询
+# 5. 微服务只接受 Gateway 传递的用户上下文，不再从 Redis 降级获取（确保请求必须经过 Gateway）
+# 6. 内部服务调用（如 OpenFeign）使用独立的签名机制，不需要用户上下文
+# 7. 微服务使用 Caffeine 本地缓存，进一步提升性能
+# 8. 白名单路径不需要认证即可访问
+#
+# 双通道认证机制：
+# - 外部请求（Gateway）：验证 Token + 用户上下文 + Gateway 签名
+# - 内部调用（服务间）：验证内部服务签名（X-Internal-Service, X-Internal-Signature）

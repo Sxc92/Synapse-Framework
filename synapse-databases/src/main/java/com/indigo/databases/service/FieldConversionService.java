@@ -5,7 +5,6 @@ import com.indigo.databases.enums.FieldConversionStrategyType;
 import com.indigo.databases.strategy.FieldConversionStrategy;
 import com.indigo.databases.strategy.FieldConversionStrategyFactory;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -54,7 +53,7 @@ public class FieldConversionService {
                 strategy = FieldConversionStrategyFactory.createStrategy(type);
             }
             
-            log.info("字段转换策略初始化完成: {} ({})", type.name(), type.getDescription());
+            log.debug("字段转换策略初始化完成: {} ({})", type.name(), type.getDescription());
             
         } catch (Exception e) {
             log.warn("字段转换策略初始化失败，使用默认策略: {}", e.getMessage());

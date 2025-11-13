@@ -5,7 +5,6 @@ import com.indigo.databases.enums.FieldConversionStrategyType;
 import com.indigo.databases.enums.PoolType;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.context.properties.bind.ConstructorBinding;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -238,7 +237,7 @@ public class SynapseDataSourceProperties {
         /**
          * 数据源角色
          */
-        private DataSourceRole role = DataSourceRole.READ_WRITE;
+//        private DataSourceRole role = DataSourceRole.READ_WRITE;
 
         /**
          * 权重（用于负载均衡）
@@ -268,20 +267,20 @@ public class SynapseDataSourceProperties {
         /**
          * 数据源角色枚举
          */
-        public enum DataSourceRole {
-            /**
-             * 只读数据源
-             */
-            READ,
-            /**
-             * 只写数据源
-             */
-            WRITE,
-            /**
-             * 读写数据源
-             */
-            READ_WRITE
-        }
+//        public enum DataSourceRole {
+//            /**
+//             * 只读数据源
+//             */
+//            READ,
+//            /**
+//             * 只写数据源
+//             */
+//            WRITE,
+//            /**
+//             * 读写数据源
+//             */
+//            READ_WRITE
+//        }
 
         /**
          * 获取JDBC URL

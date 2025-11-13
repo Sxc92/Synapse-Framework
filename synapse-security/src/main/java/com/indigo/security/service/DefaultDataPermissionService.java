@@ -135,14 +135,18 @@ public class DefaultDataPermissionService implements DataPermissionService {
                 case ALL:
                     return "1=1"; // 无限制
                 case DEPARTMENT:
-                    return "dept_id = " + user.getDeptId();
+                    // 注意：UserContext 中没有 deptId 字段，返回无权限
+                    // 如果需要部门权限，请在 UserContext 中添加 deptId 字段
+                    log.warn("数据权限规则需要部门ID，但 UserContext 中没有 deptId 字段: userId={}", user.getUserId());
+                    return "1=0"; // 无权限
                 case DEPARTMENT_AND_BELOW:
-                    return "dept_id IN (SELECT id FROM department WHERE path LIKE '" +
-                            getDepartmentPath(user.getDeptId()) + "%')";
+                    // 注意：UserContext 中没有 deptId 字段，返回无权限
+                    log.warn("数据权限规则需要部门ID，但 UserContext 中没有 deptId 字段: userId={}", user.getUserId());
+                    return "1=0"; // 无权限
                 case PERSONAL:
-                    return "create_user_id = " + user.getUserId();
+                    return "create_user_id = '" + user.getUserId() + "'";
                 case CUSTOM:
-                    return rule.getCustomScope();
+                    return rule.getCustomScope() != null ? rule.getCustomScope() : "1=0";
                 default:
                     return "1=2"; // 默认无权限
             }
@@ -197,9 +201,11 @@ public class DefaultDataPermissionService implements DataPermissionService {
         }
 
         // 添加部门规则
-        if (user.getDeptId() != null) {
-            allRules.addAll(getDepartmentRules(user.getDeptId()));
-        }
+        // 注意：UserContext 中没有 deptId 字段，暂时跳过部门规则
+        // 如果需要部门权限，请在 UserContext 中添加 deptId 字段
+        // if (user.getDeptId() != null) {
+        //     allRules.addAll(getDepartmentRules(user.getDeptId()));
+        // }
 
         return allRules;
     }
@@ -261,6 +267,15 @@ public class DefaultDataPermissionService implements DataPermissionService {
         }
     }
 
+    /**
+     * 获取部门路径
+     * 注意：此方法当前未使用，因为 UserContext 中没有 deptId 字段
+     * 如果未来添加了 deptId 字段，此方法将被使用
+     *
+     * @param deptId 部门ID
+     * @return 部门路径
+     */
+    @SuppressWarnings("unused")
     private String getDepartmentPath(String deptId) {
         // 这里应该调用组织架构服务获取部门路径
         // 为演示返回模拟值

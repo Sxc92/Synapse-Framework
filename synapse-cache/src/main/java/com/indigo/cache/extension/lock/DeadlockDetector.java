@@ -1,10 +1,8 @@
 package com.indigo.cache.extension.lock;
 
-import com.indigo.cache.infrastructure.RedisService;
-import com.indigo.cache.manager.CacheKeyGenerator;
+import com.indigo.cache.config.LockAutoConfiguration;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,12 +19,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * 2. 死锁预防：通过超时机制预防死锁
  * 3. 死锁恢复：自动释放超时锁
  * 4. 资源依赖图：构建线程间的资源依赖关系
+ * 
+ * <p><b>注意：</b>此类通过 {@link LockAutoConfiguration} 中的 {@code @Bean} 方法注册为 Bean，
+ * 不需要 {@code @Component} 注解。如果同时使用 {@code @Component} 和 {@code @Bean}，
+ * 会导致创建多个 Bean 实例，引发冲突。
  *
  * @author 史偕成
  * @date 2025/01/08
  */
 @Slf4j
-@Component
 public class DeadlockDetector {
 
     protected final ScheduledExecutorService scheduler;
@@ -68,7 +69,7 @@ public class DeadlockDetector {
         lockHolders.put(lockKey, threadId);
         threadTimeouts.put(threadId, System.currentTimeMillis() + LOCK_TIMEOUT * 1000L);
 
-        log.info("[DeadlockDetector] 记录锁获取: threadId={} lockKey={}", threadId, lockKey);
+        log.debug("[DeadlockDetector] 记录锁获取: threadId={} lockKey={}", threadId, lockKey);
     }
 
     /**
@@ -136,7 +137,7 @@ public class DeadlockDetector {
     private void startDeadlockDetection() {
         scheduler.scheduleWithFixedDelay(this::detectDeadlocks,
             DETECTION_INTERVAL, DETECTION_INTERVAL, TimeUnit.MILLISECONDS);
-        log.info("[DeadlockDetector] 死锁检测任务已启动，检测间隔: {}ms", DETECTION_INTERVAL);
+        log.debug("[DeadlockDetector] 死锁检测任务已启动，检测间隔: {}ms", DETECTION_INTERVAL);
     }
 
     /**

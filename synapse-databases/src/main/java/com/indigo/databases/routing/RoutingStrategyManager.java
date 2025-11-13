@@ -26,7 +26,7 @@ public class RoutingStrategyManager {
      */
     public void registerRouter(String name, DataSourceRouter router) {
         routerRegistry.put(name, router);
-        log.info("注册路由器: [{}] -> [{}]", name, router.getStrategyName());
+        log.debug("注册路由器: [{}] -> [{}]", name, router.getStrategyName());
     }
     
     /**
@@ -34,7 +34,7 @@ public class RoutingStrategyManager {
      */
     public void setDefaultStrategy(DataSourceRouter.SqlType sqlType, String strategyName) {
         defaultStrategies.put(sqlType, strategyName);
-        log.info("设置默认策略: [{}] -> [{}]", sqlType, strategyName);
+        log.debug("设置默认策略: [{}] -> [{}]", sqlType, strategyName);
     }
     
     /**

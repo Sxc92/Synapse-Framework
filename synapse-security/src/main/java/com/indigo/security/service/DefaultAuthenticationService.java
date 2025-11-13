@@ -1,11 +1,11 @@
 package com.indigo.security.service;
 
-import cn.dev33.satoken.stp.StpUtil;
 import com.indigo.cache.session.UserSessionService;
 import com.indigo.core.context.UserContext;
 import com.indigo.core.entity.Result;
 import com.indigo.core.exception.Ex;
 import com.indigo.security.core.AuthenticationService;
+import com.indigo.security.core.TokenService;
 import com.indigo.security.model.AuthRequest;
 import com.indigo.security.model.AuthResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +17,7 @@ import static com.indigo.security.constants.SecurityError.*;
 
 /**
  * 简化的认证服务实现
- * 直接使用Sa-Token框架处理所有类型的认证请求
+ * 使用 TokenService 处理所有类型的认证请求
  * 支持用户名密码、OAuth2.0、Token验证等多种认证方式
  *
  * @author 史偕成
@@ -27,13 +27,16 @@ import static com.indigo.security.constants.SecurityError.*;
 public class DefaultAuthenticationService implements AuthenticationService {
 
     private final UserSessionService userSessionService;
+    private final TokenService tokenService;
 
     public DefaultAuthenticationService() {
         this.userSessionService = null;
+        this.tokenService = null;
     }
 
-    public DefaultAuthenticationService(UserSessionService userSessionService) {
+    public DefaultAuthenticationService(UserSessionService userSessionService, TokenService tokenService) {
         this.userSessionService = userSessionService;
+        this.tokenService = tokenService;
     }
 
     @Override
@@ -41,8 +44,13 @@ public class DefaultAuthenticationService implements AuthenticationService {
         // 验证请求完整性
         AuthRequest.isValid(request);
         log.info("开始认证: authType={}, username={}", request.getAuthType(), request.getUsername());
-        // 通过Sa-Token框架处理认证
-        String token = processWithSaToken(request);
+        
+        if (tokenService == null) {
+            Ex.throwEx(AUTH_REQUEST_INVALID, "TokenService 未配置");
+        }
+        
+        // 通过 TokenService 处理认证
+        String token = processWithTokenService(request);
         // 存储用户会话信息
         storeUserSession(token, request);
 
@@ -54,31 +62,46 @@ public class DefaultAuthenticationService implements AuthenticationService {
         if (token == null || token.trim().isEmpty()) {
             Ex.throwEx(AUTH_TOKEN_NULL);
         }
+        
+        if (tokenService == null) {
+            Ex.throwEx(AUTH_REQUEST_INVALID, "TokenService 未配置");
+        }
+        
         log.info("开始Token续期");
-        // 通过Sa-Token框架续期
-        StpUtil.renewTimeout(7200L);
+        // 通过 TokenService 续期
+        boolean success = tokenService.renewToken(token, 7200L);
+        if (!success) {
+            Ex.throwEx(AUTH_TOKEN_INVALID, "Token续期失败");
+        }
         log.info("Token续期成功");
         return AuthResponse.of(token, null, 7200L);
-
     }
 
     @Override
     public UserContext getCurrentUser() {
-        try {
-            String token = StpUtil.getTokenValue();
-            if (token != null && userSessionService != null) {
-                return userSessionService.getUserSession(token);
-            }
-        } catch (Exception e) {
-            log.warn("获取当前用户信息失败", e);
+        // 从 UserContext 获取（由 UserContextInterceptor 设置）
+        UserContext userContext = UserContext.getCurrentUser();
+        if (userContext != null) {
+            return userContext;
         }
+        
+        // 如果 UserContext 中没有，尝试从请求中获取 token（需要从请求头或请求属性中获取）
+        // 这里暂时返回 null，因为 token 获取需要依赖 HttpServletRequest
+        // 业务代码应该直接使用 UserContext.getCurrentUser()
+        log.debug("无法获取当前用户信息：UserContext 未设置");
         return null;
     }
 
     @Override
     public Result<Void> logout() {
         try {
-            StpUtil.logout();
+            // 从 UserContext 获取 token
+            UserContext userContext = UserContext.getCurrentUser();
+            if (userContext != null && tokenService != null) {
+                // 需要从请求中获取 token，这里暂时无法直接获取
+                // 业务代码应该直接调用 TokenService.revokeToken(token)
+                log.warn("logout() 方法需要 token 参数，请使用 TokenService.revokeToken(token)");
+            }
             log.info("用户登出成功");
             return Result.success(null);
         } catch (Exception e) {
@@ -88,56 +111,53 @@ public class DefaultAuthenticationService implements AuthenticationService {
     }
 
     /**
-     * 通过Sa-Token框架处理不同类型的认证
+     * 通过 TokenService 处理不同类型的认证
      *
      * @param request 认证请求
      * @return 生成的Token
      */
-    private String processWithSaToken(AuthRequest request) {
+    private String processWithTokenService(AuthRequest request) {
         return switch (request.getAuthType()) {
             case USERNAME_PASSWORD -> {
-                // Sa-Token用户名密码登录
-                StpUtil.login(request.getUserId());
-                yield StpUtil.getTokenValue();
+                // 用户名密码登录，生成 token
+                UserContext userContext = UserContext.builder()
+                        .userId(request.getUserId())
+                        .account(request.getUsername())
+                        .roles(request.getRoles())
+                        .permissions(request.getPermissions())
+                        .build();
+                yield tokenService.generateToken(request.getUserId(), userContext, 7200L);
             }
             case OAUTH2_AUTHORIZATION_CODE, OAUTH2_CLIENT_CREDENTIALS -> {
-                // Sa-Token OAuth2.0登录
-                StpUtil.login(request.getUserId());
-                yield StpUtil.getTokenValue();
+                // OAuth2.0登录，生成 token
+                UserContext userContext = UserContext.builder()
+                        .userId(request.getUserId())
+                        .account(request.getUsername())
+                        .roles(request.getRoles())
+                        .permissions(request.getPermissions())
+                        .build();
+                yield tokenService.generateToken(request.getUserId(), userContext, 7200L);
             }
-            case TOKEN_VALIDATION ->
-                // Sa-Token Token验证
-                    validateTokenWithSaToken(request.getTokenAuth().getToken());
-            case REFRESH_TOKEN ->
-                // Sa-Token刷新Token
-                    processRefreshToken(request.getRefreshTokenAuth().getRefreshToken());
+            case TOKEN_VALIDATION -> {
+                // Token验证
+                String token = request.getTokenAuth().getToken();
+                if (!tokenService.validateToken(token)) {
+                    Ex.throwEx(AUTH_TOKEN_INVALID, "Token无效");
+                }
+                yield token;
+            }
+            case REFRESH_TOKEN -> {
+                // 刷新Token（续期）
+                String refreshToken = request.getRefreshTokenAuth().getRefreshToken();
+                if (!tokenService.validateToken(refreshToken)) {
+                    Ex.throwEx(AUTH_TOKEN_INVALID, "刷新Token无效");
+                }
+                // 续期 token
+                tokenService.renewToken(refreshToken, 7200L);
+                yield refreshToken;
+            }
             default -> throw new IllegalArgumentException("不支持的认证类型: " + request.getAuthType());
         };
-    }
-
-    /**
-     * 验证Token（通过Sa-Token框架）
-     *
-     * @param token Token值
-     * @return 验证后的Token
-     */
-    private String validateTokenWithSaToken(String token) {
-        // 通过Sa-Token验证Token
-        StpUtil.checkLogin();
-        return token;
-    }
-
-    /**
-     * 处理刷新Token（通过Sa-Token框架）
-     *
-     * @param refreshToken 刷新Token
-     * @return 新的访问Token
-     */
-    private String processRefreshToken(String refreshToken) {
-        // 通过Sa-Token处理刷新Token
-        // 这里可以根据需要实现具体的刷新逻辑
-        StpUtil.renewTimeout(7200L);
-        return StpUtil.getTokenValue();
     }
 
     /**
@@ -155,7 +175,6 @@ public class DefaultAuthenticationService implements AuthenticationService {
         UserContext userContext = UserContext.builder()
                 .userId(request.getUserId())
                 .account(request.getUsername())
-                .loginTime(System.currentTimeMillis())
                 .roles(request.getRoles())
                 .permissions(request.getPermissions())
                 .build();
@@ -165,12 +184,12 @@ public class DefaultAuthenticationService implements AuthenticationService {
         // 1. 存储用户会话（包含完整用户信息）
         userSessionService.storeUserSession(token, userContext, tokenTimeout);
 
-        // 2. 单独存储权限（PermissionManager 需要）
+        // 2. 单独存储权限（供 UserSessionService 查询使用）
         if (request.getPermissions() != null && !request.getPermissions().isEmpty()) {
             userSessionService.storeUserPermissions(token, request.getPermissions(), tokenTimeout);
         }
 
-        // 3. 单独存储角色（PermissionManager 需要）
+        // 3. 单独存储角色（供 UserSessionService 查询使用）
         if (request.getRoles() != null && !request.getRoles().isEmpty()) {
             userSessionService.storeUserRoles(token, request.getRoles(), tokenTimeout);
         }

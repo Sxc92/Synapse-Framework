@@ -1,17 +1,16 @@
 package com.indigo.databases.config;
 
+import com.alibaba.druid.pool.DruidDataSource;
 import com.indigo.databases.dynamic.DynamicRoutingDataSource;
+import com.indigo.databases.factory.DataSourceFactory;
+import com.indigo.databases.health.DataSourceHealthChecker;
 import com.indigo.databases.routing.DataSourceRouter;
 import com.indigo.databases.routing.SmartRouterSelector;
-import com.indigo.databases.health.DataSourceHealthEventPublisher;
-import com.indigo.databases.health.DataSourceHealthChecker;
-import com.indigo.databases.factory.DataSourceFactory;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -35,39 +34,39 @@ import java.util.logging.Logger;
 @Configuration
 @EnableConfigurationProperties(SynapseDataSourceProperties.class)
 public class DynamicDataSourceAutoConfiguration {
-    
+
     private final SynapseDataSourceProperties properties;
     private final List<DataSourceRouter> routers;
     private final SmartRouterSelector routerSelector;
     private final ApplicationContext applicationContext;
-    
+
     public DynamicDataSourceAutoConfiguration(SynapseDataSourceProperties properties,
-                                            List<DataSourceRouter> routers,
-                                            SmartRouterSelector routerSelector,
-                                            ApplicationContext applicationContext) {
+                                              List<DataSourceRouter> routers,
+                                              SmartRouterSelector routerSelector,
+                                              ApplicationContext applicationContext) {
         log.info("DynamicDataSourceAutoConfiguration 被加载");
         this.properties = properties;
         this.routers = routers;
         this.routerSelector = routerSelector;
         this.applicationContext = applicationContext;
     }
-    
+
     @Bean
     public DataSourceFactory dataSourceFactory() {
         return new DataSourceFactory();
     }
-    
+
     @Bean
     @Primary
     public DynamicRoutingDataSource dynamicDataSource(DataSourceFactory dataSourceFactory) {
         // 创建配置对象
-        DynamicRoutingDataSource.DataSourceConfig config = 
+        DynamicRoutingDataSource.DataSourceConfig config =
                 new DynamicRoutingDataSource.DataSourceConfig(properties.getPrimary());
-        
+
         // 创建动态路由数据源
         DynamicRoutingDataSource dynamicDataSource = new DynamicRoutingDataSource(
-                routers, 
-                routerSelector, 
+                routers,
+                routerSelector,
                 config
         );
 
@@ -76,36 +75,36 @@ public class DynamicDataSourceAutoConfiguration {
         int totalCount = properties.getDatasources().size();
         DataSource firstSuccessfulDataSource = null;
         String firstSuccessfulDataSourceName = null;
-        
+
         // 存储失败的数据源配置，用于后续恢复
         Map<String, SynapseDataSourceProperties.DataSourceConfig> failedDataSourceConfigs = new java.util.concurrent.ConcurrentHashMap<>();
-        
+
         for (Map.Entry<String, SynapseDataSourceProperties.DataSourceConfig> entry : properties.getDatasources().entrySet()) {
             String name = entry.getKey();
             SynapseDataSourceProperties.DataSourceConfig props = entry.getValue();
-            
+
             try {
                 // 创建数据源
                 DataSource dataSource = dataSourceFactory.createDataSource(props);
-                
+
                 // 使用 addDataSource 方法添加数据源
                 dynamicDataSource.addDataSource(name, dataSource);
-                
-                log.info("Initialized datasource [{}] with type [{}], role [{}], pool [{}]",
-                        name, props.getType(), props.getRole(), props.getPoolType());
+
+                log.info("Initialized datasource [{}] with type [{}], pool [{}]",
+                        name, props.getType(), props.getPoolType());
                 successCount++;
-                
+
                 // 记录第一个成功的数据源，用于 Seata 初始化
                 if (firstSuccessfulDataSource == null) {
                     firstSuccessfulDataSource = dataSource;
                     firstSuccessfulDataSourceName = name;
                 }
-                        
+
             } catch (Exception e) {
                 // 提取异常的根本原因信息
                 String rootCause = extractRootCauseMessage(e);
                 log.error("数据源 [{}] 初始化失败: {}", name, rootCause);
-                
+
                 // 如果启用了故障转移，允许部分数据源初始化失败
                 if (properties.getFailover().isEnabled()) {
                     log.warn("数据源 [{}] 初始化失败，但由于启用了故障转移，应用将继续启动。失败原因: {}", name, rootCause);
@@ -117,36 +116,36 @@ public class DynamicDataSourceAutoConfiguration {
                 }
             }
         }
-        
-        log.info("数据源初始化完成: 成功 {}/{} 个", successCount, totalCount);
-        
+
+        log.debug("数据源初始化完成: 成功 {}/{} 个", successCount, totalCount);
+
         // 如果启用了故障转移，检查是否至少有一个数据源成功
         if (properties.getFailover().isEnabled()) {
             if (successCount == 0) {
                 throw new RuntimeException("启用故障转移时，至少需要一个数据源成功初始化，但所有数据源都初始化失败");
             }
-            
+
             // 将失败的数据源配置传递给健康检查器，用于后续恢复
             if (!failedDataSourceConfigs.isEmpty()) {
-                log.info("启用故障转移模式，{} 个数据源将在后台尝试恢复: {}", 
+                log.debug("启用故障转移模式，{} 个数据源将在后台尝试恢复: {}",
                         failedDataSourceConfigs.size(), failedDataSourceConfigs.keySet());
                 // 将失败的数据源配置传递给健康检查器
                 setFailedDataSourceConfigsToHealthChecker(failedDataSourceConfigs);
             }
         }
 
-        log.info("Setting default data source: {}", properties.getPrimary());
-        
+        log.debug("Setting default data source: {}", properties.getPrimary());
+
         // 设置默认数据源 - 支持故障转移
         DataSource primaryDataSource = dynamicDataSource.getDataSources().get(properties.getPrimary());
         if (primaryDataSource == null) {
             if (properties.getFailover().isEnabled()) {
                 log.warn("主数据源 [{}] 不可用，但启用了故障转移，将使用第一个可用的数据源作为默认数据源", properties.getPrimary());
-                
+
                 // 使用第一个成功的数据源作为默认数据源
                 if (firstSuccessfulDataSource != null) {
                     dynamicDataSource.setDefaultTargetDataSource(firstSuccessfulDataSource);
-                    log.info("使用数据源 [{}] 作为默认数据源", firstSuccessfulDataSourceName);
+                    log.debug("使用数据源 [{}] 作为默认数据源", firstSuccessfulDataSourceName);
                 } else {
                     throw new IllegalStateException("启用故障转移时，没有可用的数据源作为默认数据源");
                 }
@@ -159,40 +158,37 @@ public class DynamicDataSourceAutoConfiguration {
 
         return dynamicDataSource;
     }
-    
+
     /**
      * 创建数据源
      */
     private DataSource createDataSource(SynapseDataSourceProperties.DataSourceConfig props) {
-        log.info("创建数据源: {}, 类型: {}, 连接池: {}", props.getDatabase(), props.getType(), props.getPoolType());
-        
+        log.debug("创建数据源: {}, 类型: {}, 连接池: {}", props.getDatabase(), props.getType(), props.getPoolType());
+
         try {
-            switch (props.getPoolType()) {
-                case HIKARI:
-                    return createHikariDataSource(props);
-                case DRUID:
-                    return createDruidDataSource(props);
-                default:
-                    throw new IllegalArgumentException("不支持的连接池类型: " + props.getPoolType());
-            }
+            return switch (props.getPoolType()) {
+                case HIKARI -> createHikariDataSource(props);
+                case DRUID -> createDruidDataSource(props);
+                default -> throw new IllegalArgumentException("不支持的连接池类型: " + props.getPoolType());
+            };
         } catch (Exception e) {
             log.error("创建数据源失败: {}", e.getMessage(), e);
             throw new RuntimeException("创建数据源失败: " + props.getDatabase(), e);
         }
     }
-    
+
     /**
      * 创建HikariCP数据源
      */
     private DataSource createHikariDataSource(SynapseDataSourceProperties.DataSourceConfig props) {
-        com.zaxxer.hikari.HikariConfig config = new com.zaxxer.hikari.HikariConfig();
-        
+        HikariConfig config = new HikariConfig();
+
         // 基本配置
         config.setJdbcUrl(props.getUrl());
         config.setDriverClassName(props.getDriverClassName());
         config.setUsername(props.getUsername());
         config.setPassword(props.getPassword());
-        
+
         // HikariCP配置
         SynapseDataSourceProperties.HikariConfig hikariConfig = props.getHikari();
         config.setMinimumIdle(hikariConfig.getMinimumIdle());
@@ -204,29 +200,29 @@ public class DynamicDataSourceAutoConfiguration {
         config.setValidationTimeout(hikariConfig.getValidationTimeout());
         config.setLeakDetectionThreshold(hikariConfig.getLeakDetectionThreshold());
         config.setRegisterMbeans(hikariConfig.isRegisterMbeans());
-        
+
         if (hikariConfig.getConnectionInitSql() != null && !hikariConfig.getConnectionInitSql().isEmpty()) {
             config.setConnectionInitSql(hikariConfig.getConnectionInitSql());
         }
-        
+
         // 设置数据源名称
         config.setPoolName(props.getDatabase() + "-hikari-pool");
-        
-        return new com.zaxxer.hikari.HikariDataSource(config);
+
+        return new HikariDataSource(config);
     }
-    
+
     /**
      * 创建Druid数据源
      */
     private DataSource createDruidDataSource(SynapseDataSourceProperties.DataSourceConfig props) {
-        com.alibaba.druid.pool.DruidDataSource dataSource = new com.alibaba.druid.pool.DruidDataSource();
-        
+        DruidDataSource dataSource = new DruidDataSource();
+
         // 基本配置
         dataSource.setUrl(props.getUrl());
         dataSource.setDriverClassName(props.getDriverClassName());
         dataSource.setUsername(props.getUsername());
         dataSource.setPassword(props.getPassword());
-        
+
         // Druid配置
         SynapseDataSourceProperties.DruidConfig druidConfig = props.getDruid();
         dataSource.setInitialSize(druidConfig.getInitialSize());
@@ -242,24 +238,24 @@ public class DynamicDataSourceAutoConfiguration {
         dataSource.setTestOnReturn(druidConfig.getTestOnReturn());
         dataSource.setPoolPreparedStatements(druidConfig.getPoolPreparedStatements());
         dataSource.setMaxPoolPreparedStatementPerConnectionSize(druidConfig.getMaxPoolPreparedStatementPerConnectionSize());
-        
+
         try {
             dataSource.setFilters(druidConfig.getFilters());
         } catch (Exception e) {
             log.warn("设置Druid过滤器失败: {}", e.getMessage());
         }
-        
+
         return dataSource;
     }
-    
+
     /**
      * 创建占位符数据源（用于标记不可用的数据源）
      */
     private DataSource createPlaceholderDataSource(String name) {
         return new PlaceholderDataSource(name);
     }
-    
-    
+
+
     /**
      * 设置失败的数据源配置给健康检查器
      */
@@ -269,29 +265,25 @@ public class DynamicDataSourceAutoConfiguration {
             try {
                 // 等待健康检查器初始化完成
                 Thread.sleep(2000);
-                
+
                 // 通过 ApplicationContext 获取健康检查器 Bean
                 DataSourceHealthChecker healthChecker = applicationContext.getBean(DataSourceHealthChecker.class);
-                if (healthChecker != null) {
-                    healthChecker.setFailedDataSourceConfigs(failedConfigs);
-                    log.info("成功将失败的数据源配置传递给健康检查器: {}", failedConfigs.keySet());
-                } else {
-                    log.warn("无法获取 DataSourceHealthChecker Bean，失败的数据源配置将无法传递给健康检查器");
-                }
+                healthChecker.setFailedDataSourceConfigs(failedConfigs);
+                log.debug("成功将失败的数据源配置传递给健康检查器: {}", failedConfigs.keySet());
             } catch (Exception e) {
                 log.error("设置失败数据源配置给健康检查器时发生异常: {}", e.getMessage());
                 // 不抛出异常，避免影响应用启动
             }
         }, "DataSourceConfigSetter").start();
     }
-    
+
     /**
      * 提取异常的根本原因信息，避免冗长的堆栈信息
      */
     private String extractRootCauseMessage(Exception e) {
         Throwable cause = e;
         String message = e.getMessage();
-        
+
         // 查找根本原因
         while (cause.getCause() != null && cause.getCause() != cause) {
             cause = cause.getCause();
@@ -299,7 +291,7 @@ public class DynamicDataSourceAutoConfiguration {
                 message = cause.getMessage();
             }
         }
-        
+
         // 简化常见的数据库连接错误信息
         if (message != null) {
             if (message.contains("Connection refused")) {
@@ -314,65 +306,60 @@ public class DynamicDataSourceAutoConfiguration {
                 return "数据库连接超时，请检查网络和数据库配置";
             }
         }
-        
+
         return message != null ? message : "未知错误";
     }
-    
+
     /**
      * 占位符数据源 - 用于标记不可用的数据源
      */
-    private static class PlaceholderDataSource implements DataSource {
-        private final String name;
-        
-        public PlaceholderDataSource(String name) {
-            this.name = name;
-        }
-        
+    private record PlaceholderDataSource(String name) implements DataSource {
+
         @Override
-        public Connection getConnection() throws java.sql.SQLException {
+        public Connection getConnection() throws SQLException {
             throw new SQLException("数据源 [" + name + "] 不可用，请检查数据库连接");
         }
-        
+
         @Override
-        public Connection getConnection(String username, String password) throws java.sql.SQLException {
+        public Connection getConnection(String username, String password) throws SQLException {
             throw new SQLException("数据源 [" + name + "] 不可用，请检查数据库连接");
         }
-        
+
         @Override
         public PrintWriter getLogWriter() {
             return null;
         }
-        
+
         @Override
-        public void setLogWriter(java.io.PrintWriter out) {
+        public void setLogWriter(PrintWriter out) {
             // 空实现
         }
-        
+
         @Override
         public void setLoginTimeout(int seconds) {
             // 空实现
         }
-        
+
         @Override
         public int getLoginTimeout() {
             return 0;
         }
-        
+
         @Override
         public Logger getParentLogger() {
             return null;
         }
-        
+
         @Override
         public <T> T unwrap(Class<T> iface) {
             return null;
         }
-        
+
         @Override
         public boolean isWrapperFor(Class<?> iface) {
             return false;
         }
-        
+
         @Override
         public String toString() {
             return "PlaceholderDataSource{name='" + name + "'}";

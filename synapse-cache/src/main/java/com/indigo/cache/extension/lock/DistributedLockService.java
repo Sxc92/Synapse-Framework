@@ -123,7 +123,7 @@ public class DistributedLockService implements DisposableBean {
         if (threadLocks.containsKey(lockKey)) {
             ReentrantInfo info = threadLocks.get(lockKey);
             info.reentrantCount++;
-            log.info("[ReentrantLock] 重入锁: {} count={}", lockKey, info.reentrantCount);
+            log.debug("[ReentrantLock] 重入锁: {} count={}", lockKey, info.reentrantCount);
             return info.lockValue;
         }
         // 使用 RedisService 执行Lua脚本
@@ -135,10 +135,10 @@ public class DistributedLockService implements DisposableBean {
             ReentrantInfo info = new ReentrantInfo(lockKey, lockValue, 1);
             threadLocks.put(lockKey, info);
             localLocks.put(lockKey, new LockInfo(lockName, key, lockValue));
-            log.info("[Lock] 获取锁成功: {} value={}", lockKey, lockValue);
+            log.debug("[Lock] 获取锁成功: {} value={}", lockKey, lockValue);
             return lockValue;
         } else {
-            log.info("[Lock] 获取锁失败: {}", lockKey);
+            log.debug("[Lock] 获取锁失败: {}", lockKey);
             return null;
         }
     }
@@ -229,7 +229,7 @@ public class DistributedLockService implements DisposableBean {
         // 可重入：重入计数>1时仅减计数，不释放Redis锁
         if (info.reentrantCount > 1) {
             info.reentrantCount--;
-            log.info("[ReentrantLock] 解锁重入: {} 剩余count={}", lockKey, info.reentrantCount);
+            log.debug("[ReentrantLock] 解锁重入: {} 剩余count={}", lockKey, info.reentrantCount);
             return true;
         }
         // 使用 RedisService 执行Lua脚本
@@ -241,10 +241,10 @@ public class DistributedLockService implements DisposableBean {
             localLocks.remove(lockKey);
             // 尝试唤醒等待的线程
             tryWakeupWaitingThreads(lockKey);
-            log.info("[Lock] 释放锁成功: {} value={}", lockKey, lockValue);
+            log.debug("[Lock] 释放锁成功: {} value={}", lockKey, lockValue);
             return true;
         } else {
-            log.info("[Lock] 释放锁失败: {} value={}", lockKey, lockValue);
+            log.debug("[Lock] 释放锁失败: {} value={}", lockKey, lockValue);
             return false;
         }
     }

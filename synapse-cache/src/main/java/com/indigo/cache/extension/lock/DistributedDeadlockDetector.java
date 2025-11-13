@@ -5,7 +5,6 @@ import com.indigo.cache.config.DistributedDeadlockProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,12 +23,15 @@ import java.util.concurrent.atomic.AtomicLong;
  * 3. 分布式算法：支持跨节点的死锁检测
  * 4. 智能处理：本地死锁立即处理，全局死锁协调处理
  * 5. 容错机制：单点故障不影响整体检测
+ * 
+ * <p><b>注意：</b>此类通过 {@link LockAutoConfiguration} 中的 {@code @Bean} 方法注册为 Bean，
+ * 不需要 {@code @Component} 注解。如果同时使用 {@code @Component} 和 {@code @Bean}，
+ * 会导致创建多个 Bean 实例，引发冲突。
  *
  * @author 史偕成
  * @date 2025/01/08
  */
 @Slf4j
-@Component
 @ConditionalOnProperty(name = "synapse.cache.lock.deadlock.distributed.enabled", havingValue = "true", matchIfMissing = true)
 public class DistributedDeadlockDetector extends DeadlockDetector {
 
@@ -53,7 +55,7 @@ public class DistributedDeadlockDetector extends DeadlockDetector {
         this.properties = distributedDeadlockProperties;
         this.nodeId = generateNodeId();
 
-        log.info("[DistributedDeadlockDetector] 初始化分布式死锁检测器，节点ID: {}", nodeId);
+        log.debug("[DistributedDeadlockDetector] 初始化分布式死锁检测器，节点ID: {}", nodeId);
 
         // 启动分布式检测任务
         startDistributedDetection();
@@ -75,7 +77,7 @@ public class DistributedDeadlockDetector extends DeadlockDetector {
         scheduler.scheduleWithFixedDelay(this::updateNodeHeartbeat,
                 properties.getHeartbeatInterval(), properties.getHeartbeatInterval(), TimeUnit.MILLISECONDS);
 
-        log.info("[DistributedDeadlockDetector] 分布式检测任务已启动");
+        log.debug("[DistributedDeadlockDetector] 分布式检测任务已启动");
     }
 
     /**

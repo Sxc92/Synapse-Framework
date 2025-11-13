@@ -2,19 +2,18 @@ package com.indigo.cache.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
-
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * 分布式死锁检测配置属性
+ * 
+ * <p><b>注意：</b>此类通过 {@link LockAutoConfiguration} 中的 {@code @EnableConfigurationProperties} 注册为 Bean，
+ * 不需要 {@code @Component} 注解。如果同时使用 {@code @Component} 和 {@code @EnableConfigurationProperties}，
+ * 会导致创建两个 Bean 实例，引发冲突。
  * 
  * @author 史偕成
  * @date 2025/01/08
  */
 @Data
-@Component
 @ConfigurationProperties(prefix = "synapse.cache.lock.deadlock.distributed")
 public class DistributedDeadlockProperties {
 

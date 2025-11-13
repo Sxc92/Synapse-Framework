@@ -1,8 +1,8 @@
 # ===========================================
 # Synapse Security 模块完整配置示例
 # ===========================================
-# 基于 Sa-Token 框架的完整安全配置
-# 支持 JWT、OAuth2.0、数据权限、登录安全等功能
+# 使用自研的 TokenService 和 PermissionService
+# 支持 UUID Token、数据权限、登录安全等功能
 
 # ===========================================
 # Synapse Security 核心配置
@@ -22,134 +22,59 @@ synapse:
     security-log-level: INFO
     
     # ===========================================
-    # JWT 配置
+    # 白名单路径配置
     # ===========================================
-    jwt:
-      # 是否启用JWT认证
+    white-list:
+      # 是否启用白名单
       enabled: true
       
-      # JWT签名密钥（生产环境请使用更复杂的密钥）
-      secret: "your-super-secret-jwt-signing-key-here-change-in-production"
+      # 白名单路径列表（支持 Ant 风格路径匹配）
+      paths:
+        - /api/auth/login
+        - /api/auth/logout
+        - /actuator/**
+        - /swagger-ui/**
+        - /v3/api-docs/**
+        - /webjars/**
+        - /favicon.ico
+        - /error
+    
+    # ===========================================
+    # Token 配置
+    # ===========================================
+    token:
+      # Token 前缀（用于 Authorization 请求头）
+      # 默认 "Bearer "，可根据需要修改（如 "Token "、"JWT " 等）
+      prefix: "Bearer "
       
-      # JWT过期时间（秒）
-      expiration: 86400
+      # Token 查询参数名
+      # 默认 "token"，可根据需要修改（如 "access_token"、"auth_token" 等）
+      query-param: "token"
       
-      # JWT请求头名称
+      # Authorization 请求头名称
+      # 默认 "Authorization"，一般不需要修改
       header-name: "Authorization"
       
-      # JWT令牌前缀
-      prefix: "Bearer "
+      # X-Auth-Token 请求头名称（备用 token 传递方式）
+      # 默认 "X-Auth-Token"，可根据需要修改
+      x-auth-token-header: "X-Auth-Token"
     
     # ===========================================
-    # Sa-Token 配置
+    # Gateway 签名配置
     # ===========================================
-    satoken:
-      # 是否启用Sa-Token
+    gateway-signature:
+      # 是否启用 Gateway 签名验证
       enabled: true
       
-      # Token名称
-      token-name: "satoken"
+      # Gateway 签名密钥（生产环境必须修改为强密钥）
+      secret: "synapse-gateway-secret-key-change-in-production"
       
-      # Token有效期（秒）- 30天
-      timeout: 2592000
+      # 签名有效期窗口（毫秒），默认 5 分钟，防止重放攻击
+      validity-window: 300000
       
-      # Token活跃有效期（秒）- 30分钟
-      activity-timeout: 1800
-      
-      # 是否允许同一账号并发登录
-      is-concurrent: true
-      
-      # 是否在多个项目中共享Token
-      is-share: false
-      
-      # 是否输出操作日志
-      is-log: true
-      
-      # 是否从Cookie中读取Token
-      is-read-cookie: false
-      
-      # 是否从请求头中读取Token
-      is-read-header: true
-      
-      # 是否从请求体中读取Token
-      is-read-body: false
-      
-      # 是否在响应头中写入Token
-      is-write-header: true
-      
-      # 是否在响应体中写入Token
-      is-write-body: false
-      
-      # 是否在Cookie中写入Token
-      is-write-cookie: false
-      
-      # Token前缀
-      token-prefix: "Bearer"
-      
-      # 是否打印Sa-Token版本信息和banner（重要：控制启动时的banner显示）
-      is-print: false
-      
-      # Token风格
-      token-style: "uuid"
-    
-    # ===========================================
-    # OAuth2.0 配置
-    # ===========================================
-    oauth2:
-      # 是否启用OAuth2.0
-      enabled: false
-      
-      # OAuth2客户端ID
-      client-id: "your-oauth2-client-id"
-      
-      # OAuth2客户端密钥
-      client-secret: "your-oauth2-client-secret"
-      
-      # OAuth2授权服务器URL
-      authorization-server-url: "https://oauth.example.com/oauth/authorize"
-      
-      # OAuth2令牌服务器URL
-      token-server-url: "https://oauth.example.com/oauth/token"
-      
-      # OAuth2用户信息URL
-      user-info-url: "https://oauth.example.com/oauth/userinfo"
-      
-      # OAuth2重定向URI
-      redirect-uri: "http://localhost:8080/oauth2/callback"
-      
-      # OAuth2授权范围
-      scope: "read,write"
-    
-    # ===========================================
-    # 登录安全配置
-    # ===========================================
-    login:
-      # 最大登录失败次数
-      max-fail-count: 5
-      
-      # 账户锁定持续时间（秒）
-      lock-duration: 1800
-      
-      # 失败计数窗口时间（秒）
-      fail-window: 300
-    
-    # ===========================================
-    # 数据权限配置
-    # ===========================================
-    data-permission:
-      # 是否启用数据权限
-      enabled: true
-      
-      # 数据权限规则缓存时间（秒）
-      cache-timeout: 3600
-      
-      # 是否启用SQL注入防护
-      sql-injection-protection: true
-
-# ===========================================
-# 注意：Sa-Token 配置已统一到 synapse.security.satoken 下
-# 不再需要单独的 sa-token 配置节点
-# ===========================================
+      # 是否启用用户上下文传递
+      # 启用后，Gateway 会将用户上下文编码到请求头，减少微服务的 Redis 查询
+      enable-context-passing: true
 
 # ===========================================
 # Redis 配置（用于存储用户会话和Token）
@@ -194,9 +119,6 @@ logging:
     # Synapse Security 模块日志级别
     com.indigo.security: INFO
     
-    # Sa-Token 框架日志级别
-    cn.dev33.satoken: INFO
-    
     # 根日志级别
     root: INFO
   
@@ -204,26 +126,6 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
-
-# ===========================================
-# 微服务间调用配置
-# ===========================================
-feign:
-  client:
-    config:
-      default:
-        # 连接超时时间
-        connectTimeout: 5000
-        
-        # 读取超时时间
-        readTimeout: 5000
-        
-        # 日志级别
-        loggerLevel: basic
-        
-        # 请求拦截器（可用于自动添加JWT token）
-        requestInterceptors:
-          - com.indigo.security.interceptor.JWTFeignInterceptor
 
 # ===========================================
 # Web 安全配置
@@ -327,16 +229,10 @@ synapse:
     # 启用详细日志
     security-logging: true
     security-log-level: DEBUG
-    
-    # 较短的Token有效期
-    satoken:
-      timeout: 3600  # 1小时
-      activity-timeout: 1800  # 30分钟
 
 logging:
   level:
     com.indigo.security: DEBUG
-    cn.dev33.satoken: DEBUG
 
 ---
 # 测试环境配置
@@ -365,19 +261,11 @@ synapse:
     # 生产环境使用严格模式
     mode: STRICT
     
-    # 生产环境密钥（请修改为实际密钥）
-    jwt:
-      secret: "PRODUCTION-SUPER-SECRET-KEY-CHANGE-THIS"
-    
-    # 较长的Token有效期
-    satoken:
-      timeout: 2592000  # 30天
-      activity-timeout: 1800  # 30分钟
+    # 生产环境配置
 
 logging:
   level:
     com.indigo.security: WARN
-    cn.dev33.satoken: WARN
     root: WARN
 
 # 生产环境Redis配置

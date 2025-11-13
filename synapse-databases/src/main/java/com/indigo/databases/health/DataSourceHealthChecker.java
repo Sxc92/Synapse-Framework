@@ -4,24 +4,20 @@ import com.indigo.databases.config.SynapseDataSourceProperties;
 import com.indigo.databases.dynamic.DynamicRoutingDataSource;
 import com.indigo.databases.enums.DatabaseType;
 import com.indigo.databases.factory.DataSourceFactory;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Autowired;
-import java.util.concurrent.CompletableFuture;
-
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Component;
+
 import javax.sql.DataSource;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ScheduledExecutorService;
 
 /**
  * 数据源健康检查器
@@ -99,7 +95,7 @@ public class DataSourceHealthChecker {
             
             // 启动定时健康检查守护线程
             startHealthCheckDaemon();
-            log.info("数据源健康检查守护线程已启动，检查间隔: {}ms", 
+            log.debug("数据源健康检查守护线程已启动，检查间隔: {}ms",
                     dataSourceProperties.getHealthCheck().getInterval());
         }
         initialized = true;

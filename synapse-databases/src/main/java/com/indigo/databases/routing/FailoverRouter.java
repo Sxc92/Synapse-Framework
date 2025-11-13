@@ -1,22 +1,19 @@
 package com.indigo.databases.routing;
 
 import com.indigo.databases.config.SynapseDataSourceProperties;
-import com.indigo.databases.routing.DataSourceRouter.SqlType;
-import com.indigo.databases.health.DataSourceHealthEvent;
 import com.indigo.databases.dynamic.DynamicRoutingDataSource;
+import com.indigo.databases.health.DataSourceHealthEvent;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-import org.springframework.context.event.EventListener;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
-import jakarta.annotation.PostConstruct;
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 /**
@@ -48,7 +45,7 @@ public class FailoverRouter implements DataSourceRouter {
     
     public FailoverRouter(SynapseDataSourceProperties properties) {
         this.properties = properties;
-        log.info("FailoverRouter 构造函数被调用，故障转移启用状态: {}", properties.getFailover().isEnabled());
+        log.debug("FailoverRouter 构造函数被调用，故障转移启用状态: {}", properties.getFailover().isEnabled());
     }
     
     /**

@@ -1,6 +1,6 @@
 package com.indigo.security.utils;
 
-import cn.dev33.satoken.secure.BCrypt;
+import org.mindrot.jbcrypt.BCrypt;
 import lombok.extern.slf4j.Slf4j;
 
 /**

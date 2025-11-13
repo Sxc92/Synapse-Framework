@@ -49,7 +49,7 @@ public class DataPermissionAspect {
             DataPermissionRule.PermissionType permissionType = dataPermission.permissionType();
 
             log.info("检查数据权限: user={}, resource={}, permission={}, method={}.{}",
-                userContext.getUsername(), resourceType, permissionType, className, methodName);
+                userContext.getAccount(), resourceType, permissionType, className, methodName);
 
             boolean hasPermission = dataPermissionService.hasPermission(userContext, resourceType, permissionType);
             if (!hasPermission) {
@@ -62,7 +62,7 @@ public class DataPermissionAspect {
             DataPermissionContext.setDataScope(dataScope);
 
             log.info("数据权限检查通过: user={}, resource={}, dataScope={}",
-                userContext.getUsername(), resourceType, dataScope);
+                userContext.getAccount(), resourceType, dataScope);
 
         } catch (SecurityException e) {
             log.error("数据权限检查失败", e);

@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
@@ -64,12 +65,12 @@ public class CacheExceptionHandler {
             try {
                 T result = operation.get();
                 if (attempt > 0) {
-                    log.info("操作在第 {} 次重试后成功", attempt);
+                    log.debug("操作在第 {} 次重试后成功", attempt);
                 }
                 return result;
             } catch (Exception e) {
                 totalExceptions.incrementAndGet();
-                
+
                 if (attempt < retryCount) {
                     // 只在第一次和每3次重试时记录警告，避免日志过多
                     if (attempt == 0 || (attempt + 1) % 3 == 0) {
@@ -125,12 +126,12 @@ public class CacheExceptionHandler {
             try {
                 operation.run();
                 if (attempt > 0) {
-                    log.info("操作在第 {} 次重试后成功", attempt);
+                    log.debug("操作在第 {} 次重试后成功", attempt);
                 }
                 return;
             } catch (Exception e) {
                 totalExceptions.incrementAndGet();
-                
+
                 if (attempt < retryCount) {
                     // 只在第一次和每3次重试时记录警告，避免日志过多
                     if (attempt == 0 || (attempt + 1) % 3 == 0) {
@@ -157,7 +158,7 @@ public class CacheExceptionHandler {
     /**
      * 处理降级操作
      *
-     * @param fallback 降级操作
+     * @param fallback  降级操作
      * @param exception 异常
      * @param <T>       返回值类型
      * @return 降级结果
@@ -165,7 +166,7 @@ public class CacheExceptionHandler {
     private <T> T handleFallback(Supplier<T> fallback, Exception exception) {
         if (fallback != null) {
             try {
-                log.info("执行降级操作");
+                log.debug("执行降级操作");
                 T result = fallback.get();
                 handledExceptions.incrementAndGet();
                 return result;
@@ -196,7 +197,7 @@ public class CacheExceptionHandler {
     private void handleFallback(Runnable fallback, Exception exception) {
         if (fallback != null) {
             try {
-                log.info("执行降级操作");
+                log.debug("执行降级操作");
                 fallback.run();
                 handledExceptions.incrementAndGet();
                 return;
@@ -235,15 +236,15 @@ public class CacheExceptionHandler {
      */
     public ExceptionStatistics getExceptionStatistics() {
         return ExceptionStatistics.builder()
-            .totalExceptions(totalExceptions.get())
-            .handledExceptions(handledExceptions.get())
-            .exceptionHandlingEnabled(cacheProperties.getExceptionHandling().isEnabled())
-            .logExceptions(cacheProperties.getExceptionHandling().isLogExceptions())
-            .throwExceptions(cacheProperties.getExceptionHandling().isThrowExceptions())
-            .retryCount(cacheProperties.getExceptionHandling().getRetryCount())
-            .retryInterval(cacheProperties.getExceptionHandling().getRetryInterval())
-            .fallbackStrategy(cacheProperties.getExceptionHandling().getFallbackStrategy())
-            .build();
+                .totalExceptions(totalExceptions.get())
+                .handledExceptions(handledExceptions.get())
+                .exceptionHandlingEnabled(cacheProperties.getExceptionHandling().isEnabled())
+                .logExceptions(cacheProperties.getExceptionHandling().isLogExceptions())
+                .throwExceptions(cacheProperties.getExceptionHandling().isThrowExceptions())
+                .retryCount(cacheProperties.getExceptionHandling().getRetryCount())
+                .retryInterval(cacheProperties.getExceptionHandling().getRetryInterval())
+                .fallbackStrategy(cacheProperties.getExceptionHandling().getFallbackStrategy())
+                .build();
     }
 
     /**
@@ -252,47 +253,19 @@ public class CacheExceptionHandler {
     public void resetStatistics() {
         totalExceptions.set(0);
         handledExceptions.set(0);
-        log.info("缓存异常统计已重置");
+        log.debug("缓存异常统计已重置");
     }
 
     /**
      * 异常统计信息
      */
-    public static class ExceptionStatistics {
-        private final long totalExceptions;
-        private final long handledExceptions;
-        private final boolean exceptionHandlingEnabled;
-        private final boolean logExceptions;
-        private final boolean throwExceptions;
-        private final int retryCount;
-        private final java.time.Duration retryInterval;
-        private final String fallbackStrategy;
-
-        public ExceptionStatistics(long totalExceptions, long handledExceptions, boolean exceptionHandlingEnabled,
-                                  boolean logExceptions, boolean throwExceptions, int retryCount,
-                                  java.time.Duration retryInterval, String fallbackStrategy) {
-            this.totalExceptions = totalExceptions;
-            this.handledExceptions = handledExceptions;
-            this.exceptionHandlingEnabled = exceptionHandlingEnabled;
-            this.logExceptions = logExceptions;
-            this.throwExceptions = throwExceptions;
-            this.retryCount = retryCount;
-            this.retryInterval = retryInterval;
-            this.fallbackStrategy = fallbackStrategy;
-        }
+    public record ExceptionStatistics(long totalExceptions, long handledExceptions, boolean exceptionHandlingEnabled,
+                                      boolean logExceptions, boolean throwExceptions, int retryCount,
+                                      Duration retryInterval, String fallbackStrategy) {
 
         public static Builder builder() {
             return new Builder();
         }
-
-        public long getTotalExceptions() { return totalExceptions; }
-        public long getHandledExceptions() { return handledExceptions; }
-        public boolean isExceptionHandlingEnabled() { return exceptionHandlingEnabled; }
-        public boolean isLogExceptions() { return logExceptions; }
-        public boolean isThrowExceptions() { return throwExceptions; }
-        public int getRetryCount() { return retryCount; }
-        public java.time.Duration getRetryInterval() { return retryInterval; }
-        public String getFallbackStrategy() { return fallbackStrategy; }
 
         public static class Builder {
             private long totalExceptions;
@@ -301,7 +274,7 @@ public class CacheExceptionHandler {
             private boolean logExceptions;
             private boolean throwExceptions;
             private int retryCount;
-            private java.time.Duration retryInterval;
+            private Duration retryInterval;
             private String fallbackStrategy;
 
             public Builder totalExceptions(long totalExceptions) {
@@ -334,7 +307,7 @@ public class CacheExceptionHandler {
                 return this;
             }
 
-            public Builder retryInterval(java.time.Duration retryInterval) {
+            public Builder retryInterval(Duration retryInterval) {
                 this.retryInterval = retryInterval;
                 return this;
             }
@@ -346,7 +319,7 @@ public class CacheExceptionHandler {
 
             public ExceptionStatistics build() {
                 return new ExceptionStatistics(totalExceptions, handledExceptions, exceptionHandlingEnabled,
-                    logExceptions, throwExceptions, retryCount, retryInterval, fallbackStrategy);
+                        logExceptions, throwExceptions, retryCount, retryInterval, fallbackStrategy);
             }
         }
     }

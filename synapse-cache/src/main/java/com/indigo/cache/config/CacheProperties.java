@@ -44,6 +44,11 @@ public class CacheProperties {
     private Warmup warmup = new Warmup();
 
     /**
+     * 会话缓存预热配置
+     */
+    private SessionWarmup sessionWarmup = new SessionWarmup();
+
+    /**
      * 缓存穿透防护配置
      */
     private PenetrationProtection penetrationProtection = new PenetrationProtection();
@@ -553,5 +558,36 @@ public class CacheProperties {
      */
     public void setModuleConfig(String moduleName, ModuleConfig config) {
         modules.put(moduleName, config);
+    }
+
+    /**
+     * 会话缓存预热配置
+     */
+    @Data
+    public static class SessionWarmup {
+        /**
+         * 是否启用会话缓存预热
+         */
+        private boolean enabled = true;
+
+        /**
+         * 最多预热的会话数量
+         */
+        private int maxCount = 1000;
+
+        /**
+         * 最小 TTL（秒），只预热剩余时间大于此值的会话
+         */
+        private int minTtlSeconds = 300; // 5分钟
+
+        /**
+         * 批次大小
+         */
+        private int batchSize = 50;
+
+        /**
+         * 预热线程池大小
+         */
+        private int threadPoolSize = 4;
     }
 } 

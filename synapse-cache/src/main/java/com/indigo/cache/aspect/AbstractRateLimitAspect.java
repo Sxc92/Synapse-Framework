@@ -125,13 +125,13 @@ public abstract class AbstractRateLimitAspect {
             case "WAIT" -> {
                 // 等待策略：固定延迟1秒后重试
                 long waitTime = 1000; // 固定等待1秒
-                log.info("限流等待策略，延迟 {}ms 后重试", waitTime);
+                log.debug("限流等待策略，延迟 {}ms 后重试", waitTime);
                 Thread.sleep(waitTime);
                 yield null; // 返回null表示继续执行原方法
             }
             case "FALLBACK" -> {
                 // 降级策略：返回默认值或执行降级逻辑
-                log.info("限流降级策略，返回默认值");
+                log.debug("限流降级策略，返回默认值");
                 yield getFallbackResult(rateLimit);
             }
             default -> {

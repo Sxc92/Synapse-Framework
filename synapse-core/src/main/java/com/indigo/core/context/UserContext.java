@@ -61,41 +61,6 @@ public class UserContext implements Serializable {
     private String avatar;
 
     /**
-     * 部门ID
-     */
-    private String deptId;
-
-    /**
-     * 部门名称
-     */
-    private String deptName;
-
-    /**
-     * 部门路径
-     */
-    private String deptPath;
-
-    /**
-     * 职级ID
-     */
-    private String positionId;
-
-    /**
-     * 职级名称
-     */
-    private String positionName;
-
-    /**
-     * 职级等级
-     */
-    private Integer positionLevel;
-
-    /**
-     * 用户部门职级信息列表
-     */
-    private List<UserDeptPositionInfo> deptPositions;
-
-    /**
      * 角色列表
      */
     private List<String> roles;
@@ -104,26 +69,6 @@ public class UserContext implements Serializable {
      * 权限Id
      */
     private List<String> permissions;
-
-    /**
-     * 最后访问时间
-     */
-    private Long lastAccessTime;
-
-    /**
-     * 登录时间
-     */
-    private Long loginTime;
-
-    /**
-     * 访问令牌
-     */
-    private String token;
-
-    /**
-     * Token剩余时间（秒）
-     */
-    private Long tokenRemaining;
 
     /**
      * 获取当前用户上下文
@@ -171,93 +116,151 @@ public class UserContext implements Serializable {
     }
 
     /**
-     * 获取当前用户部门ID
+     * 获取当前用户真实姓名
      *
-     * @return 部门ID，如果没有当前用户则返回null
+     * @return 用户真实姓名，如果没有当前用户则返回null
      */
-    public static String getCurrentDeptId() {
+    public static String getCurrentRealName() {
         UserContext userContext = getCurrentUser();
-        return userContext != null ? userContext.getDeptId() : null;
+        return userContext != null ? userContext.getRealName() : null;
     }
 
     /**
-     * 获取当前用户职级ID
+     * 获取当前用户邮箱
      *
-     * @return 职级ID，如果没有当前用户则返回null
+     * @return 用户邮箱，如果没有当前用户则返回null
      */
-    public static String getCurrentPositionId() {
+    public static String getCurrentEmail() {
         UserContext userContext = getCurrentUser();
-        return userContext != null ? userContext.getPositionId() : null;
+        return userContext != null ? userContext.getEmail() : null;
     }
 
     /**
-     * 获取当前用户职级等级
+     * 获取当前用户手机号
      *
-     * @return 职级等级，如果没有当前用户则返回null
+     * @return 用户手机号，如果没有当前用户则返回null
      */
-    public static Integer getCurrentPositionLevel() {
+    public static String getCurrentMobile() {
         UserContext userContext = getCurrentUser();
-        return userContext != null ? userContext.getPositionLevel() : null;
+        return userContext != null ? userContext.getMobile() : null;
     }
 
     /**
-     * 用户部门职级信息
+     * 获取当前用户头像URL
+     *
+     * @return 用户头像URL，如果没有当前用户则返回null
      */
-    @Data
-    @Builder
-    @AllArgsConstructor
-    @NoArgsConstructor
-    public static class UserDeptPositionInfo implements Serializable {
-
-        private static final long serialVersionUID = 1L;
-        /**
-         * 部门ID
-         */
-        private String deptId;
-
-        /**
-         * 部门名称
-         */
-        private String deptName;
-
-        /**
-         * 部门路径
-         */
-        private String deptPath;
-
-        /**
-         * 职级ID
-         */
-        private String positionId;
-
-        /**
-         * 职级名称
-         */
-        private String positionName;
-
-        /**
-         * 职级等级
-         */
-        private Integer level;
-
-        /**
-         * 是否为主部门职级
-         */
-        private Boolean isPrimary;
-
-        /**
-         * 开始时间
-         */
-        private String startDate;
-
-        /**
-         * 结束时间
-         */
-        private String endDate;
-
-        /**
-         * 状态
-         */
-        private Integer status;
+    public static String getCurrentAvatar() {
+        UserContext userContext = getCurrentUser();
+        return userContext != null ? userContext.getAvatar() : null;
     }
+
+    /**
+     * 获取当前用户角色列表
+     *
+     * @return 用户角色列表，如果没有当前用户或没有角色则返回空列表
+     */
+    public static List<String> getCurrentRoles() {
+        UserContext userContext = getCurrentUser();
+        return userContext != null && userContext.getRoles() != null 
+                ? userContext.getRoles() 
+                : List.of();
+    }
+
+    /**
+     * 获取当前用户权限列表
+     *
+     * @return 用户权限列表，如果没有当前用户或没有权限则返回空列表
+     */
+    public static List<String> getCurrentPermissions() {
+        UserContext userContext = getCurrentUser();
+        return userContext != null && userContext.getPermissions() != null 
+                ? userContext.getPermissions() 
+                : List.of();
+    }
+
+    /**
+     * 检查当前用户是否有指定角色
+     *
+     * @param role 角色名称
+     * @return 如果有该角色返回true，否则返回false
+     */
+    public static boolean hasRole(String role) {
+        if (role == null || role.isEmpty()) {
+            return false;
+        }
+        List<String> roles = getCurrentRoles();
+        return roles.contains(role);
+    }
+
+    /**
+     * 检查当前用户是否有指定权限
+     *
+     * @param permission 权限标识
+     * @return 如果有该权限返回true，否则返回false
+     */
+    public static boolean hasPermission(String permission) {
+        if (permission == null || permission.isEmpty()) {
+            return false;
+        }
+        List<String> permissions = getCurrentPermissions();
+        return permissions.contains(permission);
+    }
+
+    /**
+     * 检查当前用户是否有任一指定角色
+     *
+     * @param roles 角色名称数组
+     * @return 如果有任一角色返回true，否则返回false
+     */
+    public static boolean hasAnyRole(String... roles) {
+        if (roles == null || roles.length == 0) {
+            return false;
+        }
+        List<String> userRoles = getCurrentRoles();
+        return java.util.Arrays.stream(roles).anyMatch(userRoles::contains);
+    }
+
+    /**
+     * 检查当前用户是否有任一指定权限
+     *
+     * @param permissions 权限标识数组
+     * @return 如果有任一权限返回true，否则返回false
+     */
+    public static boolean hasAnyPermission(String... permissions) {
+        if (permissions == null || permissions.length == 0) {
+            return false;
+        }
+        List<String> userPermissions = getCurrentPermissions();
+        return java.util.Arrays.stream(permissions).anyMatch(userPermissions::contains);
+    }
+
+    /**
+     * 检查当前用户是否有所有指定角色
+     *
+     * @param roles 角色名称数组
+     * @return 如果有所有角色返回true，否则返回false
+     */
+    public static boolean hasAllRoles(String... roles) {
+        if (roles == null || roles.length == 0) {
+            return false;
+        }
+        List<String> userRoles = getCurrentRoles();
+        return java.util.Arrays.stream(roles).allMatch(userRoles::contains);
+    }
+
+    /**
+     * 检查当前用户是否有所有指定权限
+     *
+     * @param permissions 权限标识数组
+     * @return 如果有所有权限返回true，否则返回false
+     */
+    public static boolean hasAllPermissions(String... permissions) {
+        if (permissions == null || permissions.length == 0) {
+            return false;
+        }
+        List<String> userPermissions = getCurrentPermissions();
+        return java.util.Arrays.stream(permissions).allMatch(userPermissions::contains);
+    }
+
 }

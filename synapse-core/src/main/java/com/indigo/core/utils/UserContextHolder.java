@@ -1,268 +1,186 @@
 package com.indigo.core.utils;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.indigo.core.context.UserContext;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
-import jakarta.servlet.http.HttpServletRequest;
-
-import java.util.Arrays;
 import java.util.List;
 
 /**
- * 用户上下文持有者
- * 用于在业务模块中获取网关传递的用户信息
+ * 用户上下文持有者（已废弃）
+ * 
+ * <p>此类已废弃，请使用 {@link UserContext} 的静态方法替代：
+ * <ul>
+ *   <li>{@link UserContext#getCurrentUser()} - 替代 {@link #getCurrentUser()}</li>
+ *   <li>{@link UserContext#getCurrentUserId()} - 替代 {@link #getCurrentUserId()}（注意：返回类型为 String）</li>
+ *   <li>{@link UserContext#getCurrentAccount()} - 替代 {@link #getCurrentUsername()}</li>
+ *   <li>{@link UserContext#getCurrentRealName()} - 获取用户真实姓名</li>
+ *   <li>{@link UserContext#getCurrentEmail()} - 获取用户邮箱</li>
+ *   <li>{@link UserContext#getCurrentMobile()} - 获取用户手机号</li>
+ *   <li>{@link UserContext#getCurrentAvatar()} - 获取用户头像URL</li>
+ *   <li>{@link UserContext#getCurrentRoles()} - 替代 {@link #getCurrentUserRoles()}</li>
+ *   <li>{@link UserContext#getCurrentPermissions()} - 替代 {@link #getCurrentUserPermissions()}</li>
+ *   <li>{@link UserContext#hasRole(String)} - 替代 {@link #hasRole(String)}</li>
+ *   <li>{@link UserContext#hasPermission(String)} - 替代 {@link #hasPermission(String)}</li>
+ *   <li>{@link UserContext#hasAnyRole(String...)} - 替代 {@link #hasAnyRole(String...)}</li>
+ *   <li>{@link UserContext#hasAnyPermission(String...)} - 替代 {@link #hasAnyPermission(String...)}</li>
+ *   <li>{@link UserContext#hasAllRoles(String...)} - 替代 {@link #hasAllRoles(String...)}</li>
+ *   <li>{@link UserContext#hasAllPermissions(String...)} - 替代 {@link #hasAllPermissions(String...)}</li>
+ * </ul>
+ * 
+ * <p>此类将在后续版本中移除。当前实现已委托给 {@link UserContext} 的静态方法，确保向后兼容。
  *
  * @author 史偕成
  * @date 2025/12/19
- * @deprecated 此类已迁移到 {@link com.indigo.security.utils.UserContextHolder}，
- * 请使用新的包路径。此类将在后续版本中移除。
+ * @deprecated 请使用 {@link UserContext} 的静态方法替代
  */
 @Slf4j
-@Deprecated(since = "1.0.0", forRemoval = true)
+@Deprecated
 public class UserContextHolder {
-
-    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * 获取当前用户上下文
+     * 
+     * @deprecated 请使用 {@link UserContext#getCurrentUser()} 替代
      */
+    @Deprecated
     public static UserContext getCurrentUser() {
-        try {
-            HttpServletRequest request = getCurrentRequest();
-            if (request == null) {
-                return null;
-            }
-
-            String userContextJson = request.getHeader("X-User-Context");
-            if (userContextJson != null) {
-                return objectMapper.readValue(userContextJson, UserContext.class);
-            }
-
-            // 如果没有完整的用户上下文，尝试从其他请求头构建
-            return buildUserContextFromHeaders(request);
-
-        } catch (Exception e) {
-            log.error("获取当前用户上下文失败", e);
-            return null;
-        }
+        return UserContext.getCurrentUser();
     }
 
     /**
      * 获取当前用户ID
+     * 
+     * @deprecated 请使用 {@link UserContext#getCurrentUserId()} 替代（注意：返回类型为 String）
      */
+    @Deprecated
     public static Long getCurrentUserId() {
-        try {
-            HttpServletRequest request = getCurrentRequest();
-            if (request == null) {
+        String userId = UserContext.getCurrentUserId();
+        if (userId == null) {
                 return null;
             }
-
-            String userId = request.getHeader("X-User-Id");
-            return userId != null ? Long.valueOf(userId) : null;
-
-        } catch (Exception e) {
-            log.error("获取当前用户ID失败", e);
+        try {
+            return Long.valueOf(userId);
+        } catch (NumberFormatException e) {
+            log.warn("用户ID格式转换失败: {}", userId, e);
             return null;
         }
     }
 
     /**
      * 获取当前用户名
+     * 
+     * @deprecated 请使用 {@link UserContext#getCurrentAccount()} 替代
      */
+    @Deprecated
     public static String getCurrentUsername() {
-        try {
-            HttpServletRequest request = getCurrentRequest();
-            if (request == null) {
-                return null;
-            }
-
-            return request.getHeader("X-Username");
-
-        } catch (Exception e) {
-            log.error("获取当前用户名失败", e);
-            return null;
-        }
+        return UserContext.getCurrentAccount();
     }
 
     /**
      * 获取当前租户ID
+     * 
+     * @deprecated UserContext 中没有 tenantId 字段，请直接从 UserContext 获取
      */
+    @Deprecated
     public static Long getCurrentTenantId() {
-        try {
-            HttpServletRequest request = getCurrentRequest();
-            if (request == null) {
-                return null;
-            }
-
-            String tenantId = request.getHeader("X-Tenant-Id");
-            return tenantId != null ? Long.valueOf(tenantId) : null;
-
-        } catch (Exception e) {
-            log.error("获取当前租户ID失败", e);
+        UserContext userContext = UserContext.getCurrentUser();
+        if (userContext == null) {
             return null;
         }
+        // UserContext 中没有 tenantId 字段，返回 null
+        // 如果需要，可以从 userContext 的其他属性获取
+        return null;
     }
 
     /**
      * 获取当前部门ID
+     * 
+     * @deprecated UserContext 中没有 deptId 字段，请直接从 UserContext 获取
      */
+    @Deprecated
     public static Long getCurrentDeptId() {
-        try {
-            HttpServletRequest request = getCurrentRequest();
-            if (request == null) {
+        // UserContext 中没有 deptId 字段，返回 null
+        // 如果需要，可以从 userContext 的其他属性获取
                 return null;
-            }
-
-            String deptId = request.getHeader("X-Dept-Id");
-            return deptId != null ? Long.valueOf(deptId) : null;
-
-        } catch (Exception e) {
-            log.error("获取当前部门ID失败", e);
-            return null;
-        }
     }
 
     /**
      * 获取当前用户角色列表
+     * 
+     * @deprecated 请使用 {@link UserContext#getCurrentRoles()} 替代
      */
+    @Deprecated
     public static List<String> getCurrentUserRoles() {
-        try {
-            HttpServletRequest request = getCurrentRequest();
-            if (request == null) {
-                return List.of();
-            }
-
-            String roles = request.getHeader("X-User-Roles");
-            if (roles != null && !roles.isEmpty()) {
-                return Arrays.asList(roles.split(","));
-            }
-
-            return List.of();
-
-        } catch (Exception e) {
-            log.error("获取当前用户角色失败", e);
-            return List.of();
-        }
+        return UserContext.getCurrentRoles();
     }
 
     /**
      * 获取当前用户权限列表
+     * 
+     * @deprecated 请使用 {@link UserContext#getCurrentPermissions()} 替代
      */
+    @Deprecated
     public static List<String> getCurrentUserPermissions() {
-        try {
-            HttpServletRequest request = getCurrentRequest();
-            if (request == null) {
-                return List.of();
-            }
-
-            String permissions = request.getHeader("X-User-Permissions");
-            if (permissions != null && !permissions.isEmpty()) {
-                return Arrays.asList(permissions.split(","));
-            }
-
-            return List.of();
-
-        } catch (Exception e) {
-            log.error("获取当前用户权限失败", e);
-            return List.of();
-        }
+        return UserContext.getCurrentPermissions();
     }
 
     /**
      * 检查当前用户是否有指定角色
+     * 
+     * @deprecated 请使用 {@link UserContext#hasRole(String)} 替代
      */
+    @Deprecated
     public static boolean hasRole(String role) {
-        List<String> roles = getCurrentUserRoles();
-        return roles.contains(role);
+        return UserContext.hasRole(role);
     }
 
     /**
      * 检查当前用户是否有指定权限
+     * 
+     * @deprecated 请使用 {@link UserContext#hasPermission(String)} 替代
      */
+    @Deprecated
     public static boolean hasPermission(String permission) {
-        List<String> permissions = getCurrentUserPermissions();
-        return permissions.contains(permission);
+        return UserContext.hasPermission(permission);
     }
 
     /**
      * 检查当前用户是否有任一指定角色
+     * 
+     * @deprecated 请使用 {@link UserContext#hasAnyRole(String...)} 替代
      */
+    @Deprecated
     public static boolean hasAnyRole(String... roles) {
-        List<String> userRoles = getCurrentUserRoles();
-        return Arrays.stream(roles).anyMatch(userRoles::contains);
+        return UserContext.hasAnyRole(roles);
     }
 
     /**
      * 检查当前用户是否有任一指定权限
+     * 
+     * @deprecated 请使用 {@link UserContext#hasAnyPermission(String...)} 替代
      */
+    @Deprecated
     public static boolean hasAnyPermission(String... permissions) {
-        List<String> userPermissions = getCurrentUserPermissions();
-        return Arrays.stream(permissions).anyMatch(userPermissions::contains);
+        return UserContext.hasAnyPermission(permissions);
     }
 
     /**
      * 检查当前用户是否有所有指定角色
+     * 
+     * @deprecated 请使用 {@link UserContext#hasAllRoles(String...)} 替代
      */
+    @Deprecated
     public static boolean hasAllRoles(String... roles) {
-        List<String> userRoles = getCurrentUserRoles();
-        return Arrays.stream(roles).allMatch(userRoles::contains);
+        return UserContext.hasAllRoles(roles);
     }
 
     /**
      * 检查当前用户是否有所有指定权限
+     * 
+     * @deprecated 请使用 {@link UserContext#hasAllPermissions(String...)} 替代
      */
+    @Deprecated
     public static boolean hasAllPermissions(String... permissions) {
-        List<String> userPermissions = getCurrentUserPermissions();
-        return Arrays.stream(permissions).allMatch(userPermissions::contains);
+        return UserContext.hasAllPermissions(permissions);
     }
-
-    /**
-     * 获取当前请求
-     */
-    private static HttpServletRequest getCurrentRequest() {
-        try {
-            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-            return attributes != null ? attributes.getRequest() : null;
-        } catch (Exception e) {
-            log.info("获取当前请求失败", e);
-            return null;
-        }
-    }
-
-    /**
-     * 从请求头构建用户上下文
-     */
-    private static UserContext buildUserContextFromHeaders(HttpServletRequest request) {
-        try {
-            String userIdStr = request.getHeader("X-User-Id");
-            String username = request.getHeader("X-Username");
-            String tenantIdStr = request.getHeader("X-Tenant-Id");
-            String deptIdStr = request.getHeader("X-Dept-Id");
-
-            if (userIdStr == null || username == null) {
-                return null;
-            }
-
-            return UserContext.builder()
-                    .userId(userIdStr)
-                    .username(username)
-                    .tenantId(isNotBlank(tenantIdStr) ? tenantIdStr : null)
-                    .deptId(isNotBlank(deptIdStr) ? deptIdStr : null)
-                    .build();
-
-        } catch (Exception e) {
-            log.error("从请求头构建用户上下文失败", e);
-            return null;
-        }
-    }
-    
-    /**
-     * 检查字符串是否不为空（JDK17原生实现）
-     */
-    private static boolean isNotBlank(String str) {
-        return str != null && !str.trim().isEmpty();
-    }
-} 
+}

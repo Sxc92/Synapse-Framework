@@ -10,25 +10,23 @@ import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.BlockAttackInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
+import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import com.indigo.core.context.UserContext;
 import com.indigo.databases.dynamic.DynamicDataSourceContextHolder;
 import com.indigo.databases.enums.DatabaseType;
 import com.indigo.databases.interceptor.AutoDataSourceInterceptor;
 import lombok.extern.slf4j.Slf4j;
-import org.mybatis.spring.annotation.MapperScan;
 import org.apache.ibatis.reflection.MetaObject;
 import org.apache.ibatis.session.SqlSessionFactory;
-import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
+import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
-import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import javax.sql.DataSource;
-
 import java.time.LocalDateTime;
 
 /**
@@ -50,7 +48,7 @@ public class MybatisPlusConfig {
                              SynapseDataSourceProperties synapseDataSourceProperties) {
         this.autoDataSourceInterceptor = autoDataSourceInterceptor;
         this.synapseDataSourceProperties = synapseDataSourceProperties;
-        log.info("MybatisPlusConfig 已加载");
+        log.debug("MybatisPlusConfig 已加载");
     }
 
     /**
@@ -149,7 +147,7 @@ public class MybatisPlusConfig {
     @Bean
     @ConditionalOnMissingBean(MetaObjectHandler.class)
     public MetaObjectHandler metaObjectHandler() {
-        log.info("手动注册 MetaObjectHandler Bean");
+        log.debug("手动注册 MetaObjectHandler Bean");
         return new MyMetaObjectHandler();
     }
 
@@ -168,15 +166,13 @@ public class MybatisPlusConfig {
 class MyMetaObjectHandler implements MetaObjectHandler {
 
     public MyMetaObjectHandler() {
-        log.info("MyMetaObjectHandler Bean 已创建");
+        log.debug("MyMetaObjectHandler Bean 已创建");
     }
 
     @Override
     public void insertFill(MetaObject metaObject) {
         LocalDateTime now = LocalDateTime.now();
         UserContext currentUser = UserContext.getCurrentUser();
-        // 获取实体类的字段信息
-        String className = metaObject.getOriginalObject().getClass().getSimpleName();
         // 填充创建时间
         this.strictInsertFill(metaObject, "createTime", LocalDateTime.class, now);
         // 填充修改时间（插入时也设置）
@@ -186,7 +182,7 @@ class MyMetaObjectHandler implements MetaObjectHandler {
             // 优先使用userId，如果为null则使用username
             String userId = currentUser.getUserId();
             if (userId == null || userId.trim().isEmpty()) {
-                userId = currentUser.getUsername();
+                userId = currentUser.getAccount();
             }
             this.strictInsertFill(metaObject, "createUser", String.class, userId);
             this.strictInsertFill(metaObject, "modifyUser", String.class, userId);
@@ -210,7 +206,7 @@ class MyMetaObjectHandler implements MetaObjectHandler {
             // 优先使用userId，如果为null则使用username
             String userId = currentUser.getUserId();
             if (userId == null || userId.trim().isEmpty()) {
-                userId = currentUser.getUsername();
+                userId = currentUser.getAccount();
             }
             this.strictUpdateFill(metaObject, "modifyUser", String.class, userId);
         } else {

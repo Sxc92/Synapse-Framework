@@ -1,14 +1,14 @@
 package com.indigo.cache.config;
 
 import com.indigo.cache.aspect.CacheAspect;
-import com.indigo.cache.manager.CacheKeyGenerator;
-import com.indigo.cache.core.CacheService;
+import com.indigo.cache.core.*;
+import com.indigo.cache.extension.ratelimit.RateLimitService;
 import com.indigo.cache.infrastructure.CaffeineCacheManager;
 import com.indigo.cache.infrastructure.RedisService;
-import com.indigo.cache.core.TwoLevelCacheService;
-import com.indigo.cache.extension.ratelimit.RateLimitService;
-import com.indigo.cache.session.UserSessionService;
-import com.indigo.cache.session.UserSessionServiceFactory;
+import com.indigo.cache.manager.CacheKeyGenerator;
+import com.indigo.cache.session.*;
+import com.indigo.cache.session.impl.DefaultCachePermissionManager;
+import com.indigo.cache.session.impl.DefaultSessionManager;
 import com.indigo.core.utils.JsonUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,11 +19,9 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import com.indigo.cache.session.SessionManager;
-import com.indigo.cache.session.CachePermissionManager;
-import com.indigo.cache.session.StatisticsManager;
 
 /**
  * 缓存自动配置类，用于自动注册缓存服务
@@ -70,7 +68,7 @@ public class CacheAutoConfiguration {
     public RedisService redisService(@Qualifier("redisTemplate") @SuppressWarnings("rawtypes") RedisTemplate redisTemplate,
                                      @Qualifier("stringRedisTemplate") StringRedisTemplate stringRedisTemplate,
                                      @Autowired(required = false) JsonUtils jsonUtils) {
-        log.info("创建RedisService Bean，RedisTemplate: {}, StringRedisTemplate: {}, JsonUtils: {}",
+        log.debug("创建RedisService Bean，RedisTemplate: {}, StringRedisTemplate: {}, JsonUtils: {}",
                 redisTemplate != null ? redisTemplate.getClass().getSimpleName() : "null",
                 stringRedisTemplate != null ? stringRedisTemplate.getClass().getSimpleName() : "null",
                 jsonUtils != null ? "已注入" : "未注入（将使用静态方法）");
@@ -113,39 +111,98 @@ public class CacheAutoConfiguration {
     /**
      * 注册用户会话服务
      * 使用工厂模式创建，完全依赖接口
+     * 注意：Caffeine 二级缓存由底层的 SessionManager 和 CachePermissionManager 处理
      */
     @Bean
     @ConditionalOnMissingBean
     public UserSessionService userSessionService(
-            CacheService cacheService,
-            @Qualifier("synapseCacheKeyGenerator") CacheKeyGenerator cacheKeyGenerator,
-            RedisService redisService) {
-        log.info("创建UserSessionService Bean - 使用新的session包架构");
-        return UserSessionServiceFactory.createUserSessionService(cacheService, cacheKeyGenerator, redisService);
+            SessionManager sessionManager,
+            CachePermissionManager cachePermissionManager,
+            StatisticsManager statisticsManager) {
+        log.debug("创建UserSessionService Bean - 使用新的session包架构");
+        return new UserSessionService(sessionManager, cachePermissionManager, statisticsManager);
+    }
+
+    /**
+     * 注册缓存失效追踪器
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public CacheInvalidationTracker cacheInvalidationTracker() {
+        log.debug("创建CacheInvalidationTracker Bean - 缓存失效追踪器");
+        return new CacheInvalidationTracker();
+    }
+
+    /**
+     * 注册缓存失效通知服务
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public CacheInvalidationService cacheInvalidationService(
+            RedisService redisService,
+            RedisConnectionFactory connectionFactory) {
+        log.debug("创建CacheInvalidationService Bean - 缓存失效通知服务");
+        return new CacheInvalidationService(redisService, connectionFactory);
+    }
+
+    /**
+     * 注册本地缓存失效监听器
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public LocalCacheInvalidationListener localCacheInvalidationListener(
+            @Autowired(required = false) CaffeineCacheManager caffeineCacheManager,
+            CacheInvalidationService cacheInvalidationService,
+            CacheInvalidationTracker invalidationTracker) {
+        if (caffeineCacheManager == null) {
+            log.debug("CaffeineCacheManager 未启用，跳过 LocalCacheInvalidationListener 注册");
+            return null;
+        }
+        log.debug("创建LocalCacheInvalidationListener Bean - 本地缓存失效监听器");
+        LocalCacheInvalidationListener listener = new LocalCacheInvalidationListener(
+                caffeineCacheManager, invalidationTracker);
+        cacheInvalidationService.registerListener(listener);
+        return listener;
     }
 
     /**
      * 注册会话管理器
+     * 支持 Caffeine 二级缓存和缓存失效通知（如果可用）
      */
     @Bean
     @ConditionalOnMissingBean
     public SessionManager sessionManager(
             CacheService cacheService,
-            @Qualifier("synapseCacheKeyGenerator") CacheKeyGenerator cacheKeyGenerator) {
-        log.info("创建SessionManager Bean");
-        return UserSessionServiceFactory.createSessionManager(cacheService, cacheKeyGenerator);
+            @Qualifier("synapseCacheKeyGenerator") CacheKeyGenerator cacheKeyGenerator,
+            @Autowired(required = false) CaffeineCacheManager caffeineCacheManager,
+            @Autowired(required = false) CacheInvalidationService cacheInvalidationService,
+            @Autowired(required = false) CacheInvalidationTracker invalidationTracker) {
+        log.debug("创建SessionManager Bean，Caffeine缓存: {}, 失效通知: {}, 失效追踪: {}", 
+                caffeineCacheManager != null ? "启用" : "未启用",
+                cacheInvalidationService != null ? "启用" : "未启用",
+                invalidationTracker != null ? "启用" : "未启用");
+        return new DefaultSessionManager(
+                cacheService, cacheKeyGenerator, caffeineCacheManager, cacheInvalidationService, invalidationTracker);
     }
 
     /**
      * 注册缓存权限管理器
+     * 支持 Caffeine 二级缓存和缓存失效通知（如果可用）
      */
     @Bean
     @ConditionalOnMissingBean
     public CachePermissionManager cachePermissionManager(
             CacheService cacheService,
-            @Qualifier("synapseCacheKeyGenerator") CacheKeyGenerator cacheKeyGenerator) {
-        log.info("创建CachePermissionManager Bean");
-        return UserSessionServiceFactory.createPermissionManager(cacheService, cacheKeyGenerator);
+            @Qualifier("synapseCacheKeyGenerator") CacheKeyGenerator cacheKeyGenerator,
+            @Autowired(required = false) CaffeineCacheManager caffeineCacheManager,
+            @Autowired(required = false) CacheInvalidationService cacheInvalidationService,
+            @Autowired(required = false) CacheInvalidationTracker invalidationTracker) {
+        log.debug("创建CachePermissionManager Bean，Caffeine缓存: {}, 失效通知: {}, 失效追踪: {}", 
+                caffeineCacheManager != null ? "启用" : "未启用",
+                cacheInvalidationService != null ? "启用" : "未启用",
+                invalidationTracker != null ? "启用" : "未启用");
+        return new DefaultCachePermissionManager(
+                cacheService, cacheKeyGenerator, caffeineCacheManager, cacheInvalidationService, invalidationTracker);
     }
 
     /**
@@ -159,7 +216,7 @@ public class CacheAutoConfiguration {
             RedisService redisService,
             SessionManager sessionManager,
             CachePermissionManager permissionManager) {
-        log.info("创建StatisticsManager Bean");
+        log.debug("创建StatisticsManager Bean");
         return UserSessionServiceFactory.createStatisticsManager(
                 cacheService, cacheKeyGenerator, redisService, sessionManager, permissionManager);
     }
@@ -172,9 +229,44 @@ public class CacheAutoConfiguration {
     public RateLimitService rateLimitService(
             RedisService redisService,
             @Qualifier("synapseCacheKeyGenerator") CacheKeyGenerator cacheKeyGenerator) {
-        log.info("创建RateLimitService Bean");
+        log.debug("创建RateLimitService Bean");
         return new RateLimitService(redisService, cacheKeyGenerator);
     }
 
+    /**
+     * 注册会话缓存预热服务
+     * 在应用启动后，从 Redis 加载活跃的用户会话和权限数据到 Caffeine 本地缓存
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public SessionCacheWarmupService sessionCacheWarmupService(
+            CacheService cacheService,
+            @Qualifier("synapseCacheKeyGenerator") CacheKeyGenerator cacheKeyGenerator,
+            SessionManager sessionManager,
+            CachePermissionManager permissionManager,
+            @Autowired(required = false) CaffeineCacheManager caffeineCacheManager,
+            RedisService redisService,
+            CacheProperties cacheProperties) {
+        if (caffeineCacheManager == null) {
+            log.debug("CaffeineCacheManager 未启用，跳过 SessionCacheWarmupService 注册");
+            return null;
+        }
+        
+        CacheProperties.SessionWarmup warmupConfig = cacheProperties.getSessionWarmup();
+        log.debug("创建SessionCacheWarmupService Bean，预热配置: enabled={}, maxCount={}, minTtlSeconds={}, batchSize={}",
+                warmupConfig.isEnabled(), warmupConfig.getMaxCount(), 
+                warmupConfig.getMinTtlSeconds(), warmupConfig.getBatchSize());
+        
+        return new SessionCacheWarmupService(
+                cacheService,
+                cacheKeyGenerator,
+                caffeineCacheManager,
+                redisService,
+                warmupConfig.isEnabled(),
+                warmupConfig.getMaxCount(),
+                warmupConfig.getMinTtlSeconds(),
+                warmupConfig.getBatchSize()
+        );
+    }
 
 } 

@@ -46,7 +46,7 @@ public class RedisConfiguration {
     @Primary
     @ConditionalOnMissingBean(name = "redisTemplate")
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory redisConnectionFactory) {
-        log.info("创建自定义RedisTemplate Bean，RedisConnectionFactory: {}", 
+        log.debug("创建自定义RedisTemplate Bean，RedisConnectionFactory: {}",
                  redisConnectionFactory != null ? redisConnectionFactory.getClass().getSimpleName() : "null");
         
         RedisTemplate<String, Object> template = new RedisTemplate<>();
@@ -72,26 +72,25 @@ public class RedisConfiguration {
         template.afterPropertiesSet();
         
         // 验证序列化器配置
-        if (template.getKeySerializer() == null || !(template.getKeySerializer() instanceof StringRedisSerializer)) {
+        template.getKeySerializer();
+        if (!(template.getKeySerializer() instanceof StringRedisSerializer)) {
             log.warn("警告：RedisTemplate的Key序列化器未正确配置为StringRedisSerializer！");
         }
-        if (template.getHashKeySerializer() == null || !(template.getHashKeySerializer() instanceof StringRedisSerializer)) {
+        template.getHashKeySerializer();
+        if (!(template.getHashKeySerializer() instanceof StringRedisSerializer)) {
             log.warn("警告：RedisTemplate的HashKey序列化器未正确配置为StringRedisSerializer！");
         }
         
-        log.info("自定义RedisTemplate Bean 创建成功");
-        log.info("  - Key序列化器: {}", template.getKeySerializer().getClass().getSimpleName());
-        log.info("  - Value序列化器: {}", template.getValueSerializer().getClass().getSimpleName());
-        log.info("  - HashKey序列化器: {}", template.getHashKeySerializer().getClass().getSimpleName());
-        log.info("  - HashValue序列化器: {}", template.getHashValueSerializer().getClass().getSimpleName());
+        log.debug("自定义RedisTemplate Bean 创建成功");
+        log.debug("  - Key序列化器: {}", template.getKeySerializer().getClass().getSimpleName());
+        log.debug("  - Value序列化器: {}", template.getValueSerializer().getClass().getSimpleName());
+        log.debug("  - HashKey序列化器: {}", template.getHashKeySerializer().getClass().getSimpleName());
+        log.debug("  - HashValue序列化器: {}", template.getHashValueSerializer().getClass().getSimpleName());
         
         // 重要提示：此 RedisTemplate 会被 Sa-Token 等框架使用
         // 如果发现 key 仍然被序列化，请检查：
         // 1. 是否有其他地方创建了 RedisTemplate Bean
-        // 2. Sa-Token 是否使用了自定义的 RedisTemplate
         // 3. Spring Boot 自动配置是否仍然生效
-        log.info("提示：此 RedisTemplate 配置为 @Primary，应该被所有框架（包括 Sa-Token）使用");
-        
         return template;
     }
     
@@ -102,10 +101,10 @@ public class RedisConfiguration {
     @Bean("stringRedisTemplate")
     @ConditionalOnMissingBean(name = "stringRedisTemplate")
     public StringRedisTemplate stringRedisTemplate(RedisConnectionFactory redisConnectionFactory) {
-        log.info("创建自定义StringRedisTemplate Bean");
+        log.debug("创建自定义StringRedisTemplate Bean");
         StringRedisTemplate template = new StringRedisTemplate();
         template.setConnectionFactory(redisConnectionFactory);
-        log.info("自定义StringRedisTemplate Bean 创建成功");
+        log.debug("自定义StringRedisTemplate Bean 创建成功");
         return template;
     }
     

@@ -58,12 +58,12 @@ public class CacheHealthCheckService {
      */
     private void startHealthCheck() {
         if (!cacheProperties.getHealthCheck().isEnabled()) {
-            log.info("缓存健康检查功能已禁用");
+            log.debug("缓存健康检查功能已禁用");
             return;
         }
 
         long intervalSeconds = cacheProperties.getHealthCheck().getInterval().getSeconds();
-        log.info("启动缓存健康检查任务，间隔: {}秒", intervalSeconds);
+        log.debug("启动缓存健康检查任务，间隔: {}秒", intervalSeconds);
 
         healthCheckTask = threadUtils.scheduleWithFixedDelay(
                 this::performHealthCheck,
@@ -189,7 +189,7 @@ public class CacheHealthCheckService {
      * @return 健康检查结果
      */
     public HealthCheckResult manualHealthCheck() {
-        log.info("开始手动健康检查");
+        log.debug("开始手动健康检查");
 
         long startTime = System.currentTimeMillis();
         boolean localCacheHealthy = checkLocalCache();
@@ -207,7 +207,7 @@ public class CacheHealthCheckService {
                 .lastFailureTime(lastFailureTime.get())
                 .build();
 
-        log.info("手动健康检查完成: {}", result);
+        log.debug("手动健康检查完成: {}", result);
         return result;
     }
 

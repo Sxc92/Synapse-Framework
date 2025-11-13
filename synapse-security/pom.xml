@@ -10,7 +10,7 @@
     </parent>
 
     <artifactId>synapse-security</artifactId>
-    <description>响应式统一认证安全模块，支持WebFlux和WebMVC的Sa-Token认证授权</description>
+    <description>统一认证安全模块，支持WebFlux和WebMVC的自研认证授权</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -31,42 +31,38 @@
             <groupId>com.indigo</groupId>
             <artifactId>synapse-cache</artifactId>
         </dependency>
-
-        <!-- Sa-Token for WebMVC (可选，为业务服务提供支持) -->
+        
+        <!-- Spring AOP 支持（用于权限检查切面） -->
         <dependency>
-            <groupId>cn.dev33</groupId>
-            <artifactId>sa-token-spring-boot3-starter</artifactId>
-            <optional>true</optional>
-        </dependency>
-
-        <dependency>
-            <groupId>cn.dev33</groupId>
-            <artifactId>sa-token-core</artifactId>
-        </dependency>
-
-        <!-- Sa-Token JWT支持 -->
-        <dependency>
-            <groupId>cn.dev33</groupId>
-            <artifactId>sa-token-jwt</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
         
-        <!-- Sa-Token OAuth2.0 -->
+        <!-- Spring Web (可选，为 WebMVC 组件提供支持) -->
         <dependency>
-            <groupId>cn.dev33</groupId>
-            <artifactId>sa-token-oauth2</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <optional>true</optional>
         </dependency>
         
-        <!-- Sa-Token for WebFlux (可选，为网关服务提供支持) -->
+        <!-- BCrypt 密码加密（替代 Sa-Token 的 BCrypt） -->
         <dependency>
-            <groupId>cn.dev33</groupId>
-            <artifactId>sa-token-reactor-spring-boot3-starter</artifactId>
-            <optional>true</optional>
+            <groupId>org.mindrot</groupId>
+            <artifactId>jbcrypt</artifactId>
+            <version>0.4</version>
         </dependency>
         
         <!-- Spring WebFlux (可选，为响应式组件提供支持) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- OpenFeign (可选，用于服务间调用) -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
             <optional>true</optional>
         </dependency>
 

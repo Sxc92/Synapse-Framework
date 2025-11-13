@@ -71,7 +71,7 @@ public class CachePenetrationProtectionService {
             // 2. 布隆过滤器检查（如果启用）
             if (cacheProperties.getPenetrationProtection().isEnableBloomFilter()) {
                 if (!checkBloomFilter(module, key)) {
-                    log.info("布隆过滤器显示键不存在: {}:{}", module, key);
+                    log.debug("布隆过滤器显示键不存在: {}:{}", module, key);
                     return java.util.Optional.empty();
                 }
             }
@@ -88,7 +88,7 @@ public class CachePenetrationProtectionService {
                 java.util.Optional<Object> nullValue = cacheService.get("null_cache", nullKey, strategy);
                 
                 if (nullValue.isPresent()) {
-                    log.info("空值缓存命中: {}:{}", module, key);
+                    log.debug("空值缓存命中: {}:{}", module, key);
                     return java.util.Optional.empty();
                 }
                 
@@ -127,7 +127,7 @@ public class CachePenetrationProtectionService {
                 addToBloomFilter(module, key);
             }
             
-            log.info("缓存数据保存成功（带防护）: {}:{}", module, key);
+            log.debug("缓存数据保存成功（带防护）: {}:{}", module, key);
         } catch (Exception e) {
             log.error("缓存数据保存失败（带防护）: {}:{}", module, key, e);
         }
@@ -157,7 +157,7 @@ public class CachePenetrationProtectionService {
                 addToBloomFilter(module, key);
             }
             
-            log.info("空值缓存保存成功: {}:{}", module, key);
+            log.debug("空值缓存保存成功: {}:{}", module, key);
         } catch (Exception e) {
             log.error("空值缓存保存失败: {}:{}", module, key, e);
         }
@@ -187,7 +187,7 @@ public class CachePenetrationProtectionService {
             // 如果启用了布隆过滤器，从过滤器中移除（注意：布隆过滤器不支持删除）
             // 这里可以考虑使用计数布隆过滤器或其他方案
             
-            log.info("缓存数据删除成功（带防护）: {}:{}", module, key);
+            log.debug("缓存数据删除成功（带防护）: {}:{}", module, key);
         } catch (Exception e) {
             log.error("缓存数据删除失败（带防护）: {}:{}", module, key, e);
         }

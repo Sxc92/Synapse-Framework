@@ -1,8 +1,9 @@
 package com.indigo.cache.session;
 
 import com.indigo.cache.core.CacheService;
-import com.indigo.cache.manager.CacheKeyGenerator;
+import com.indigo.cache.infrastructure.CaffeineCacheManager;
 import com.indigo.cache.infrastructure.RedisService;
+import com.indigo.cache.manager.CacheKeyGenerator;
 import com.indigo.cache.session.impl.DefaultSessionManager;
 import com.indigo.cache.session.impl.DefaultCachePermissionManager;
 import com.indigo.cache.session.impl.DefaultStatisticsManager;
@@ -28,10 +29,33 @@ public class UserSessionServiceFactory {
             CacheService cacheService,
             CacheKeyGenerator keyGenerator,
             RedisService redisService) {
+        return createUserSessionService(cacheService, keyGenerator, redisService, null);
+    }
+
+    /**
+     * 创建用户会话服务（支持 Caffeine 缓存）
+     *
+     * @param cacheService         缓存服务
+     * @param keyGenerator         缓存键生成器
+     * @param redisService         Redis服务
+     * @param caffeineCacheManager Caffeine 缓存管理器（可选）
+     * @return 用户会话服务实例
+     */
+    public static UserSessionService createUserSessionService(
+            CacheService cacheService,
+            CacheKeyGenerator keyGenerator,
+            RedisService redisService,
+            CaffeineCacheManager caffeineCacheManager) {
         
         // 创建管理器实例
-        SessionManager sessionManager = new DefaultSessionManager(cacheService, keyGenerator);
-        CachePermissionManager permissionManager = new DefaultCachePermissionManager(cacheService, keyGenerator);
+        SessionManager sessionManager = caffeineCacheManager != null
+                ? new DefaultSessionManager(cacheService, keyGenerator, caffeineCacheManager)
+                : new DefaultSessionManager(cacheService, keyGenerator);
+        
+        CachePermissionManager permissionManager = caffeineCacheManager != null
+                ? new DefaultCachePermissionManager(cacheService, keyGenerator, caffeineCacheManager)
+                : new DefaultCachePermissionManager(cacheService, keyGenerator);
+        
         StatisticsManager statisticsManager = new DefaultStatisticsManager(
                 cacheService, keyGenerator, redisService, sessionManager, permissionManager);
         
@@ -64,7 +88,24 @@ public class UserSessionServiceFactory {
     public static SessionManager createSessionManager(
             CacheService cacheService,
             CacheKeyGenerator keyGenerator) {
-        return new DefaultSessionManager(cacheService, keyGenerator);
+        return createSessionManager(cacheService, keyGenerator, null);
+    }
+
+    /**
+     * 创建会话管理器（支持 Caffeine 缓存）
+     *
+     * @param cacheService         缓存服务
+     * @param keyGenerator         缓存键生成器
+     * @param caffeineCacheManager Caffeine 缓存管理器（可选）
+     * @return 会话管理器实例
+     */
+    public static SessionManager createSessionManager(
+            CacheService cacheService,
+            CacheKeyGenerator keyGenerator,
+            CaffeineCacheManager caffeineCacheManager) {
+        return caffeineCacheManager != null
+                ? new DefaultSessionManager(cacheService, keyGenerator, caffeineCacheManager)
+                : new DefaultSessionManager(cacheService, keyGenerator);
     }
 
     /**
@@ -77,7 +118,24 @@ public class UserSessionServiceFactory {
     public static CachePermissionManager createPermissionManager(
             CacheService cacheService,
             CacheKeyGenerator keyGenerator) {
-        return new DefaultCachePermissionManager(cacheService, keyGenerator);
+        return createPermissionManager(cacheService, keyGenerator, null);
+    }
+
+    /**
+     * 创建权限管理器（支持 Caffeine 缓存）
+     *
+     * @param cacheService         缓存服务
+     * @param keyGenerator         缓存键生成器
+     * @param caffeineCacheManager Caffeine 缓存管理器（可选）
+     * @return 权限管理器实例
+     */
+    public static CachePermissionManager createPermissionManager(
+            CacheService cacheService,
+            CacheKeyGenerator keyGenerator,
+            CaffeineCacheManager caffeineCacheManager) {
+        return caffeineCacheManager != null
+                ? new DefaultCachePermissionManager(cacheService, keyGenerator, caffeineCacheManager)
+                : new DefaultCachePermissionManager(cacheService, keyGenerator);
     }
 
     /**

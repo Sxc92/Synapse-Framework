@@ -9,10 +9,20 @@
     <!-- 定义日志格式 -->
     <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%logger{0}] - %msg%n"/>
     
-    <!-- 控制台输出 -->
+    <!-- 定义带颜色的控制台日志格式 -->
+    <!-- 使用 %highlight() 转换器为日志级别添加颜色，其他部分使用 ANSI 转义码 -->
+    <!-- 颜色说明：%highlight() 会根据日志级别自动着色（ERROR=红色, WARN=黄色, INFO=绿色, DEBUG=蓝色） -->
+    <property name="CONSOLE_LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %highlight(%-5level) [%cyan(%logger{36})] - %msg%n"/>
+    
+    <!-- 注册自定义过滤器：过滤 BeanPostProcessor 警告 -->
+    <!-- 这些警告是因为 BeanFactoryPostProcessor 在 BeanPostProcessor 之前执行导致的 -->
+    <!-- 属于 Spring 框架的正常行为，不影响实际功能 -->
+    <turboFilter class="com.indigo.core.logging.BeanPostProcessorWarningFilter"/>
+    
+    <!-- 控制台输出（带颜色） -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>${LOG_PATTERN}</pattern>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
             <charset>UTF-8</charset>
         </encoder>
     </appender>
@@ -100,14 +110,15 @@
     <logger name="com.indigo.databases" level="INFO"/>
     <logger name="com.indigo.cache" level="INFO"/>
     <logger name="com.indigo.events" level="INFO"/>
+    <logger name="com.indigo.i18n" level="INFO"/>
     
     <!-- Spring框架相关包的日志级别 -->
     <logger name="org.springframework" level="INFO"/>
+    <!-- 过滤 BeanPostProcessor 警告（这些警告不影响功能，可以安全忽略） -->
+    <logger name="org.springframework.beans.factory.config.PostProcessorRegistrationDelegate" level="ERROR"/>
+    <logger name="org.springframework.beans.factory.config.PostProcessorRegistrationDelegate$BeanPostProcessorChecker" level="ERROR"/>
     <logger name="org.mybatis" level="INFO"/>
     <logger name="com.baomidou" level="INFO"/>
-    
-    <!-- Sa-Token相关日志 -->
-    <logger name="cn.dev33.satoken" level="INFO"/>
     
     <!-- SQL日志 -->
     <logger name="com.indigo.mapper" level="DEBUG" additivity="false">
@@ -115,8 +126,8 @@
     </logger>
     
     <!-- Nacos相关日志 -->
-    <logger name="com.alibaba.nacos" level="WARN"/>
+    <logger name="com.alibaba.nacos" level="ERROR"/>
     
     <!-- Seata相关日志 -->
-    <logger name="io.seata" level="WARN"/>
+    <logger name="io.seata" level="ERROR"/>
 </configuration>

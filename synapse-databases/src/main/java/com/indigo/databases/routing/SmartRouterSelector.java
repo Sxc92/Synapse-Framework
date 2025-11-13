@@ -27,7 +27,7 @@ public class SmartRouterSelector {
      */
     public void registerRouter(String name, DataSourceRouter router) {
         routerRegistry.put(name, router);
-        log.info("智能路由器选择器注册路由器: [{}] -> [{}]", name, router.getStrategyName());
+        log.debug("智能路由器选择器注册路由器: [{}] -> [{}]", name, router.getStrategyName());
     }
     
     /**

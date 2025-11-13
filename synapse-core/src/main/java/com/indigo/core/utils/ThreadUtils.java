@@ -1,15 +1,18 @@
 package com.indigo.core.utils;
 
-import com.indigo.core.exception.Ex;
 import com.indigo.core.constants.StandardErrorCode;
+import com.indigo.core.exception.Ex;
 import lombok.Builder;
 import lombok.Data;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 
+import java.lang.reflect.Method;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.concurrent.*;
 import java.util.function.Supplier;
 
@@ -22,12 +25,16 @@ import java.util.function.Supplier;
  **/
 @Slf4j
 @Component
-@SuppressWarnings("unchecked")
 public class ThreadUtils {
 
     private final ThreadPoolTaskExecutor ioThreadPool;
     private final ThreadPoolTaskExecutor cpuThreadPool;
     private final ScheduledExecutorService scheduledThreadPool;
+    /**
+     * -- GETTER --
+     *  获取通用线程池
+     */
+    @Getter
     private final ThreadPoolTaskExecutor commonThreadPool;
     private final ThreadPoolTaskExecutor monitorThreadPool;
 
@@ -119,7 +126,7 @@ public class ThreadUtils {
         Class<?> shutdownOnFailureClass = Class.forName("java.util.concurrent.StructuredTaskScope$ShutdownOnFailure");
         
         try (var scope = (AutoCloseable) shutdownOnFailureClass.getConstructor().newInstance()) {
-            var futures = new java.util.ArrayList<Future<T>>();
+            var futures = new ArrayList<Future<T>>();
             
             for (Callable<T> task : tasks) {
                 // 调用scope.fork方法
@@ -379,13 +386,6 @@ public class ThreadUtils {
     // ==================== 线程池管理 ====================
 
     /**
-     * 获取通用线程池
-     */
-    public ThreadPoolTaskExecutor getCommonThreadPool() {
-        return commonThreadPool;
-    }
-
-    /**
      * 优雅关闭所有线程池
      */
     public void shutdownGracefully() {
@@ -436,11 +436,7 @@ public class ThreadUtils {
             } catch (Exception e) {
                 var duration = System.nanoTime() - startTime;
                 log.error("Task execution failed after {} ms", duration / 1_000_000, e);
-                if (e instanceof RuntimeException) {
-                    throw e; // 保留原始异常
-                } else {
-                    Ex.throwEx(StandardErrorCode.THREAD_ERROR, "Task execution failed: " + e.getMessage(), e);
-                }
+                throw e; // 保留原始异常
             }
         };
     }
@@ -583,8 +579,7 @@ public class ThreadUtils {
             // 尝试使用Java 19+的虚拟线程
             if (isVirtualThreadSupported()) {
                 // 使用反射调用newVirtualThreadPerTaskExecutor方法
-                @SuppressWarnings("unchecked")
-                java.lang.reflect.Method method = Executors.class.getMethod("newVirtualThreadPerTaskExecutor");
+                Method method = Executors.class.getMethod("newVirtualThreadPerTaskExecutor");
                 return (Executor) method.invoke(null);
             }
         } catch (Exception e) {

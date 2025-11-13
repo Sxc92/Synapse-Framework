@@ -53,12 +53,6 @@
             <artifactId>mysql-connector-j</artifactId>
         </dependency>
         
-        <!-- Sa-Token (用于数据权限) -->
-        <dependency>
-            <groupId>cn.dev33</groupId>
-            <artifactId>sa-token-spring-boot3-starter</artifactId>
-        </dependency>
-
         <!-- Spring Boot Actuator (健康检查) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

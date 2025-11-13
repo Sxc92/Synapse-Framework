@@ -51,12 +51,12 @@ public class SqlMethodInterceptor implements InvocationHandler {
     public void init() {
         // 立即初始化ApplicationContext，确保Bean注册时可用
         staticApplicationContext = this.applicationContext;
-        log.info("SqlMethodInterceptor ApplicationContext 初始化完成");
+        log.debug("SqlMethodInterceptor ApplicationContext 初始化完成");
 
         // 检查是否存在Seata相关类，仅记录日志
         try {
             Class.forName("io.seata.spring.annotation.GlobalTransactional");
-            log.info("检测到Seata环境，SqlMethodInterceptor已准备就绪");
+            log.debug("检测到Seata环境，SqlMethodInterceptor已准备就绪");
         } catch (ClassNotFoundException e) {
             log.debug("未检测到Seata环境，SqlMethodInterceptor正常初始化");
         }

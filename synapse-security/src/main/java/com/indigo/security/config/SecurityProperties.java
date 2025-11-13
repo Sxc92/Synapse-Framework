@@ -3,9 +3,12 @@ package com.indigo.security.config;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * 安全模块配置属性
- * 直接使用Sa-Token框架处理所有认证
+ * 使用自研的 TokenService 和 PermissionService 处理认证和权限
  *
  * @author 史偕成
  * @date 2025/01/07
@@ -25,243 +28,179 @@ public class SecurityProperties {
     private SecurityMode mode = SecurityMode.STRICT;
 
     /**
-     * 是否启用安全日志
+     * 白名单路径配置
+     * 这些路径不需要认证即可访问
      */
-    private boolean securityLogging = true;
+    private WhiteListConfig whiteList = new WhiteListConfig();
 
     /**
-     * 安全日志级别
+     * Gateway 签名配置
+     * 用于在 Gateway 和微服务之间传递签名，防止请求被篡改
      */
-    private String securityLogLevel = "INFO";
+    private GatewaySignatureConfig gatewaySignature = new GatewaySignatureConfig();
 
     /**
-     * Sa-Token 配置
+     * Token 配置
+     * 配置 Token 的前缀、查询参数名、请求头名称等
      */
-    private SaTokenConfig satoken = new SaTokenConfig();
+    private TokenConfig token = new TokenConfig();
 
     /**
-     * JWT 配置
+     * 内部服务调用配置
+     * 用于服务间调用的签名验证
      */
-    private JwtConfig jwt = new JwtConfig();
+    private InternalServiceConfig internalService = new InternalServiceConfig();
 
     /**
-     * OAuth2 配置
-     */
-    private OAuth2Config oauth2 = new OAuth2Config();
-
-    /**
-     * 登录安全配置
-     */
-    private LoginConfig login = new LoginConfig();
-
-    /**
-     * 数据权限配置
-     */
-    private DataPermissionConfig dataPermission = new DataPermissionConfig();
-
-    /**
-     * Sa-Token 配置类
+     * 白名单配置类
      */
     @Data
-    public static class SaTokenConfig {
+    public static class WhiteListConfig {
         /**
-         * 是否启用Sa-Token
+         * 是否启用白名单
          */
         private boolean enabled = true;
 
         /**
-         * Token名称
+         * 白名单路径列表
+         * 支持 Ant 风格路径匹配，如 /api/iam/auth/**
          */
-        private String tokenName = "satoken";
+        private List<String> paths = new ArrayList<>();
 
         /**
-         * Token有效期（秒）
+         * 获取默认白名单路径
+         * 包含常见的公开路径和 IAM 认证接口
          */
-        private long timeout = 2592000;
+        public List<String> getDefaultPaths() {
+            return List.of(
+                // IAM 认证接口
+                "/auth/login",
+                // 监控和文档接口
+                "/actuator/**",
+                "/swagger-ui/**",
+                "/v3/api-docs/**",
+                "/webjars/**",
+                "/favicon.ico",
+                "/error"
+            );
+        }
 
         /**
-         * Token活跃有效期（秒）
+         * 获取所有白名单路径（默认路径 + 配置路径）
          */
-        private long activityTimeout = 1800;
-
-        /**
-         * 是否允许同一账号并发登录
-         */
-        private boolean isConcurrent = true;
-
-        /**
-         * 是否在多个项目中共享Token
-         */
-        private boolean isShare = false;
-
-        /**
-         * 是否输出操作日志
-         */
-        private boolean isLog = true;
-
-        /**
-         * 是否从Cookie中读取Token
-         */
-        private boolean isReadCookie = false;
-
-        /**
-         * 是否从请求头中读取Token
-         */
-        private boolean isReadHeader = true;
-
-        /**
-         * 是否从请求体中读取Token
-         */
-        private boolean isReadBody = false;
-
-        /**
-         * 是否在响应头中写入Token
-         */
-        private boolean isWriteHeader = true;
-
-        /**
-         * 是否在响应体中写入Token
-         */
-        private boolean isWriteBody = false;
-
-        /**
-         * 是否在Cookie中写入Token
-         */
-        private boolean isWriteCookie = false;
-
-        /**
-         * Token前缀
-         */
-        private String tokenPrefix = "Bearer";
-
-        /**
-         * 是否打印Sa-Token版本信息和banner
-         */
-        private boolean isPrint = false;
-
-        /**
-         * Token风格
-         */
-        private String tokenStyle = "uuid";
+        public List<String> getAllPaths() {
+            List<String> allPaths = new ArrayList<>();
+            if (enabled) {
+                allPaths.addAll(getDefaultPaths());
+            }
+            if (paths != null && !paths.isEmpty()) {
+                allPaths.addAll(paths);
+            }
+            return allPaths;
+        }
     }
 
     /**
-     * JWT 配置类
+     * Gateway 签名配置类
      */
     @Data
-    public static class JwtConfig {
+    public static class GatewaySignatureConfig {
         /**
-         * 是否启用JWT认证
+         * 是否启用 Gateway 签名验证
          */
         private boolean enabled = true;
 
         /**
-         * JWT签名密钥
+         * Gateway 签名密钥
+         * 生产环境必须修改为强密钥
          */
-        private String secret = "your-super-secret-jwt-signing-key-here";
+        private String secret = "synapse-gateway-secret-key-change-in-production";
 
         /**
-         * JWT过期时间（秒）
+         * 签名有效期窗口（毫秒）
+         * 默认 5 分钟，防止重放攻击
          */
-        private long expiration = 86400;
+        private long validityWindow = 5 * 60 * 1000L;
 
         /**
-         * JWT请求头名称
+         * 是否启用用户上下文传递
+         * 启用后，Gateway 会将用户上下文编码到请求头，减少微服务的 Redis 查询
+         */
+        private boolean enableContextPassing = true;
+    }
+
+    /**
+     * Token 配置类
+     */
+    @Data
+    public static class TokenConfig {
+        /**
+         * Token 前缀（用于 Authorization 请求头）
+         * 默认 "Bearer "，可根据需要修改
+         */
+        private String prefix = "Bearer ";
+
+        /**
+         * Token 查询参数名
+         * 默认 "token"，可根据需要修改
+         */
+        private String queryParam = "token";
+
+        /**
+         * Authorization 请求头名称
+         * 默认 "Authorization"
          */
         private String headerName = "Authorization";
 
         /**
-         * JWT令牌前缀
+         * X-Auth-Token 请求头名称（备用 token 传递方式）
+         * 默认 "X-Auth-Token"
          */
-        private String prefix = "Bearer ";
+        private String xAuthTokenHeader = "X-Auth-Token";
+
+        /**
+         * 获取 Token 前缀长度
+         * 
+         * @return 前缀长度
+         */
+        public int getPrefixLength() {
+            return prefix != null ? prefix.length() : 0;
+        }
     }
 
     /**
-     * OAuth2 配置类
+     * 内部服务调用配置类
      */
     @Data
-    public static class OAuth2Config {
+    public static class InternalServiceConfig {
         /**
-         * 是否启用OAuth2.0
-         */
-        private boolean enabled = false;
-
-        /**
-         * OAuth2客户端ID
-         */
-        private String clientId;
-
-        /**
-         * OAuth2客户端密钥
-         */
-        private String clientSecret;
-
-        /**
-         * OAuth2授权服务器URL
-         */
-        private String authorizationServerUrl;
-
-        /**
-         * OAuth2令牌服务器URL
-         */
-        private String tokenServerUrl;
-
-        /**
-         * OAuth2用户信息URL
-         */
-        private String userInfoUrl;
-
-        /**
-         * OAuth2重定向URI
-         */
-        private String redirectUri;
-
-        /**
-         * OAuth2授权范围
-         */
-        private String scope = "read";
-    }
-
-    /**
-     * 登录安全配置类
-     */
-    @Data
-    public static class LoginConfig {
-        /**
-         * 最大登录失败次数
-         */
-        private int maxFailCount = 5;
-
-        /**
-         * 账户锁定持续时间（秒）
-         */
-        private long lockDuration = 1800;
-
-        /**
-         * 失败计数窗口时间（秒）
-         */
-        private long failWindow = 300;
-    }
-
-    /**
-     * 数据权限配置类
-     */
-    @Data
-    public static class DataPermissionConfig {
-        /**
-         * 是否启用数据权限
+         * 是否启用内部服务调用签名验证
          */
         private boolean enabled = true;
 
         /**
-         * 数据权限规则缓存时间（秒）
+         * 当前服务名称（用于标识调用来源）
          */
-        private long cacheTimeout = 3600;
+        private String serviceName;
 
         /**
-         * 是否启用SQL注入防护
+         * 当前服务密钥（用于生成签名）
+         * 生产环境必须修改为强密钥
          */
-        private boolean sqlInjectionProtection = true;
+        private String secret;
+
+        /**
+         * 签名有效期窗口（毫秒）
+         * 默认 5 分钟，防止重放攻击
+         */
+        private long validityWindow = 5 * 60 * 1000L;
+
+        /**
+         * 允许调用的服务白名单
+         * key: 服务名称, value: 服务密钥
+         * 如果为空，则允许所有服务调用（不推荐）
+         */
+        private java.util.Map<String, String> allowedServices = new java.util.HashMap<>();
     }
 
     /**

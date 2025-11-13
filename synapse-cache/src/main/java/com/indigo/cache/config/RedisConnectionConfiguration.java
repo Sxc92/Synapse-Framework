@@ -48,13 +48,13 @@ public class RedisConnectionConfiguration {
         
         if (cacheProperties.getRedisCache().getCluster().isEnabled()) {
             factory = createClusterConnectionFactory();
-            log.info("使用synapse.cache.redis配置创建Redis集群连接工厂");
+            log.debug("使用synapse.cache.redis配置创建Redis集群连接工厂");
         } else if (cacheProperties.getRedisCache().getSentinel().isEnabled()) {
             factory = createSentinelConnectionFactory();
-            log.info("使用synapse.cache.redis配置创建Redis哨兵连接工厂");
+            log.debug("使用synapse.cache.redis配置创建Redis哨兵连接工厂");
         } else {
             factory = createStandaloneConnectionFactory();
-            log.info("使用synapse.cache.redis配置创建Redis单机连接工厂");
+            log.debug("使用synapse.cache.redis配置创建Redis单机连接工厂");
         }
         
         return factory;
@@ -115,7 +115,7 @@ public class RedisConnectionConfiguration {
         
         LettucePoolingClientConfiguration clientConfig = createLettuceClientConfiguration(pool);
         
-        log.info("创建哨兵连接工厂 - Master: {}, Database: {}, Sentinel Nodes: {}", 
+        log.debug("创建哨兵连接工厂 - Master: {}, Database: {}, Sentinel Nodes: {}",
                 sentinel.getMaster(), conn.getDatabase(), sentinel.getNodes().length);
         
         return new LettuceConnectionFactory(config, clientConfig);

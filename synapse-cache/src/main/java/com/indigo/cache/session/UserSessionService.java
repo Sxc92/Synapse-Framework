@@ -379,16 +379,6 @@ public class UserSessionService {
     }
 
     /**
-     * 获取指定租户的在线用户列表
-     *
-     * @param tenantId 租户ID
-     * @return 在线用户列表
-     */
-    public List<UserContext> getOnlineUsersByTenant(Long tenantId) {
-        return statisticsManager.getOnlineUsersByTenant(tenantId);
-    }
-
-    /**
      * 获取指定部门的在线用户列表
      *
      * @param deptId 部门ID

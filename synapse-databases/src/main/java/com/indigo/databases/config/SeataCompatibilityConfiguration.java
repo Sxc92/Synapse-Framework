@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
 
 /**
  * Seata兼容性配置
@@ -16,7 +15,7 @@ import org.springframework.context.annotation.Import;
 @Slf4j
 @Configuration
 @ConditionalOnClass(name = "io.seata.spring.annotation.GlobalTransactional")
-@ConditionalOnProperty(name = "synapse.datasource.seata.enabled", havingValue = "true", matchIfMissing = false)
+@ConditionalOnProperty(name = "synapse.datasource.seata.enabled", havingValue = "true")
 public class SeataCompatibilityConfiguration {
     
     public SeataCompatibilityConfiguration() {

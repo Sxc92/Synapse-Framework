@@ -5,16 +5,12 @@ import com.indigo.cache.extension.lock.resource.ResourceType;
 import com.indigo.cache.extension.lock.resource.ResourceState;
 import com.indigo.cache.extension.lock.resource.RecoveryState;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
-
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 统一分布式锁管理器
@@ -66,13 +62,16 @@ import java.util.concurrent.TimeUnit;
  * - 这是分布式锁的唯一对外入口，请勿直接使用底层服务
  * - 底层服务(DistributedLockService等)为内部Bean，不对外暴露
  * - 所有锁操作都应通过此管理器进行，确保统一监控和管理
+ * 
+ * <p><b>注意：</b>此类通过 {@link LockAutoConfiguration} 中的 {@code @Bean} 方法注册为 Bean，
+ * 不需要 {@code @Component} 注解。如果同时使用 {@code @Component} 和 {@code @Bean}，
+ * 会导致创建多个 Bean 实例，引发冲突。
  *
  * @author 史偕成
  * @date 2025/01/08
  * @version 2.0 (重构为统一入口架构)
  */
 @Slf4j
-@Component
 public class LockManager {
 
     private final DistributedLockService distributedLockService;
@@ -104,7 +103,7 @@ public class LockManager {
         this.fastRecoveryManager = fastRecoveryManager;
         this.distributedDeadlockDetector = distributedDeadlockDetector;
         
-        log.info("LockManager Bean 已创建，采用延迟初始化策略");
+        log.debug("LockManager Bean 已创建，采用延迟初始化策略");
     }
     
     /**
@@ -113,7 +112,7 @@ public class LockManager {
      */
     private synchronized void ensureInitialized() {
         if (!isInitialized) {
-            log.info("首次使用分布式锁服务，开始初始化相关组件...");
+            log.debug("首次使用分布式锁服务，开始初始化相关组件...");
             
             // 启动死锁检测器
             if (deadlockDetector != null) {
@@ -126,7 +125,7 @@ public class LockManager {
             }
             
             isInitialized = true;
-            log.info("分布式锁服务初始化完成");
+            log.debug("分布式锁服务初始化完成");
         }
         
         // 更新最后访问时间

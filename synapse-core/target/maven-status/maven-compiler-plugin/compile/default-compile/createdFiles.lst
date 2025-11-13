@@ -16,9 +16,9 @@ com/indigo/core/annotation/QueryCondition.class
 com/indigo/core/entity/dto/page/AggregationPageDTO$AggregationField.class
 com/indigo/core/annotation/VoMapping$Join.class
 com/indigo/core/entity/TreeNode.class
+com/indigo/core/logging/BeanPostProcessorWarningFilter.class
 com/indigo/core/constants/ErrorCode.class
 com/indigo/core/annotation/IgnoreOnCopy$CopyScenario.class
-com/indigo/core/context/UserContext$UserDeptPositionInfo.class
 com/indigo/core/config/ThreadPoolConfig.class
 com/indigo/core/i18n/LocaleContext.class
 com/indigo/core/entity/dto/page/JoinPageDTO$JoinPageDTOBuilderImpl.class
@@ -43,7 +43,6 @@ com/indigo/core/entity/dto/page/JoinPageDTO$JoinType.class
 com/indigo/core/exception/BaseException.class
 com/indigo/core/entity/dto/BaseDTO$BaseDTOBuilderImpl.class
 com/indigo/core/utils/SpringUtils.class
-com/indigo/core/context/UserContext$UserDeptPositionInfo$UserDeptPositionInfoBuilder.class
 com/indigo/core/utils/TreeUtil.class
 com/indigo/core/entity/dto/page/ComplexPageDTO$ComplexPageDTOBuilder.class
 com/indigo/core/config/serialization/CustomSerializers$4.class

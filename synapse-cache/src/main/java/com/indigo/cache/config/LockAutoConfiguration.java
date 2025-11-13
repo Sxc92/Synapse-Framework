@@ -42,7 +42,7 @@ public class LockAutoConfiguration {
 
     public LockAutoConfiguration(LockProperties lockProperties) {
         this.lockProperties = lockProperties;
-        log.info("LockAutoConfiguration 已创建，延迟初始化策略已启用");
+        log.debug("LockAutoConfiguration 已创建，延迟初始化策略已启用");
     }
 
     /**
@@ -179,7 +179,7 @@ public class LockAutoConfiguration {
             LockPerformanceMonitor performanceMonitor,
             FastRecoveryManager fastRecoveryManager,
             DistributedDeadlockDetector distributedDeadlockDetector) {
-        log.info("创建LockManager Bean - 分布式锁统一入口");
+        log.debug("创建LockManager Bean - 分布式锁统一入口");
         return new LockManager(distributedLockService, readWriteLockService,
                 fairLockService, deadlockDetector, performanceMonitor, fastRecoveryManager,distributedDeadlockDetector);
     }

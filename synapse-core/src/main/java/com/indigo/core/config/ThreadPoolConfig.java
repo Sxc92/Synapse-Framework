@@ -4,13 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
-import java.util.concurrent.Executor;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.*;
 
 /**
  * Thread pool configuration for different use cases
@@ -47,7 +42,7 @@ public class ThreadPoolConfig {
         executor.setAwaitTerminationSeconds(60);
         
         executor.initialize();
-        log.info("IO thread pool initialized: core={}, max={}, queue={}", 
+        log.debug("IO thread pool initialized: core={}, max={}, queue={}",
                 executor.getCorePoolSize(), executor.getMaxPoolSize(), executor.getQueueCapacity());
         
         return executor;
@@ -76,7 +71,7 @@ public class ThreadPoolConfig {
         executor.setAwaitTerminationSeconds(30);
         
         executor.initialize();
-        log.info("CPU thread pool initialized: core={}, max={}, queue={}", 
+        log.debug("CPU thread pool initialized: core={}, max={}, queue={}",
                 executor.getCorePoolSize(), executor.getMaxPoolSize(), executor.getQueueCapacity());
         
         return executor;
@@ -104,7 +99,7 @@ public class ThreadPoolConfig {
         executor.setAwaitTerminationSeconds(60);
         
         executor.initialize();
-        log.info("Common thread pool initialized: core={}, max={}, queue={}", 
+        log.debug("Common thread pool initialized: core={}, max={}, queue={}",
                 executor.getCorePoolSize(), executor.getMaxPoolSize(), executor.getQueueCapacity());
         
         return executor;
@@ -132,7 +127,7 @@ public class ThreadPoolConfig {
         executor.setAwaitTerminationSeconds(10);
         
         executor.initialize();
-        log.info("Monitor thread pool initialized: core={}, max={}, queue={}", 
+        log.debug("Monitor thread pool initialized: core={}, max={}, queue={}",
                 executor.getCorePoolSize(), executor.getMaxPoolSize(), executor.getQueueCapacity());
         
         return executor;
@@ -150,7 +145,7 @@ public class ThreadPoolConfig {
             return t;
         });
         
-        log.info("Scheduled thread pool initialized: poolSize=10");
+        log.debug("Scheduled thread pool initialized: poolSize=10");
         
         return scheduler;
     }
@@ -248,7 +243,7 @@ public class ThreadPoolConfig {
         executor.setAwaitTerminationSeconds(60);
         
         executor.initialize();
-        log.info("Async task executor initialized: core={}, max={}, queue={}", 
+        log.debug("Async task executor initialized: core={}, max={}, queue={}",
                 executor.getCorePoolSize(), executor.getMaxPoolSize(), executor.getQueueCapacity());
         
         return executor;

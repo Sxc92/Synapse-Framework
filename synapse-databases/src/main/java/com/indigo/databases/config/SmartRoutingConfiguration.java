@@ -37,7 +37,7 @@ public class SmartRoutingConfiguration {
         // 注册所有路由器
         registerAllRouters(selector, routers);
         
-        log.info("智能路由器选择器初始化完成");
+        log.debug("智能路由器选择器初始化完成");
         return selector;
     }
     

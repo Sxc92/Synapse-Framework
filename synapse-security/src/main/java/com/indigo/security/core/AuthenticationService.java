@@ -9,7 +9,7 @@ import java.util.List;
 
 /**
  * 简化的认证服务接口
- * 直接使用Sa-Token框架处理所有类型的认证
+ * 使用自研的 TokenService 处理所有类型的认证
  *
  * @author 史偕成
  * @date 2025/12/19
@@ -18,7 +18,7 @@ public interface AuthenticationService {
 
     /**
      * 用户登录认证
-     * 根据认证类型使用Sa-Token框架处理
+     * 根据认证类型使用 TokenService 处理
      *
      * @param authRequest 认证请求
      * @return 认证结果
@@ -27,7 +27,7 @@ public interface AuthenticationService {
 
     /**
      * 续期Token
-     * 通过Sa-Token框架续期
+     * 通过 TokenService 续期
      *
      * @param token Token值
      * @return 续期结果

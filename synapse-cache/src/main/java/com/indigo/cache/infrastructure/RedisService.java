@@ -724,6 +724,51 @@ public class RedisService {
     }
 
     /**
+     * 反序列化 Redis Pub/Sub 消息体
+     * 使用 RedisTemplate 的 value 序列化器进行反序列化
+     * 
+     * @param bodyBytes 消息体字节数组
+     * @param clazz 目标类型
+     * @param <T> 目标类型
+     * @return 反序列化后的对象
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T deserializeMessage(byte[] bodyBytes, Class<T> clazz) {
+        if (bodyBytes == null || bodyBytes.length == 0) {
+            return null;
+        }
+        try {
+            // 使用 RedisTemplate 的 value 序列化器进行反序列化
+            // GenericJackson2JsonRedisSerializer 会自动处理 JSON 反序列化
+            Object deserialized = redisTemplate.getValueSerializer().deserialize(bodyBytes);
+            if (deserialized == null) {
+                return null;
+            }
+            // 如果反序列化的对象类型匹配，直接返回
+            if (clazz.isInstance(deserialized)) {
+                return (T) deserialized;
+            }
+            // GenericJackson2JsonRedisSerializer 可能返回 LinkedHashMap（当没有类型信息时）
+            // 需要将其转换为目标类型
+            if (deserialized instanceof java.util.Map) {
+                // 将 Map 转换为 JSON 字符串，然后使用 JsonUtils 反序列化为目标类型
+                String jsonString = jsonUtils != null ? jsonUtils.toJsonString(deserialized) : JsonUtils.toJsonString(deserialized);
+                return jsonUtils != null ? jsonUtils.fromJsonToObject(jsonString, clazz) : JsonUtils.fromJson(jsonString, clazz);
+            }
+            // 如果类型不匹配，尝试使用 JsonUtils 再次反序列化
+            // 这种情况可能发生在序列化器配置不一致时
+            if (deserialized instanceof String) {
+                return jsonUtils != null ? jsonUtils.fromJsonToObject((String) deserialized, clazz) : JsonUtils.fromJson((String) deserialized, clazz);
+            }
+            log.warn("反序列化类型不匹配: expected={}, actual={}", clazz.getName(), deserialized.getClass().getName());
+            return null;
+        } catch (Exception e) {
+            log.error("反序列化消息失败: class={}", clazz.getName(), e);
+            return null;
+        }
+    }
+
+    /**
      * 获取RedisTemplate（用于高级操作）
      *
      * @return RedisTemplate

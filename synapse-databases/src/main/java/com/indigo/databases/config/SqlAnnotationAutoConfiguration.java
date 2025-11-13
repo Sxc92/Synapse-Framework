@@ -17,14 +17,11 @@ import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.core.Ordered;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.stereotype.Component;
 
-import jakarta.annotation.PostConstruct;
 import java.lang.reflect.Proxy;
 import java.util.Set;
 
@@ -40,8 +37,7 @@ import java.util.Set;
 @ConditionalOnProperty(name = "synapse.databases.sql-annotation.enabled", havingValue = "true", matchIfMissing = false)
 public class SqlAnnotationAutoConfiguration {
     
-    @Autowired
-    private SqlMethodInterceptor sqlMethodInterceptor;
+
     
     
     /**
@@ -70,23 +66,40 @@ public class SqlAnnotationAutoConfiguration {
     
     /**
      * 自动Repository注册器
+     * 
+     * <p><b>执行顺序说明：</b>
+     * 实现 {@code Ordered} 接口，设置较高的优先级值（更晚执行），
+     * 确保在大部分 {@code BeanPostProcessor} 初始化之后再注册 Bean，
+     * 从而避免 "not eligible for getting processed by all BeanPostProcessors" 警告。
+     * 
+     * <p><b>优先级说明：</b>
+     * - {@code Ordered.LOWEST_PRECEDENCE} = {@code Integer.MAX_VALUE}（最晚执行）
+     * - 这里使用 {@code Integer.MAX_VALUE - 100}，确保在大部分 BeanPostProcessor 之后执行
+     * - 但仍然在 Bean 实例化之前完成注册
      */
-    public static class AutoRepositoryRegistrar implements BeanFactoryPostProcessor {
+    public static class AutoRepositoryRegistrar implements BeanFactoryPostProcessor, Ordered {
+        
+        @Override
+        public int getOrder() {
+            // 设置较高的优先级值（更晚执行），确保在 BeanPostProcessor 初始化之后执行
+            // 使用 Integer.MAX_VALUE - 100 而不是 LOWEST_PRECEDENCE，避免与其他后处理器冲突
+            return Integer.MAX_VALUE - 100;
+        }
         
         @Override
         public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
             try {
-                log.info("开始扫描@AutoRepository注解的接口...");
+                log.debug("开始扫描@AutoRepository注解的接口...");
                 
                 // 扫描所有带有@AutoRepository注解的接口
                 // 使用Spring的包扫描机制，支持配置的包路径
                 Reflections reflections = new Reflections("com.indigo");
                 Set<Class<?>> repositoryInterfaces = reflections.getTypesAnnotatedWith(AutoRepository.class);
                 
-                log.info("找到{}个带有@AutoRepository注解的接口", repositoryInterfaces.size());
+                log.debug("找到{}个带有@AutoRepository注解的接口", repositoryInterfaces.size());
                 
                 for (Class<?> repositoryInterface : repositoryInterfaces) {
-                    log.info("发现Repository接口: {}", repositoryInterface.getName());
+                    log.debug("发现Repository接口: {}", repositoryInterface.getName());
                     if (repositoryInterface.isInterface()) {
                         registerRepositoryProxy(repositoryInterface, beanFactory);
                     }
@@ -124,10 +137,10 @@ public class SqlAnnotationAutoConfiguration {
                         beanDefinition.setLazyInit(true);  // 设置延迟初始化
                         
                         defaultListableBeanFactory.registerBeanDefinition(beanName, beanDefinition);
-                        log.info("Registered AutoRepository proxy (lazy): {} as {}", beanName, repositoryInterface.getName());
+                        log.debug("Registered AutoRepository proxy (lazy): {} as {}", beanName, repositoryInterface.getName());
                     }
                 } else {
-                    log.info("Bean {} already exists, skipping registration", beanName);
+                    log.debug("Bean {} already exists, skipping registration", beanName);
                 }
             } catch (Exception e) {
                 log.error("Error registering repository proxy for {}", repositoryInterface.getName(), e);
@@ -141,9 +154,6 @@ public class SqlAnnotationAutoConfiguration {
     @Component
     public static class RepositoryProxyRegistrar implements BeanFactoryPostProcessor, Ordered {
         
-        @Autowired
-        private SqlMethodInterceptor sqlMethodInterceptor;
-        
         @Override
         public void postProcessBeanFactory(org.springframework.beans.factory.config.ConfigurableListableBeanFactory beanFactory) throws BeansException {
             registerProxies((BeanDefinitionRegistry) beanFactory);
@@ -151,8 +161,9 @@ public class SqlAnnotationAutoConfiguration {
         
         @Override
         public int getOrder() {
-            // 设置较低的优先级，确保在其他BeanPostProcessor之后执行
-            return Ordered.LOWEST_PRECEDENCE;
+            // 设置较高的优先级值（更晚执行），确保在 BeanPostProcessor 初始化之后执行
+            // 与 AutoRepositoryRegistrar 保持一致，使用相同的优先级值
+            return Integer.MAX_VALUE - 100;
         }
         
         public void registerProxies() {
@@ -202,9 +213,6 @@ public class SqlAnnotationAutoConfiguration {
     @Component
     public static class ServiceProxyRegistrar implements BeanFactoryPostProcessor, Ordered {
         
-        @Autowired
-        private SqlMethodInterceptor sqlMethodInterceptor;
-        
         @Override
         public void postProcessBeanFactory(org.springframework.beans.factory.config.ConfigurableListableBeanFactory beanFactory) throws BeansException {
             registerProxies((BeanDefinitionRegistry) beanFactory);
@@ -212,8 +220,9 @@ public class SqlAnnotationAutoConfiguration {
         
         @Override
         public int getOrder() {
-            // 设置较低的优先级，确保在其他BeanPostProcessor之后执行
-            return Ordered.LOWEST_PRECEDENCE;
+            // 设置较高的优先级值（更晚执行），确保在 BeanPostProcessor 初始化之后执行
+            // 与 AutoRepositoryRegistrar 保持一致，使用相同的优先级值
+            return Integer.MAX_VALUE - 100;
         }
         
         public void registerProxies() {

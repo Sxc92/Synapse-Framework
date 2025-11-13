@@ -3,11 +3,10 @@ package com.indigo.cache.extension.lock;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * 分布式锁性能监控器
@@ -53,7 +52,7 @@ public class LockPerformanceMonitor {
         stats.attempts.increment();
         stats.lastAttemptTime = System.currentTimeMillis();
         
-        log.info("[LockMonitor] 记录锁获取尝试: {}:{}", lockName, key);
+        log.debug("[LockMonitor] 记录锁获取尝试: {}:{}", lockName, key);
     }
 
     /**
@@ -81,7 +80,7 @@ public class LockPerformanceMonitor {
             log.warn("[LockMonitor] 检测到慢锁: {}:{} 耗时: {}ms", lockName, key, duration);
         }
         
-        log.info("[LockMonitor] 记录锁获取成功: {}:{} 耗时: {}ms", lockName, key, duration);
+        log.debug("[LockMonitor] 记录锁获取成功: {}:{} 耗时: {}ms", lockName, key, duration);
     }
 
     /**
@@ -101,7 +100,7 @@ public class LockPerformanceMonitor {
         stats.totalWaitTime.add(duration);
         stats.lastFailureTime = System.currentTimeMillis();
         
-        log.info("[LockMonitor] 记录锁获取失败: {}:{} 原因: {} 耗时: {}ms", lockName, key, reason, duration);
+        log.debug("[LockMonitor] 记录锁获取失败: {}:{} 原因: {} 耗时: {}ms", lockName, key, reason, duration);
     }
 
     /**
@@ -120,7 +119,7 @@ public class LockPerformanceMonitor {
         stats.minHoldTime.updateAndGet(current -> current == 0 ? holdTime : Math.min(current, holdTime));
         stats.lastReleaseTime = System.currentTimeMillis();
         
-        log.info("[LockMonitor] 记录锁释放: {}:{} 持有时间: {}ms", lockName, key, holdTime);
+        log.debug("[LockMonitor] 记录锁释放: {}:{} 持有时间: {}ms", lockName, key, holdTime);
     }
 
     /**
@@ -136,7 +135,7 @@ public class LockPerformanceMonitor {
             log.warn("[LockMonitor] 死锁检测耗时过长: {}ms 死锁环数量: {}", detectionTime, deadlockCycles);
         }
         
-        log.info("[LockMonitor] 死锁检测完成: 耗时: {}ms 死锁环数量: {}", detectionTime, deadlockCycles);
+        log.debug("[LockMonitor] 死锁检测完成: 耗时: {}ms 死锁环数量: {}", detectionTime, deadlockCycles);
     }
 
     /**

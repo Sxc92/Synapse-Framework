@@ -164,6 +164,7 @@ public class TreeUtil<T> {
     }
 
     /** 🔄 反序列化 JSON 为 Tree */
+    @SuppressWarnings("unchecked")
     public static <T> TreeUtil<T> fromJson(String json, Class<T> clazz) {
         if (json == null || json.isEmpty()) {
             Ex.throwEx(StandardErrorCode.PARAM_ERROR, "JSON 字符串不能为空");
@@ -172,7 +173,7 @@ public class TreeUtil<T> {
             Ex.throwEx(StandardErrorCode.PARAM_ERROR, "节点类型不能为空");
         }
         
-        TreeNode<T> rootNode = JsonUtils.fromJson(json, TreeNode.class);
+        TreeNode<T> rootNode = (TreeNode<T>) JsonUtils.fromJson(json, TreeNode.class);
         if (rootNode == null) {
             Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, "Failed to deserialize JSON to tree");
         }

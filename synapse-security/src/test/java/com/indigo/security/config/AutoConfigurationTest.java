@@ -3,7 +3,7 @@ package com.indigo.security.config;
 import com.indigo.cache.core.CacheService;
 import com.indigo.cache.session.UserSessionService;
 import com.indigo.security.core.TokenManager;
-import com.indigo.security.core.PermissionManager;
+import com.indigo.security.core.PermissionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -35,18 +35,8 @@ public class AutoConfigurationTest {
                 .run(context -> {
                     // 验证核心Bean被正确创建
                     assertThat(context).hasSingleBean(TokenManager.class);
-                    assertThat(context).hasSingleBean(PermissionManager.class);
+                    assertThat(context).hasSingleBean(PermissionService.class);
                     assertThat(context).hasSingleBean(UserSessionService.class);
-                });
-    }
-
-    @Test
-    public void testOAuth2ConfigurationDisabled() {
-        this.contextRunner
-                .withPropertyValues("synapse.oauth2.enabled=false")
-                .run(context -> {
-                    // OAuth2配置应该被禁用
-                    assertThat(context).doesNotHaveBean("oAuth2Config");
                 });
     }
 
@@ -56,7 +46,7 @@ public class AutoConfigurationTest {
                 .run(context -> {
                     // 默认情况下安全配置应该启用
                     assertThat(context).hasSingleBean(TokenManager.class);
-                    assertThat(context).hasSingleBean(PermissionManager.class);
+                    assertThat(context).hasSingleBean(PermissionService.class);
                     assertThat(context).hasSingleBean(UserSessionService.class);
                 });
     }

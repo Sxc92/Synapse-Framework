@@ -207,20 +207,25 @@ public class PermissionValidationService {
         }
 
         // 3. 添加部门规则
-        if (StringUtils.hasText(user.getDeptId())) {
-            allRules.addAll(dataPermissionService.getDepartmentRules(user.getDeptId()));
-        }
+        // 注意：UserContext 中没有 deptId 字段，暂时跳过部门规则
+        // 如果需要部门权限，请在 UserContext 中添加 deptId 字段
+        // if (StringUtils.hasText(user.getDeptId())) {
+        //     allRules.addAll(dataPermissionService.getDepartmentRules(user.getDeptId()));
+        // }
 
         // 4. 添加职级规则
-        if (StringUtils.hasText(user.getPositionId())) {
-            allRules.addAll(getPositionRules(user.getPositionId()));
-        }
+        // 注意：UserContext 中没有 positionId 字段，暂时跳过职级规则
+        // 如果需要职级权限，请在 UserContext 中添加 positionId 字段
+        // if (StringUtils.hasText(user.getPositionId())) {
+        //     allRules.addAll(getPositionRules(user.getPositionId()));
+        // }
 
         // 5. 添加部门职级组合规则
-        if (StringUtils.hasText(user.getDeptId()) && StringUtils.hasText(user.getPositionId())) {
-            String deptPositionId = user.getDeptId() + ":" + user.getPositionId();
-            allRules.addAll(getDeptPositionRules(deptPositionId));
-        }
+        // 注意：UserContext 中没有 deptId 和 positionId 字段，暂时跳过
+        // if (StringUtils.hasText(user.getDeptId()) && StringUtils.hasText(user.getPositionId())) {
+        //     String deptPositionId = user.getDeptId() + ":" + user.getPositionId();
+        //     allRules.addAll(getDeptPositionRules(deptPositionId));
+        // }
 
         return allRules;
     }
@@ -252,11 +257,21 @@ public class PermissionValidationService {
     private String buildDefaultDataScopeSql(DataPermissionRule.DataScopeType dataScopeType, UserContext user) {
         return switch (dataScopeType) {
             case ALL -> "1=1";
-            case DEPARTMENT -> "dept_id = '" + user.getDeptId() + "'";
-            case DEPARTMENT_AND_BELOW -> 
-                "dept_id IN (SELECT id FROM iam_department WHERE path LIKE '%" + user.getDeptId() + "%')";
-            case POSITION_AND_BELOW -> 
-                "position_id IN (SELECT id FROM iam_position WHERE level >= " + user.getPositionLevel() + ")";
+            case DEPARTMENT -> {
+                // 注意：UserContext 中没有 deptId 字段，返回无权限
+                log.warn("数据权限规则需要部门ID，但 UserContext 中没有 deptId 字段: userId={}", user.getUserId());
+                yield "1=0";
+            }
+            case DEPARTMENT_AND_BELOW -> {
+                // 注意：UserContext 中没有 deptId 字段，返回无权限
+                log.warn("数据权限规则需要部门ID，但 UserContext 中没有 deptId 字段: userId={}", user.getUserId());
+                yield "1=0";
+            }
+            case POSITION_AND_BELOW -> {
+                // 注意：UserContext 中没有 positionLevel 字段，返回无权限
+                log.warn("数据权限规则需要职级等级，但 UserContext 中没有 positionLevel 字段: userId={}", user.getUserId());
+                yield "1=0";
+            }
             case PERSONAL -> "create_user_id = '" + user.getUserId() + "'";
             case CUSTOM -> "1=0";
         };
@@ -275,10 +290,13 @@ public class PermissionValidationService {
 
     /**
      * 获取职级权限规则
+     * 注意：此方法当前未使用，因为 UserContext 中没有 positionId 字段
+     * 如果未来添加了 positionId 字段，此方法将被使用
      *
      * @param positionId 职级ID
      * @return 权限规则列表
      */
+    @SuppressWarnings("unused")
     private List<DataPermissionRule> getPositionRules(String positionId) {
         // TODO: 实现职级权限规则查询
         // 这里需要根据实际的数据库表结构来实现
@@ -287,10 +305,13 @@ public class PermissionValidationService {
 
     /**
      * 获取部门职级组合权限规则
+     * 注意：此方法当前未使用，因为 UserContext 中没有 deptId 和 positionId 字段
+     * 如果未来添加了这些字段，此方法将被使用
      *
      * @param deptPositionId 部门职级组合ID
      * @return 权限规则列表
      */
+    @SuppressWarnings("unused")
     private List<DataPermissionRule> getDeptPositionRules(String deptPositionId) {
         // TODO: 实现部门职级组合权限规则查询
         // 这里需要根据实际的数据库表结构来实现

@@ -16,242 +16,125 @@
       "sourceType": "com.indigo.security.config.SecurityProperties"
     },
     {
-      "name": "synapse.security.jwt.enabled",
+      "name": "synapse.security.mode",
+      "type": "com.indigo.security.config.SecurityProperties$SecurityMode",
+      "description": "安全模式：STRICT(严格)、PERMISSIVE(宽松)、DISABLED(关闭)",
+      "defaultValue": "STRICT",
+      "sourceType": "com.indigo.security.config.SecurityProperties"
+    },
+    {
+      "name": "synapse.security.security-logging",
       "type": "java.lang.Boolean",
-      "description": "是否启用JWT认证",
+      "description": "是否启用安全日志",
       "defaultValue": true,
       "sourceType": "com.indigo.security.config.SecurityProperties"
     },
     {
-      "name": "synapse.security.jwt.secret",
+      "name": "synapse.security.security-log-level",
       "type": "java.lang.String",
-      "description": "JWT签名密钥",
+      "description": "安全日志级别",
+      "defaultValue": "INFO",
       "sourceType": "com.indigo.security.config.SecurityProperties"
     },
     {
-      "name": "synapse.security.jwt.expiration",
-      "type": "java.lang.Long",
-      "description": "JWT过期时间(秒)",
-      "defaultValue": 86400,
+      "name": "synapse.security.white-list.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用白名单",
+      "defaultValue": true,
       "sourceType": "com.indigo.security.config.SecurityProperties"
     },
     {
-      "name": "synapse.security.jwt.header-name",
-      "type": "java.lang.String",
-      "description": "JWT请求头名称",
-      "defaultValue": "Authorization",
+      "name": "synapse.security.white-list.paths",
+      "type": "java.util.List<java.lang.String>",
+      "description": "白名单路径列表（支持 Ant 风格路径匹配）",
       "sourceType": "com.indigo.security.config.SecurityProperties"
     },
     {
-      "name": "synapse.security.jwt.prefix",
+      "name": "synapse.security.token.prefix",
       "type": "java.lang.String",
-      "description": "JWT令牌前缀",
+      "description": "Token 前缀（用于 Authorization 请求头）",
       "defaultValue": "Bearer ",
       "sourceType": "com.indigo.security.config.SecurityProperties"
     },
     {
-      "name": "synapse.security.satoken.enabled",
+      "name": "synapse.security.token.query-param",
+      "type": "java.lang.String",
+      "description": "Token 查询参数名",
+      "defaultValue": "token",
+      "sourceType": "com.indigo.security.config.SecurityProperties"
+    },
+    {
+      "name": "synapse.security.token.header-name",
+      "type": "java.lang.String",
+      "description": "Authorization 请求头名称",
+      "defaultValue": "Authorization",
+      "sourceType": "com.indigo.security.config.SecurityProperties"
+    },
+    {
+      "name": "synapse.security.token.x-auth-token-header",
+      "type": "java.lang.String",
+      "description": "X-Auth-Token 请求头名称（备用 token 传递方式）",
+      "defaultValue": "X-Auth-Token",
+      "sourceType": "com.indigo.security.config.SecurityProperties"
+    },
+    {
+      "name": "synapse.security.gateway-signature.enabled",
       "type": "java.lang.Boolean",
-      "description": "是否启用Sa-Token",
+      "description": "是否启用 Gateway 签名验证",
       "defaultValue": true,
       "sourceType": "com.indigo.security.config.SecurityProperties"
     },
     {
-      "name": "synapse.security.satoken.token-name",
+      "name": "synapse.security.gateway-signature.secret",
       "type": "java.lang.String",
-      "description": "Sa-Token令牌名称",
-      "defaultValue": "satoken",
+      "description": "Gateway 签名密钥（生产环境必须修改为强密钥）",
       "sourceType": "com.indigo.security.config.SecurityProperties"
     },
     {
-      "name": "synapse.security.satoken.timeout",
+      "name": "synapse.security.gateway-signature.validity-window",
       "type": "java.lang.Long",
-      "description": "Sa-Token令牌超时时间(秒)",
-      "defaultValue": 2592000,
+      "description": "签名有效期窗口（毫秒），默认 5 分钟，防止重放攻击",
+      "defaultValue": 300000,
       "sourceType": "com.indigo.security.config.SecurityProperties"
     },
     {
-      "name": "synapse.security.satoken.activity-timeout",
+      "name": "synapse.security.gateway-signature.enable-context-passing",
+      "type": "java.lang.Boolean",
+      "description": "是否启用用户上下文传递",
+      "defaultValue": true,
+      "sourceType": "com.indigo.security.config.SecurityProperties"
+    },
+    {
+      "name": "synapse.security.internal-service.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用内部服务调用签名验证",
+      "defaultValue": true,
+      "sourceType": "com.indigo.security.config.SecurityProperties"
+    },
+    {
+      "name": "synapse.security.internal-service.service-name",
+      "type": "java.lang.String",
+      "description": "当前服务名称（用于标识调用来源）",
+      "sourceType": "com.indigo.security.config.SecurityProperties"
+    },
+    {
+      "name": "synapse.security.internal-service.secret",
+      "type": "java.lang.String",
+      "description": "当前服务密钥（用于生成签名，生产环境必须修改为强密钥）",
+      "sourceType": "com.indigo.security.config.SecurityProperties"
+    },
+    {
+      "name": "synapse.security.internal-service.validity-window",
       "type": "java.lang.Long",
-      "description": "Sa-Token活动超时时间(秒)",
-      "defaultValue": -1,
+      "description": "签名有效期窗口（毫秒），默认 5 分钟，防止重放攻击",
+      "defaultValue": 300000,
       "sourceType": "com.indigo.security.config.SecurityProperties"
     },
     {
-      "name": "synapse.security.satoken.is-concurrent",
-      "type": "java.lang.Boolean",
-      "description": "是否允许同一账号并发登录",
-      "defaultValue": true,
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.satoken.is-share",
-      "type": "java.lang.Boolean",
-      "description": "是否在多个项目中共享Token",
-      "defaultValue": false,
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.satoken.is-log",
-      "type": "java.lang.Boolean",
-      "description": "是否输出操作日志",
-      "defaultValue": false,
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.satoken.is-read-cookie",
-      "type": "java.lang.Boolean",
-      "description": "是否从Cookie中读取Token",
-      "defaultValue": false,
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.satoken.is-read-header",
-      "type": "java.lang.Boolean",
-      "description": "是否从请求头中读取Token",
-      "defaultValue": true,
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.satoken.is-read-body",
-      "type": "java.lang.Boolean",
-      "description": "是否从请求体中读取Token",
-      "defaultValue": false,
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.satoken.is-write-header",
-      "type": "java.lang.Boolean",
-      "description": "是否在响应头中写入Token",
-      "defaultValue": true,
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.satoken.is-write-body",
-      "type": "java.lang.Boolean",
-      "description": "是否在响应体中写入Token",
-      "defaultValue": false,
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.satoken.is-write-cookie",
-      "type": "java.lang.Boolean",
-      "description": "是否在Cookie中写入Token",
-      "defaultValue": false,
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.satoken.token-prefix",
-      "type": "java.lang.String",
-      "description": "Token前缀",
-      "defaultValue": "Bearer",
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.satoken.is-print",
-      "type": "java.lang.Boolean",
-      "description": "是否打印Sa-Token版本信息和banner",
-      "defaultValue": false,
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.satoken.token-style",
-      "type": "java.lang.String",
-      "description": "Token风格",
-      "defaultValue": "uuid",
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.oauth2.enabled",
-      "type": "java.lang.Boolean",
-      "description": "是否启用OAuth2.0",
-      "defaultValue": false,
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.oauth2.client-id",
-      "type": "java.lang.String",
-      "description": "OAuth2客户端ID",
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.oauth2.client-secret",
-      "type": "java.lang.String",
-      "description": "OAuth2客户端密钥",
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.oauth2.authorization-server-url",
-      "type": "java.lang.String",
-      "description": "OAuth2授权服务器URL",
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.oauth2.token-server-url",
-      "type": "java.lang.String",
-      "description": "OAuth2令牌服务器URL",
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.oauth2.user-info-url",
-      "type": "java.lang.String",
-      "description": "OAuth2用户信息URL",
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.oauth2.redirect-uri",
-      "type": "java.lang.String",
-      "description": "OAuth2重定向URI",
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.oauth2.scope",
-      "type": "java.lang.String",
-      "description": "OAuth2授权范围",
-      "defaultValue": "read",
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.login.max-fail-count",
-      "type": "java.lang.Integer",
-      "description": "最大登录失败次数",
-      "defaultValue": 5,
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.login.lock-duration",
-      "type": "java.lang.Long",
-      "description": "账户锁定持续时间（秒）",
-      "defaultValue": 1800,
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.login.fail-window",
-      "type": "java.lang.Long",
-      "description": "失败计数窗口时间（秒）",
-      "defaultValue": 300,
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.data-permission.enabled",
-      "type": "java.lang.Boolean",
-      "description": "是否启用数据权限",
-      "defaultValue": true,
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.data-permission.cache-timeout",
-      "type": "java.lang.Long",
-      "description": "数据权限规则缓存时间（秒）",
-      "defaultValue": 3600,
-      "sourceType": "com.indigo.security.config.SecurityProperties"
-    },
-    {
-      "name": "synapse.security.data-permission.sql-injection-protection",
-      "type": "java.lang.Boolean",
-      "description": "是否启用SQL注入防护",
-      "defaultValue": true,
+      "name": "synapse.security.internal-service.allowed-services",
+      "type": "java.util.Map<java.lang.String, java.lang.String>",
+      "description": "允许调用的服务白名单（key: 服务名称, value: 服务密钥）",
       "sourceType": "com.indigo.security.config.SecurityProperties"
     }
   ]
-} 
+}

@@ -10,7 +10,6 @@ import org.springframework.util.StringUtils;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.Statement;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -35,22 +34,19 @@ public class DataSourceConfigurationValidator {
     
     @EventListener(ApplicationReadyEvent.class)
     public void validateConfiguration() {
-        log.info("开始验证数据源配置...");
+        log.debug("开始验证数据源配置...");
         
         try {
             // 1. 验证主数据源
             validatePrimaryDataSource();
             
-            // 2. 验证读写分离配置
-            validateReadWriteConfiguration();
-            
-            // 3. 验证连接池配置
+            // 2. 验证连接池配置
             validateConnectionPoolConfiguration();
             
-            // 4. 验证数据源连接性
+            // 3. 验证数据源连接性
             validateDataSourceConnectivity();
             
-            // 5. 输出配置摘要
+            // 4. 输出配置摘要
             printConfigurationSummary();
             
             log.debug("数据源配置验证完成 ✅");
@@ -74,65 +70,6 @@ public class DataSourceConfigurationValidator {
         }
         
         log.debug("✅ 主数据源验证通过: [{}]", properties.getPrimary());
-    }
-    
-    /**
-     * 验证读写分离配置
-     */
-    private void validateReadWriteConfiguration() {
-        if (properties.getReadWrite().isEnabled()) {
-            List<String> readSources = properties.getReadWrite().getReadSources();
-            List<String> writeSources = properties.getReadWrite().getWriteSources();
-            
-            if (readSources.isEmpty()) {
-                log.debug("⚠️  读写分离已启用，但读数据源列表为空");
-            }
-            
-            if (writeSources.isEmpty()) {
-                log.debug("⚠️  读写分离已启用，但写数据源列表为空");
-            }
-            
-            // 验证数据源角色配置
-            for (String source : readSources) {
-                if (!dynamicDataSource.getDataSources().containsKey(source)) {
-                    throw new ConfigurationException("读数据源 [" + source + "] 不存在");
-                }
-                validateDataSourceRole(source, "READ");
-            }
-            
-            for (String source : writeSources) {
-                if (!dynamicDataSource.getDataSources().containsKey(source)) {
-                    throw new ConfigurationException("写数据源 [" + source + "] 不存在");
-                }
-                validateDataSourceRole(source, "WRITE");
-            }
-            
-            log.debug("✅ 读写分离配置验证通过");
-        }
-    }
-    
-    /**
-     * 验证数据源角色配置
-     */
-    private void validateDataSourceRole(String dataSourceName, String expectedRole) {
-        SynapseDataSourceProperties.DataSourceConfig config = properties.getDatasources().get(dataSourceName);
-        if (config != null) {
-            String actualRole = config.getRole().name();
-            if (!isRoleCompatible(actualRole, expectedRole)) {
-                log.warn("⚠️  数据源 [{}] 角色配置不匹配，期望: [{}], 实际: [{}]",
-                        dataSourceName, expectedRole, actualRole);
-            }
-        }
-    }
-    
-    /**
-     * 检查角色是否兼容
-     */
-    private boolean isRoleCompatible(String actualRole, String expectedRole) {
-        if ("READ_WRITE".equals(actualRole)) {
-            return true; // READ_WRITE 兼容所有角色
-        }
-        return actualRole.equals(expectedRole);
     }
     
     /**
@@ -221,22 +158,16 @@ public class DataSourceConfigurationValidator {
         log.debug("📊 数据源配置摘要:");
         log.debug("   主数据源: [{}]", properties.getPrimary());
         log.debug("   总数据源数: [{}]", dynamicDataSource.getDataSources().size());
-        log.debug("   读写分离: [{}]", properties.getReadWrite().isEnabled() ? "启用" : "禁用");
         log.debug("   负载均衡策略: [{}]", properties.getLoadBalance().getStrategy());
         log.debug("   故障转移: [{}]", properties.getFailover().isEnabled() ? "启用" : "禁用");
         
-        if (properties.getReadWrite().isEnabled()) {
-            log.debug("   读数据源: [{}]", String.join(", ", properties.getReadWrite().getReadSources()));
-            log.debug("   写数据源: [{}]", String.join(", ", properties.getReadWrite().getWriteSources()));
-        }
-        
-        // 输出数据源角色分布
-        log.info("   数据源角色分布:");
+        // 输出数据源权重分布
+        log.debug("   数据源权重分布:");
         for (Map.Entry<String, SynapseDataSourceProperties.DataSourceConfig> entry : 
                 properties.getDatasources().entrySet()) {
             String name = entry.getKey();
             SynapseDataSourceProperties.DataSourceConfig config = entry.getValue();
-            log.info("     [{}]: {} (权重: {})", name, config.getRole(), config.getWeight());
+            log.debug("     [{}]: 权重: {}", name, config.getWeight());
         }
     }
     

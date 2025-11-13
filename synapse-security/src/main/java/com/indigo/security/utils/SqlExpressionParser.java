@@ -95,23 +95,31 @@ public class SqlExpressionParser {
         }
 
         // 基础用户信息
+        if (user.getUserId() != null) {
         parameters.put("userId", user.getUserId());
-        parameters.put("username", user.getUsername());
-        parameters.put("nickname", user.getNickname());
+        }
+        if (user.getAccount() != null) {
+        parameters.put("username", user.getAccount());
+        }
+        if (user.getEmail() != null) {
         parameters.put("email", user.getEmail());
-        parameters.put("phone", user.getPhone());
-        parameters.put("tenantId", user.getTenantId());
-        parameters.put("tenantName", user.getTenantName());
+        }
+        if (user.getMobile() != null) {
+        parameters.put("phone", user.getMobile());
+        }
 
         // 部门信息
-        parameters.put("deptId", user.getDeptId());
-        parameters.put("deptName", user.getDeptName());
-        parameters.put("deptPath", user.getDeptPath());
+        // 注意：UserContext 中没有 deptId 和 deptName 字段
+        // 如果需要部门相关参数，请在 UserContext 中添加这些字段
+        // parameters.put("deptId", user.getDeptId());
+        // parameters.put("deptName", user.getDeptName());
 
         // 职级信息
-        parameters.put("positionId", user.getPositionId());
-        parameters.put("positionName", user.getPositionName());
-        parameters.put("positionLevel", String.valueOf(user.getPositionLevel()));
+        // 注意：UserContext 中没有 positionId, positionName, positionLevel 字段
+        // 如果需要职级相关参数，请在 UserContext 中添加这些字段
+        // parameters.put("positionId", user.getPositionId());
+        // parameters.put("positionName", user.getPositionName());
+        // parameters.put("positionLevel", String.valueOf(user.getPositionLevel()));
 
         // 角色和权限信息
         if (user.getRoles() != null && !user.getRoles().isEmpty()) {
@@ -123,26 +131,28 @@ public class SqlExpressionParser {
         }
 
         // 部门职级组合信息
-        if (user.getDeptPositions() != null && !user.getDeptPositions().isEmpty()) {
-            StringBuilder deptIds = new StringBuilder();
-            StringBuilder positionIds = new StringBuilder();
-            StringBuilder deptPositionIds = new StringBuilder();
-            
-            for (UserContext.UserDeptPositionInfo deptPosition : user.getDeptPositions()) {
-                if (deptIds.length() > 0) deptIds.append(",");
-                if (positionIds.length() > 0) positionIds.append(",");
-                if (deptPositionIds.length() > 0) deptPositionIds.append(",");
-                
-                deptIds.append("'").append(deptPosition.getDeptId()).append("'");
-                positionIds.append("'").append(deptPosition.getPositionId()).append("'");
-                deptPositionIds.append("'").append(deptPosition.getDeptId()).append(":")
-                    .append(deptPosition.getPositionId()).append("'");
-            }
-            
-            parameters.put("deptIds", deptIds.toString());
-            parameters.put("positionIds", positionIds.toString());
-            parameters.put("deptPositionIds", deptPositionIds.toString());
-        }
+        // 注意：UserContext 中没有 deptPositions 字段
+        // 如果需要部门职级组合参数，请在 UserContext 中添加 deptPositions 字段
+        // if (user.getDeptPositions() != null && !user.getDeptPositions().isEmpty()) {
+        //     StringBuilder deptIds = new StringBuilder();
+        //     StringBuilder positionIds = new StringBuilder();
+        //     StringBuilder deptPositionIds = new StringBuilder();
+        //     
+        //     for (UserContext.UserDeptPositionInfo deptPosition : user.getDeptPositions()) {
+        //         if (!deptIds.isEmpty()) deptIds.append(",");
+        //         if (!positionIds.isEmpty()) positionIds.append(",");
+        //         if (!deptPositionIds.isEmpty()) deptPositionIds.append(",");
+        //         
+        //         deptIds.append("'").append(deptPosition.getDeptId()).append("'");
+        //         positionIds.append("'").append(deptPosition.getPositionId()).append("'");
+        //         deptPositionIds.append("'").append(deptPosition.getDeptId()).append(":")
+        //             .append(deptPosition.getPositionId()).append("'");
+        //     }
+        //     
+        //     parameters.put("deptIds", deptIds.toString());
+        //     parameters.put("positionIds", positionIds.toString());
+        //     parameters.put("deptPositionIds", deptPositionIds.toString());
+        // }
 
         return parameters;
     }
