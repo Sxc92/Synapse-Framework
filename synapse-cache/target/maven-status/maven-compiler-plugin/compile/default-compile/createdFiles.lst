@@ -48,6 +48,7 @@ com/indigo/cache/config/LockProperties$AutoRelease.class
 com/indigo/cache/core/TwoLevelCacheService$1.class
 com/indigo/cache/extension/lock/DistributedLockService$ReentrantInfo.class
 com/indigo/cache/core/CacheService.class
+com/indigo/cache/core/constants/SessionCacheConstants.class
 com/indigo/cache/extension/lock/LockPerformanceMonitor.class
 com/indigo/cache/extension/ratelimit/RateLimitService.class
 com/indigo/cache/extension/lock/resource/ResourcePool.class

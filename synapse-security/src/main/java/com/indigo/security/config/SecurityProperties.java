@@ -159,6 +159,27 @@ public class SecurityProperties {
         private String xAuthTokenHeader = "X-Auth-Token";
 
         /**
+         * 是否启用滑动过期（自动刷新）
+         * 启用后，每次用户请求时，如果 token 剩余时间少于刷新阈值，会自动刷新 token 过期时间
+         * 默认 true
+         */
+        private boolean enableSlidingExpiration = true;
+
+        /**
+         * 刷新阈值（秒）
+         * 当 token 剩余时间少于此值时，自动刷新 token
+         * 默认 30 分钟（1800 秒）
+         */
+        private long refreshThreshold = 30 * 60L;
+
+        /**
+         * 续期时长（秒）
+         * 刷新 token 时，将过期时间延长到此值
+         * 默认 2 小时（7200 秒）
+         */
+        private long renewalDuration = 2 * 60 * 60L;
+
+        /**
          * 获取 Token 前缀长度
          * 
          * @return 前缀长度

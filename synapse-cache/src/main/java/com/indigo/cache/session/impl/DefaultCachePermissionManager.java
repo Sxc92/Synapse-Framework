@@ -3,6 +3,7 @@ package com.indigo.cache.session.impl;
 import com.indigo.cache.core.CacheInvalidationService;
 import com.indigo.cache.core.CacheInvalidationTracker;
 import com.indigo.cache.core.CacheService;
+import com.indigo.cache.core.constants.SessionCacheConstants;
 import com.indigo.cache.infrastructure.CaffeineCacheManager;
 import com.indigo.cache.manager.CacheKeyGenerator;
 import com.indigo.cache.session.CachePermissionManager;
@@ -23,18 +24,8 @@ public class DefaultCachePermissionManager implements CachePermissionManager {
 
     /**
      * Caffeine 缓存名称
+     * 注意：所有缓存名称和缓存类型常量已迁移到 SessionCacheConstants
      */
-    private static final String CACHE_NAME_USER_PERMISSIONS = "userPermissions";
-    private static final String CACHE_NAME_USER_ROLES = "userRoles";
-    private static final String CACHE_NAME_USER_MENUS = "userMenus";
-    private static final String CACHE_NAME_USER_RESOURCES = "userResources";
-    private static final String CACHE_NAME_USER_SYSTEMS = "userSystems";
-    
-    /**
-     * 缓存类型（用于失效通知）
-     */
-    private static final String CACHE_TYPE_USER_PERMISSIONS = "userPermissions";
-    private static final String CACHE_TYPE_USER_ROLES = "userRoles";
 
     /**
      * 本地缓存默认过期时间（秒）
@@ -104,7 +95,7 @@ public class DefaultCachePermissionManager implements CachePermissionManager {
         if (caffeineCacheManager != null) {
             try {
                 int localExpireSeconds = calculateLocalCacheExpire(expiration);
-                caffeineCacheManager.put(CACHE_NAME_USER_PERMISSIONS, token, permissions, localExpireSeconds);
+                caffeineCacheManager.put(SessionCacheConstants.CACHE_NAME_USER_PERMISSIONS, token, permissions, localExpireSeconds);
                 log.debug("Stored user permissions to local cache: token={}, expireSeconds={}", token, localExpireSeconds);
             } catch (Exception e) {
                 log.warn("Failed to store user permissions to local cache: token={}", token, e);
@@ -113,7 +104,7 @@ public class DefaultCachePermissionManager implements CachePermissionManager {
         
         // 3. 发布缓存失效通知（通知其他节点清除本地缓存）
         if (cacheInvalidationService != null) {
-            cacheInvalidationService.publishInvalidation(CACHE_TYPE_USER_PERMISSIONS, token);
+            cacheInvalidationService.publishInvalidation(SessionCacheConstants.CACHE_TYPE_USER_PERMISSIONS, token);
         }
         
         log.info("Stored user permissions for token: {}", token);
@@ -130,7 +121,7 @@ public class DefaultCachePermissionManager implements CachePermissionManager {
         if (caffeineCacheManager != null) {
             try {
                 int localExpireSeconds = calculateLocalCacheExpire(expiration);
-                caffeineCacheManager.put(CACHE_NAME_USER_ROLES, token, roles, localExpireSeconds);
+                caffeineCacheManager.put(SessionCacheConstants.CACHE_NAME_USER_ROLES, token, roles, localExpireSeconds);
                 log.debug("Stored user roles to local cache: token={}, expireSeconds={}", token, localExpireSeconds);
             } catch (Exception e) {
                 log.warn("Failed to store user roles to local cache: token={}", token, e);
@@ -139,7 +130,7 @@ public class DefaultCachePermissionManager implements CachePermissionManager {
         
         // 3. 发布缓存失效通知（通知其他节点清除本地缓存）
         if (cacheInvalidationService != null) {
-            cacheInvalidationService.publishInvalidation(CACHE_TYPE_USER_ROLES, token);
+            cacheInvalidationService.publishInvalidation(SessionCacheConstants.CACHE_TYPE_USER_ROLES, token);
         }
         
         log.info("Stored user roles for token: {}", token);
@@ -151,7 +142,7 @@ public class DefaultCachePermissionManager implements CachePermissionManager {
         // 1. 优先从 Caffeine 本地缓存读取
         if (caffeineCacheManager != null) {
             try {
-                Optional<List<String>> cachedPermissions = caffeineCacheManager.get(CACHE_NAME_USER_PERMISSIONS, token);
+                Optional<List<String>> cachedPermissions = caffeineCacheManager.get(SessionCacheConstants.CACHE_NAME_USER_PERMISSIONS, token);
                 if (cachedPermissions.isPresent()) {
                     log.debug("Retrieved user permissions from local cache: token={}", token);
                     return cachedPermissions.get();
@@ -173,7 +164,7 @@ public class DefaultCachePermissionManager implements CachePermissionManager {
                 
                 // 检查是否在失效之后（防止写入旧数据）
                 if (invalidationTracker != null && 
-                    invalidationTracker.isInvalidated(CACHE_TYPE_USER_PERMISSIONS, token, dataTimestamp)) {
+                        invalidationTracker.isInvalidated(SessionCacheConstants.CACHE_TYPE_USER_PERMISSIONS, token, dataTimestamp)) {
                     log.debug("跳过写入本地缓存（数据已失效）: token={}", token);
                     return permissions;
                 }
@@ -183,11 +174,11 @@ public class DefaultCachePermissionManager implements CachePermissionManager {
                 int localExpireSeconds = remainingTime > 0 
                     ? calculateLocalCacheExpire(remainingTime) 
                     : LOCAL_CACHE_EXPIRE_SECONDS;
-                caffeineCacheManager.put(CACHE_NAME_USER_PERMISSIONS, token, permissions, localExpireSeconds);
+                caffeineCacheManager.put(SessionCacheConstants.CACHE_NAME_USER_PERMISSIONS, token, permissions, localExpireSeconds);
                 
                 // 清除失效记录（数据已成功更新）
                 if (invalidationTracker != null) {
-                    invalidationTracker.clearInvalidation(CACHE_TYPE_USER_PERMISSIONS, token);
+                        invalidationTracker.clearInvalidation(SessionCacheConstants.CACHE_TYPE_USER_PERMISSIONS, token);
                 }
                 
                 log.debug("Stored user permissions to local cache after Redis read: token={}, expireSeconds={}", 
@@ -206,7 +197,7 @@ public class DefaultCachePermissionManager implements CachePermissionManager {
         // 1. 优先从 Caffeine 本地缓存读取
         if (caffeineCacheManager != null) {
             try {
-                Optional<List<String>> cachedRoles = caffeineCacheManager.get(CACHE_NAME_USER_ROLES, token);
+                Optional<List<String>> cachedRoles = caffeineCacheManager.get(SessionCacheConstants.CACHE_NAME_USER_ROLES, token);
                 if (cachedRoles.isPresent()) {
                     log.debug("Retrieved user roles from local cache: token={}", token);
                     return cachedRoles.get();
@@ -228,7 +219,7 @@ public class DefaultCachePermissionManager implements CachePermissionManager {
                 
                 // 检查是否在失效之后（防止写入旧数据）
                 if (invalidationTracker != null && 
-                    invalidationTracker.isInvalidated(CACHE_TYPE_USER_ROLES, token, dataTimestamp)) {
+                        invalidationTracker.isInvalidated(SessionCacheConstants.CACHE_TYPE_USER_ROLES, token, dataTimestamp)) {
                     log.debug("跳过写入本地缓存（数据已失效）: token={}", token);
                     return roles;
                 }
@@ -238,11 +229,11 @@ public class DefaultCachePermissionManager implements CachePermissionManager {
                 int localExpireSeconds = remainingTime > 0 
                     ? calculateLocalCacheExpire(remainingTime) 
                     : LOCAL_CACHE_EXPIRE_SECONDS;
-                caffeineCacheManager.put(CACHE_NAME_USER_ROLES, token, roles, localExpireSeconds);
+                caffeineCacheManager.put(SessionCacheConstants.CACHE_NAME_USER_ROLES, token, roles, localExpireSeconds);
                 
                 // 清除失效记录（数据已成功更新）
                 if (invalidationTracker != null) {
-                    invalidationTracker.clearInvalidation(CACHE_TYPE_USER_ROLES, token);
+                        invalidationTracker.clearInvalidation(SessionCacheConstants.CACHE_TYPE_USER_ROLES, token);
                 }
                 
                 log.debug("Stored user roles to local cache after Redis read: token={}, expireSeconds={}", 
@@ -279,8 +270,8 @@ public class DefaultCachePermissionManager implements CachePermissionManager {
         // 2. 删除 Caffeine 本地缓存（如果可用）
         if (caffeineCacheManager != null) {
             try {
-                caffeineCacheManager.remove(CACHE_NAME_USER_PERMISSIONS, token);
-                caffeineCacheManager.remove(CACHE_NAME_USER_ROLES, token);
+                caffeineCacheManager.remove(SessionCacheConstants.CACHE_NAME_USER_PERMISSIONS, token);
+                caffeineCacheManager.remove(SessionCacheConstants.CACHE_NAME_USER_ROLES, token);
                 log.debug("Removed user permissions and roles from local cache: token={}", token);
             } catch (Exception e) {
                 log.warn("Failed to remove user permissions and roles from local cache: token={}", token, e);
@@ -289,8 +280,8 @@ public class DefaultCachePermissionManager implements CachePermissionManager {
         
         // 3. 发布缓存失效通知（通知其他节点清除本地缓存）
         if (cacheInvalidationService != null) {
-            cacheInvalidationService.publishInvalidation(CACHE_TYPE_USER_PERMISSIONS, token);
-            cacheInvalidationService.publishInvalidation(CACHE_TYPE_USER_ROLES, token);
+            cacheInvalidationService.publishInvalidation(SessionCacheConstants.CACHE_TYPE_USER_PERMISSIONS, token);
+            cacheInvalidationService.publishInvalidation(SessionCacheConstants.CACHE_TYPE_USER_ROLES, token);
         }
         
         log.info("Removed user permissions and roles for token: {}", token);
@@ -311,15 +302,15 @@ public class DefaultCachePermissionManager implements CachePermissionManager {
                 int localExpireSeconds = calculateLocalCacheExpire(expiration);
                 
                 // 更新权限缓存
-                Optional<List<String>> cachedPermissions = caffeineCacheManager.get(CACHE_NAME_USER_PERMISSIONS, token);
+                Optional<List<String>> cachedPermissions = caffeineCacheManager.get(SessionCacheConstants.CACHE_NAME_USER_PERMISSIONS, token);
                 if (cachedPermissions.isPresent()) {
-                    caffeineCacheManager.put(CACHE_NAME_USER_PERMISSIONS, token, cachedPermissions.get(), localExpireSeconds);
+                    caffeineCacheManager.put(SessionCacheConstants.CACHE_NAME_USER_PERMISSIONS, token, cachedPermissions.get(), localExpireSeconds);
                 }
                 
                 // 更新角色缓存
-                Optional<List<String>> cachedRoles = caffeineCacheManager.get(CACHE_NAME_USER_ROLES, token);
+                Optional<List<String>> cachedRoles = caffeineCacheManager.get(SessionCacheConstants.CACHE_NAME_USER_ROLES, token);
                 if (cachedRoles.isPresent()) {
-                    caffeineCacheManager.put(CACHE_NAME_USER_ROLES, token, cachedRoles.get(), localExpireSeconds);
+                    caffeineCacheManager.put(SessionCacheConstants.CACHE_NAME_USER_ROLES, token, cachedRoles.get(), localExpireSeconds);
                 }
                 
                 log.debug("Extended user permissions and roles in local cache: token={}, expireSeconds={}", 
@@ -404,9 +395,9 @@ public class DefaultCachePermissionManager implements CachePermissionManager {
         // 2. 删除 Caffeine 本地缓存（如果可用）
         if (caffeineCacheManager != null) {
             try {
-                caffeineCacheManager.remove(CACHE_NAME_USER_MENUS, token);
-                caffeineCacheManager.remove(CACHE_NAME_USER_RESOURCES, token);
-                caffeineCacheManager.remove(CACHE_NAME_USER_SYSTEMS, token);
+                caffeineCacheManager.remove(SessionCacheConstants.CACHE_NAME_USER_MENUS, token);
+                caffeineCacheManager.remove(SessionCacheConstants.CACHE_NAME_USER_RESOURCES, token);
+                caffeineCacheManager.remove(SessionCacheConstants.CACHE_NAME_USER_SYSTEMS, token);
                 log.debug("Removed user menus, resources and systems from local cache: token={}", token);
             } catch (Exception e) {
                 log.warn("Failed to remove user menus, resources and systems from local cache: token={}", token, e);

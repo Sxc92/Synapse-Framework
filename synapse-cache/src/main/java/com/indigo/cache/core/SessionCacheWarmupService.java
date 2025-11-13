@@ -1,5 +1,6 @@
 package com.indigo.cache.core;
 
+import com.indigo.cache.core.constants.SessionCacheConstants;
 import com.indigo.cache.infrastructure.CaffeineCacheManager;
 import com.indigo.cache.infrastructure.RedisService;
 import com.indigo.cache.manager.CacheKeyGenerator;
@@ -38,10 +39,8 @@ public class SessionCacheWarmupService {
 
     /**
      * 会话缓存名称
+     * 注意：所有缓存名称常量已迁移到 SessionCacheConstants
      */
-    private static final String CACHE_NAME_USER_SESSION = "userSession";
-    private static final String CACHE_NAME_USER_PERMISSIONS = "userPermissions";
-    private static final String CACHE_NAME_USER_ROLES = "userRoles";
 
     /**
      * 默认配置
@@ -229,7 +228,7 @@ public class SessionCacheWarmupService {
             UserContext userContext = cacheService.getObject(sessionKey, UserContext.class);
             if (userContext != null) {
                 int localExpireSeconds = calculateLocalCacheExpire(ttl);
-                caffeineCacheManager.put(CACHE_NAME_USER_SESSION, token, userContext, localExpireSeconds);
+                caffeineCacheManager.put(SessionCacheConstants.CACHE_NAME_USER_SESSION, token, userContext, localExpireSeconds);
             }
 
             // 2. 预热用户权限
@@ -240,7 +239,7 @@ public class SessionCacheWarmupService {
                 List<String> permissions = cacheService.getObject(permissionsKey, List.class);
                 if (permissions != null) {
                     int localExpireSeconds = calculateLocalCacheExpire(permissionsTtl);
-                    caffeineCacheManager.put(CACHE_NAME_USER_PERMISSIONS, token, permissions, localExpireSeconds);
+                    caffeineCacheManager.put(SessionCacheConstants.CACHE_NAME_USER_PERMISSIONS, token, permissions, localExpireSeconds);
                 }
             }
 
@@ -252,7 +251,7 @@ public class SessionCacheWarmupService {
                 List<String> roles = cacheService.getObject(rolesKey, List.class);
                 if (roles != null) {
                     int localExpireSeconds = calculateLocalCacheExpire(rolesTtl);
-                    caffeineCacheManager.put(CACHE_NAME_USER_ROLES, token, roles, localExpireSeconds);
+                    caffeineCacheManager.put(SessionCacheConstants.CACHE_NAME_USER_ROLES, token, roles, localExpireSeconds);
                 }
             }
 

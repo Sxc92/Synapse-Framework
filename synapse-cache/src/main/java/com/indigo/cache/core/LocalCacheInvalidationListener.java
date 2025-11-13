@@ -1,6 +1,7 @@
 package com.indigo.cache.core;
 
 import com.indigo.cache.infrastructure.CaffeineCacheManager;
+import com.indigo.cache.core.constants.SessionCacheConstants;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -13,16 +14,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class LocalCacheInvalidationListener implements CacheInvalidationService.CacheInvalidationListener {
 
-    /**
-     * 缓存类型常量
-     */
-    public static final String CACHE_TYPE_USER_SESSION = "userSession";
-    public static final String CACHE_TYPE_USER_TOKEN = "userToken";
-    public static final String CACHE_TYPE_USER_PERMISSIONS = "userPermissions";
-    public static final String CACHE_TYPE_USER_ROLES = "userRoles";
-    public static final String CACHE_TYPE_USER_MENUS = "userMenus";
-    public static final String CACHE_TYPE_USER_RESOURCES = "userResources";
-    public static final String CACHE_TYPE_USER_SYSTEMS = "userSystems";
 
     private final CaffeineCacheManager caffeineCacheManager;
     private final CacheInvalidationTracker invalidationTracker;
@@ -61,13 +52,13 @@ public class LocalCacheInvalidationListener implements CacheInvalidationService.
      */
     private String getCacheName(String cacheType) {
         return switch (cacheType) {
-            case CACHE_TYPE_USER_SESSION -> "userSession";
-            case CACHE_TYPE_USER_TOKEN -> "userToken";
-            case CACHE_TYPE_USER_PERMISSIONS -> "userPermissions";
-            case CACHE_TYPE_USER_ROLES -> "userRoles";
-            case CACHE_TYPE_USER_MENUS -> "userMenus";
-            case CACHE_TYPE_USER_RESOURCES -> "userResources";
-            case CACHE_TYPE_USER_SYSTEMS -> "userSystems";
+            case SessionCacheConstants.CACHE_TYPE_USER_SESSION -> SessionCacheConstants.CACHE_NAME_USER_SESSION;
+            case SessionCacheConstants.CACHE_TYPE_USER_TOKEN -> SessionCacheConstants.CACHE_NAME_USER_TOKEN;
+            case SessionCacheConstants.CACHE_TYPE_USER_PERMISSIONS -> SessionCacheConstants.CACHE_NAME_USER_PERMISSIONS;
+            case SessionCacheConstants.CACHE_TYPE_USER_ROLES -> SessionCacheConstants.CACHE_NAME_USER_ROLES;
+            case SessionCacheConstants.CACHE_TYPE_USER_MENUS -> SessionCacheConstants.CACHE_NAME_USER_MENUS;
+            case SessionCacheConstants.CACHE_TYPE_USER_RESOURCES -> SessionCacheConstants.CACHE_NAME_USER_RESOURCES;
+            case SessionCacheConstants.CACHE_TYPE_USER_SYSTEMS -> SessionCacheConstants.CACHE_NAME_USER_SYSTEMS;
             default -> null;
         };
     }

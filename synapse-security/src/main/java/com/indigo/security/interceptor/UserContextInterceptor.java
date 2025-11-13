@@ -1,6 +1,7 @@
 package com.indigo.security.interceptor;
 
 import cn.hutool.core.collection.CollUtil;
+import com.indigo.cache.session.UserSessionService;
 import com.indigo.core.context.UserContext;
 import com.indigo.core.entity.Result;
 import com.indigo.core.utils.JsonUtils;
@@ -63,17 +64,21 @@ public class UserContextInterceptor implements HandlerInterceptor {
 
     private final SecurityProperties securityProperties;
     private final TokenExtractor tokenExtractor;
+    private final UserSessionService userSessionService;
 
     /**
      * 构造函数
      *
      * @param securityProperties 安全配置属性（必须）
      * @param tokenExtractor Token 提取工具（必须）
+     * @param userSessionService 用户会话服务（可选，用于滑动过期刷新 token）
      */
     public UserContextInterceptor(SecurityProperties securityProperties,
-                                  TokenExtractor tokenExtractor) {
+                                  TokenExtractor tokenExtractor,
+                                  UserSessionService userSessionService) {
         this.securityProperties = securityProperties;
         this.tokenExtractor = tokenExtractor;
+        this.userSessionService = userSessionService;
     }
 
     @Override
@@ -110,6 +115,9 @@ public class UserContextInterceptor implements HandlerInterceptor {
                     
                     // 3. 更新权限列表（如果从 Header 获取）
                     updatePermissionsFromHeader(request, userContext);
+                    
+                    // 4. 滑动过期：检查并刷新 token（如果启用）
+                    refreshTokenIfNeeded(token);
                     
                     log.debug("用户上下文已设置: userId={}, account={}, URL={}, source=gateway",
                             userContext.getUserId(), userContext.getAccount(), request.getRequestURI());
@@ -476,5 +484,62 @@ public class UserContextInterceptor implements HandlerInterceptor {
      */
     private String extractToken(HttpServletRequest request) {
         return tokenExtractor.extractToken(request);
+    }
+
+    /**
+     * 滑动过期：检查并刷新 token（如果启用且需要刷新）
+     * 
+     * <p>刷新策略：
+     * <ul>
+     *   <li>如果 token 剩余时间少于刷新阈值，则自动刷新 token</li>
+     *   <li>刷新时将 token 过期时间延长到配置的续期时长</li>
+     *   <li>这样可以确保活跃用户的会话不会过期，同时避免长期不活跃的会话占用资源</li>
+     * </ul>
+     * 
+     * @param token 用户 token
+     */
+    private void refreshTokenIfNeeded(String token) {
+        // 1. 检查是否启用滑动过期
+        SecurityProperties.TokenConfig tokenConfig = securityProperties != null ? securityProperties.getToken() : null;
+        if (tokenConfig == null || !tokenConfig.isEnableSlidingExpiration()) {
+            return;
+        }
+
+        // 2. 检查 UserSessionService 是否可用
+        if (userSessionService == null) {
+            log.debug("UserSessionService 未注入，跳过滑动过期刷新: token={}", token);
+            return;
+        }
+
+        try {
+            // 3. 获取 token 剩余时间
+            long remainingTime = userSessionService.getTokenRemainingTime(token);
+            
+            // 4. 如果剩余时间小于 0（token 不存在或已过期），不进行刷新
+            if (remainingTime < 0) {
+                log.debug("Token 不存在或已过期，跳过滑动过期刷新: token={}, remainingTime={}", token, remainingTime);
+                return;
+            }
+
+            // 5. 检查是否需要刷新（剩余时间少于刷新阈值）
+            long refreshThreshold = tokenConfig.getRefreshThreshold();
+            if (remainingTime < refreshThreshold) {
+                // 6. 刷新 token（延长到续期时长）
+                long renewalDuration = tokenConfig.getRenewalDuration();
+                boolean success = userSessionService.renewToken(token, renewalDuration);
+                
+                if (success) {
+                    log.debug("Token 滑动过期刷新成功: token={}, remainingTime={}s, renewedTo={}s", 
+                            token, remainingTime, renewalDuration);
+                } else {
+                    log.warn("Token 滑动过期刷新失败: token={}, remainingTime={}s", token, remainingTime);
+                }
+            } else {
+                log.debug("Token 剩余时间充足，无需刷新: token={}, remainingTime={}s, threshold={}s", 
+                        token, remainingTime, refreshThreshold);
+            }
+        } catch (Exception e) {
+            log.warn("滑动过期刷新 token 时发生异常: token={}", token, e);
+        }
     }
 } 

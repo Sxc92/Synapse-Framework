@@ -9,6 +9,7 @@
 /Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-cache/src/main/java/com/indigo/cache/extension/lock/resource/ResourceType.java
 /Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-cache/src/main/java/com/indigo/cache/extension/lock/ReadWriteLockService.java
 /Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-cache/src/main/java/com/indigo/cache/config/DistributedDeadlockProperties.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-cache/src/main/java/com/indigo/cache/core/constants/SessionCacheConstants.java
 /Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-cache/src/main/java/com/indigo/cache/extension/lock/LockAction.java
 /Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-cache/src/main/java/com/indigo/cache/core/CacheInvalidationTracker.java
 /Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-cache/src/main/java/com/indigo/cache/infrastructure/CaffeineCacheManager.java

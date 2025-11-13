@@ -44,3 +44,4 @@
 /Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/dto/page/EnhancedPageDTO.java
 /Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/dto/QueryDTO.java
 /Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/entity/vo/SimpleBaseVO.java
+/Users/sxc/company/IndigoByte Studios/SynapseMOMPlatform/SynapseMOM/synapse-framework/synapse-core/src/main/java/com/indigo/core/logging/BeanPostProcessorWarningFilter.java

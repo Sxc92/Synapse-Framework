@@ -29,7 +29,6 @@ com/indigo/databases/health/DataSourceHealthChecker.class
 com/indigo/databases/enums/PoolType.class
 com/indigo/databases/config/SynapseDataSourceProperties$LoadBalanceConfig$LoadBalanceStrategy.class
 com/indigo/databases/config/DynamicDataSourceAutoConfiguration$1.class
-com/indigo/databases/config/SynapseDataSourceProperties$DataSourceConfig$DataSourceRole.class
 com/indigo/databases/routing/DataSourceRouter$RoutingContext.class
 com/indigo/databases/service/FieldConversionService.class
 com/indigo/databases/config/SynapseDataSourceProperties$MybatisPlus.class

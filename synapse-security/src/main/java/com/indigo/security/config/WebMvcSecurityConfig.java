@@ -1,5 +1,6 @@
 package com.indigo.security.config;
 
+import com.indigo.cache.session.UserSessionService;
 import com.indigo.security.interceptor.UserContextInterceptor;
 import com.indigo.security.utils.TokenExtractor;
 import lombok.extern.slf4j.Slf4j;
@@ -59,14 +60,17 @@ public class WebMvcSecurityConfig implements WebMvcConfigurer {
      * 通过 {@code ApplicationContext} 获取，避免循环依赖。
      * 
      * @param tokenExtractor Token 提取工具（必须）
+     * @param userSessionService 用户会话服务（可选，用于滑动过期刷新 token）
      * @return 用户上下文拦截器
      */
     @Bean
     @ConditionalOnMissingBean(UserContextInterceptor.class)
-    public UserContextInterceptor userContextInterceptor(TokenExtractor tokenExtractor) {
-        log.debug("初始化用户上下文拦截器，TokenExtractor: {}",
-                tokenExtractor != null ? "已注入" : "未配置");
-        return new UserContextInterceptor(securityProperties, tokenExtractor);
+    public UserContextInterceptor userContextInterceptor(TokenExtractor tokenExtractor,
+                                                        @Autowired(required = false) UserSessionService userSessionService) {
+        log.debug("初始化用户上下文拦截器，TokenExtractor: {}, UserSessionService: {}",
+                tokenExtractor != null ? "已注入" : "未配置",
+                userSessionService != null ? "已注入" : "未配置");
+        return new UserContextInterceptor(securityProperties, tokenExtractor, userSessionService);
     }
 
     @Override
