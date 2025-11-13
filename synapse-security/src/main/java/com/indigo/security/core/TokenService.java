@@ -195,7 +195,7 @@ public class TokenService {
 
     /**
      * 撤销 Token
-     * 清除 Redis 中的会话信息
+     * 清除 Redis 中的会话信息和 token
      * 
      * @param token Token值
      */
@@ -206,8 +206,12 @@ public class TokenService {
         }
 
         try {
-            // 清除 Redis 中的会话信息（包括会话、权限、角色、菜单、资源等）
+            // 1. 清除 Redis 中的会话信息（包括会话、权限、角色、菜单、资源等）
             userSessionService.removeUserSession(token);
+            
+            // 2. 清除 Redis 中的 token（synapse:user:token:xxx）
+            userSessionService.removeToken(token);
+            
             log.info("Token撤销成功: token={}", token);
         } catch (Exception e) {
             log.error("撤销Token异常: token={}", token, e);

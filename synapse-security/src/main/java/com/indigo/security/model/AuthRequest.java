@@ -58,6 +58,13 @@ public class AuthRequest {
      */
     private String userId;
 
+    private String realName;
+
+    private String mobile;
+
+    private String email;
+
+    private String avatar;
     /**
      * 用户角色列表（由业务模块传入）
      */
@@ -113,7 +120,8 @@ public class AuthRequest {
         return switch (authType) {
             case USERNAME_PASSWORD -> usernamePasswordAuth != null ? usernamePasswordAuth.getUsername() : null;
             case TOKEN_VALIDATION -> tokenAuth != null ? tokenAuth.getUsername() : null;
-            case OAUTH2_AUTHORIZATION_CODE, OAUTH2_CLIENT_CREDENTIALS -> oauth2Auth != null ? oauth2Auth.getClientId() : null;
+            case OAUTH2_AUTHORIZATION_CODE, OAUTH2_CLIENT_CREDENTIALS ->
+                    oauth2Auth != null ? oauth2Auth.getClientId() : null;
             case REFRESH_TOKEN -> refreshTokenAuth != null ? refreshTokenAuth.getUsername() : null;
         };
     }
@@ -142,8 +150,8 @@ public class AuthRequest {
      * 获取OAuth2认证信息
      */
     public OAuth2Auth getOauth2Auth() {
-        if (authType == AuthType.OAUTH2_AUTHORIZATION_CODE || 
-            authType == AuthType.OAUTH2_CLIENT_CREDENTIALS) {
+        if (authType == AuthType.OAUTH2_AUTHORIZATION_CODE ||
+                authType == AuthType.OAUTH2_CLIENT_CREDENTIALS) {
             return oauth2Auth;
         }
         return null;
@@ -171,12 +179,14 @@ public class AuthRequest {
         }
         // 验证认证信息完整性
         boolean authInfoValid = switch (authRequest.authType) {
-            case USERNAME_PASSWORD -> authRequest.usernamePasswordAuth != null && authRequest.usernamePasswordAuth.isValid();
+            case USERNAME_PASSWORD ->
+                    authRequest.usernamePasswordAuth != null && authRequest.usernamePasswordAuth.isValid();
             case TOKEN_VALIDATION -> authRequest.tokenAuth != null && authRequest.tokenAuth.isValid();
-            case OAUTH2_AUTHORIZATION_CODE, OAUTH2_CLIENT_CREDENTIALS -> authRequest.oauth2Auth != null && authRequest.oauth2Auth.isValid();
+            case OAUTH2_AUTHORIZATION_CODE, OAUTH2_CLIENT_CREDENTIALS ->
+                    authRequest.oauth2Auth != null && authRequest.oauth2Auth.isValid();
             case REFRESH_TOKEN -> authRequest.refreshTokenAuth != null && authRequest.refreshTokenAuth.isValid();
         };
-        
+
         if (!authInfoValid) {
             Ex.throwEx(AUTH_REQUEST_INCOMPLETE);
         }

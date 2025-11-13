@@ -44,11 +44,11 @@ public class DefaultAuthenticationService implements AuthenticationService {
         // 验证请求完整性
         AuthRequest.isValid(request);
         log.info("开始认证: authType={}, username={}", request.getAuthType(), request.getUsername());
-        
+
         if (tokenService == null) {
             Ex.throwEx(AUTH_REQUEST_INVALID, "TokenService 未配置");
         }
-        
+
         // 通过 TokenService 处理认证
         String token = processWithTokenService(request);
         // 存储用户会话信息
@@ -62,11 +62,11 @@ public class DefaultAuthenticationService implements AuthenticationService {
         if (token == null || token.trim().isEmpty()) {
             Ex.throwEx(AUTH_TOKEN_NULL);
         }
-        
+
         if (tokenService == null) {
             Ex.throwEx(AUTH_REQUEST_INVALID, "TokenService 未配置");
         }
-        
+
         log.info("开始Token续期");
         // 通过 TokenService 续期
         boolean success = tokenService.renewToken(token, 7200L);
@@ -84,7 +84,7 @@ public class DefaultAuthenticationService implements AuthenticationService {
         if (userContext != null) {
             return userContext;
         }
-        
+
         // 如果 UserContext 中没有，尝试从请求中获取 token（需要从请求头或请求属性中获取）
         // 这里暂时返回 null，因为 token 获取需要依赖 HttpServletRequest
         // 业务代码应该直接使用 UserContext.getCurrentUser()
@@ -123,7 +123,11 @@ public class DefaultAuthenticationService implements AuthenticationService {
                 UserContext userContext = UserContext.builder()
                         .userId(request.getUserId())
                         .account(request.getUsername())
+                        .realName(request.getRealName())
+                        .mobile(request.getMobile())
+                        .email(request.getEmail())
                         .roles(request.getRoles())
+                        .avatar(request.getAvatar())
                         .permissions(request.getPermissions())
                         .build();
                 yield tokenService.generateToken(request.getUserId(), userContext, 7200L);
