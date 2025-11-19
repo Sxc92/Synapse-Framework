@@ -4,6 +4,7 @@ import com.indigo.security.annotation.Logical;
 import com.indigo.security.annotation.RequireLogin;
 import com.indigo.security.annotation.RequirePermission;
 import com.indigo.security.annotation.RequireRole;
+import com.indigo.security.config.SecurityProperties;
 import com.indigo.security.core.PermissionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -58,6 +59,7 @@ import java.util.List;
 public class PermissionAspect {
 
     private final PermissionService permissionService;
+    private final SecurityProperties securityProperties;
 
     /**
      * 拦截 @RequireLogin 注解
@@ -65,6 +67,12 @@ public class PermissionAspect {
     @Before("@annotation(com.indigo.security.annotation.RequireLogin) || " +
             "@within(com.indigo.security.annotation.RequireLogin)")
     public void checkLogin(JoinPoint joinPoint) {
+        // 如果安全模式为 DISABLED，跳过所有权限检查
+        if (isSecurityDisabled()) {
+            log.debug("安全模式为 DISABLED，跳过登录检查: method={}", joinPoint.getSignature().getName());
+            return;
+        }
+        
         RequireLogin annotation = getAnnotation(joinPoint, RequireLogin.class);
         if (annotation != null) {
             log.debug("检查登录状态: method={}", joinPoint.getSignature().getName());
@@ -78,6 +86,12 @@ public class PermissionAspect {
     @Before("@annotation(com.indigo.security.annotation.RequireRole) || " +
             "@within(com.indigo.security.annotation.RequireRole)")
     public void checkRole(JoinPoint joinPoint) {
+        // 如果安全模式为 DISABLED，跳过所有权限检查
+        if (isSecurityDisabled()) {
+            log.debug("安全模式为 DISABLED，跳过角色检查: method={}", joinPoint.getSignature().getName());
+            return;
+        }
+        
         RequireRole annotation = getAnnotation(joinPoint, RequireRole.class);
         if (annotation != null) {
             String[] roles = annotation.value();
@@ -94,6 +108,12 @@ public class PermissionAspect {
     @Before("@annotation(com.indigo.security.annotation.RequirePermission) || " +
             "@within(com.indigo.security.annotation.RequirePermission)")
     public void checkPermission(JoinPoint joinPoint) {
+        // 如果安全模式为 DISABLED，跳过所有权限检查
+        if (isSecurityDisabled()) {
+            log.debug("安全模式为 DISABLED，跳过权限检查: method={}", joinPoint.getSignature().getName());
+            return;
+        }
+        
         RequirePermission annotation = getAnnotation(joinPoint, RequirePermission.class);
         if (annotation != null) {
             String[] permissions = annotation.value();
@@ -102,6 +122,18 @@ public class PermissionAspect {
                     joinPoint.getSignature().getName(), List.of(permissions), logical);
             permissionService.checkPermission(permissions, logical);
         }
+    }
+
+    /**
+     * 检查安全模式是否为 DISABLED
+     * 
+     * @return 如果安全模式为 DISABLED 返回 true，否则返回 false
+     */
+    private boolean isSecurityDisabled() {
+        if (securityProperties == null) {
+            return false;
+        }
+        return securityProperties.getMode() == SecurityProperties.SecurityMode.DISABLED;
     }
 
     /**

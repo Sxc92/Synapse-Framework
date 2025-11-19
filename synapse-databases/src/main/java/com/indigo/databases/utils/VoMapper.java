@@ -1,7 +1,9 @@
 package com.indigo.databases.utils;
 
+import com.indigo.core.constants.StandardErrorCode;
 import com.indigo.core.entity.vo.BaseVO;
 import com.indigo.core.annotation.FieldMapping;
+import com.indigo.core.exception.Ex;
 import org.springframework.beans.BeanUtils;
 import org.springframework.util.ReflectionUtils;
 
@@ -28,34 +30,38 @@ public class VoMapper {
      * @param entity 实体对象
      * @param voClass VO类
      * @return VO对象
+     * @throws com.indigo.core.exception.SynapseException 如果实体为null或映射失败
      */
     public static <T, V extends BaseVO> V mapToVo(T entity, Class<V> voClass) {
         if (entity == null) {
-            System.out.println("实体对象为null，返回null");
-            return null;
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "实体对象不能为空");
+        }
+        
+        if (voClass == null) {
+            Ex.throwEx(StandardErrorCode.PARAM_ERROR, "VO类不能为空");
         }
         
         try {
             V vo = voClass.getDeclaredConstructor().newInstance();
-            System.out.println("开始映射实体: " + entity.getClass().getSimpleName() + " -> " + voClass.getSimpleName());
             
             // 检查是否有字段映射注解
             if (hasFieldMappingAnnotations(voClass)) {
-                System.out.println("检测到字段映射注解，使用自定义映射");
                 // 使用自定义映射
                 mapWithAnnotations(entity, vo, voClass);
             } else {
-                System.out.println("未检测到字段映射注解，使用默认映射");
                 // 使用默认映射
                 BeanUtils.copyProperties(entity, vo);
             }
             
-            System.out.println("映射完成，返回VO对象");
             return vo;
+        } catch (com.indigo.core.exception.SynapseException e) {
+            // 如果是 SynapseException，直接抛出
+            throw e;
         } catch (Exception e) {
-            System.err.println("实体映射到VO失败: " + e.getMessage());
-            e.printStackTrace();
-            throw new RuntimeException("实体映射到VO失败: " + e.getMessage(), e);
+            // 其他异常，使用 Ex.throwEx 抛出（会抛出异常，不会返回）
+            Ex.throwEx(StandardErrorCode.SYSTEM_ERROR, e, "实体映射到VO失败: " + e.getMessage());
+            // 这行代码永远不会执行，但为了满足编译器的要求
+            throw new RuntimeException("Unreachable code", e);
         }
     }
     
@@ -134,14 +140,11 @@ public class VoMapper {
                         // 设置到VO中
                         field.setAccessible(true);
                         field.set(vo, value);
-                        
-                        System.out.println("字段映射成功: " + field.getName() + " <- " + dbFieldName + " = " + value);
-                    } else {
-                        System.err.println("未找到实体字段: " + dbFieldName + " 对应VO字段: " + field.getName());
                     }
+                    // 如果找不到对应字段，忽略该字段，继续处理其他字段
                 } catch (Exception e) {
                     // 忽略映射失败的字段，继续处理其他字段
-                    System.err.println("字段映射失败: " + field.getName() + " -> " + mapping.value() + ", 错误: " + e.getMessage());
+                    // 字段映射失败不影响整体映射，只记录日志
                 }
             }
         }

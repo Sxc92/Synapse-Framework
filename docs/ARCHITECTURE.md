@@ -11,21 +11,31 @@
 │  │   synapse-  │  │   synapse-  │  │   synapse-  │            │
 │  │    core     │  │ databases   │  │  security   │            │
 │  │             │  │             │  │             │            │
-│  │ • Result    │  │ • BaseRepo  │  │ • Sa-Token  │            │
+│  │ • Result    │  │ • BaseRepo  │  │ • TokenSvc  │            │
 │  │ • Exception │  │ • Query     │  │ • Auth      │            │
 │  │ • Context   │  │ • Entity    │  │ • Session   │            │
 │  │ • Utils     │  │ • Proxy     │  │ • Permission│            │
+│  │ • I18n      │  │ • VoMapper  │  │ • Renewal   │            │
 │  └─────────────┘  └─────────────┘  └─────────────┘            │
 │                                                                 │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
 │  │   synapse-  │  │   synapse-  │  │   synapse-  │            │
-│  │    cache    │  │   events    │  │     bom     │            │
+│  │    cache    │  │   events    │  │     i18n    │            │
 │  │             │  │             │  │             │            │
-│  │ • Redis     │  │ • Publisher │  │ • Versions  │            │
-│  │ • Session   │  │ • Consumer  │  │ • Dependencies│          │
-│  │ • Lock      │  │ • Event     │  │ • Management│            │
+│  │ • Redis     │  │ • Publisher │  │ • Message   │            │
+│  │ • Session   │  │ • Consumer  │  │ • Resolver  │            │
+│  │ • Lock      │  │ • Event     │  │ • Locale    │            │
 │  │ • Cache     │  │ • Config    │  │             │            │
 │  └─────────────┘  └─────────────┘  └─────────────┘            │
+│                                                                 │
+│  ┌─────────────┐                                               │
+│  │   synapse-  │                                               │
+│  │     bom     │                                               │
+│  │             │                                               │
+│  │ • Versions  │                                               │
+│  │ • Dependencies│                                             │
+│  │ • Management│                                               │
+│  └─────────────┘                                               │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
                                 │
@@ -50,8 +60,8 @@
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
 │  │   Database  │  │    Cache    │  │   Security  │            │
 │  │             │  │             │  │             │            │
-│  │ • MySQL     │  │ • Redis     │  │ • Sa-Token  │            │
-│  │ • MyBatis+  │  │ • Session   │  │ • JWT       │            │
+│  │ • MySQL     │  │ • Redis     │  │ • TokenSvc  │            │
+│  │ • MyBatis+  │  │ • Caffeine  │  │ • Permission│            │
 │  │ • Dynamic   │  │ • Lock      │  │ • OAuth2    │            │
 │  │   DS        │  │             │  │             │            │
 │  └─────────────┘  └─────────────┘  └─────────────┘            │
@@ -76,17 +86,24 @@ synapse-bom
     │   └── synapse-core
     │
     ├── synapse-security (依赖 core, cache)
-    │   ├── Sa-Token
+    │   ├── TokenService (自研)
+    │   ├── PermissionService (自研)
     │   ├── synapse-core
     │   └── synapse-cache
     │
     ├── synapse-cache (依赖 core)
     │   ├── Spring Data Redis
+    │   ├── Caffeine
     │   └── synapse-core
     │
-    └── synapse-events (依赖 core)
-        ├── Spring Events
-        └── synapse-core
+    ├── synapse-events (依赖 core)
+    │   ├── Spring Events
+    │   └── synapse-core
+    │
+    └── synapse-i18n (依赖 core, cache)
+        ├── I18nMessageResolver
+        ├── synapse-core
+        └── synapse-cache
 ```
 
 ## 核心设计模式
@@ -114,24 +131,21 @@ public class SqlMethodInterceptor implements InvocationHandler {
 
 **应用场景**：认证策略
 ```java
-// 认证策略接口
-public interface AuthenticationStrategy {
-    UserContext authenticate(String token);
+// 认证服务接口
+public interface AuthenticationService {
+    AuthResponse authenticate(AuthRequest request);
+    AuthResponse renewToken(String token);
 }
 
-// Sa-Token 认证策略
-public class SaTokenAuthenticationStrategy implements AuthenticationStrategy {
+// 默认认证服务实现
+public class DefaultAuthenticationService implements AuthenticationService {
+    private final TokenService tokenService;
+    
     @Override
-    public UserContext authenticate(String token) {
-        // Sa-Token 认证逻辑
-    }
-}
-
-// OAuth2 认证策略
-public class OAuth2AuthenticationStrategy implements AuthenticationStrategy {
-    @Override
-    public UserContext authenticate(String token) {
-        // OAuth2 认证逻辑
+    public AuthResponse authenticate(AuthRequest request) {
+        // 使用自研 TokenService 处理认证
+        String token = tokenService.generateToken(userId, userContext, expiration);
+        return AuthResponse.of(token, null, expiration);
     }
 }
 ```

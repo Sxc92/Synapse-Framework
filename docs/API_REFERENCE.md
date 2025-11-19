@@ -17,10 +17,11 @@
 - **MyBatis-Plus 集成** - ORM 框架增强
 
 ### Security 模块
-- **认证授权** - 用户认证和权限控制
-- **JWT 支持** - 无状态认证令牌
+- **认证授权** - 用户认证和权限控制（自研 TokenService）
+- **Token 管理** - Token 生成、验证、续期、撤销
+- **滑动过期** - Token 自动续期机制
 - **安全拦截器** - 请求安全过滤
-- **权限注解** - 声明式权限控制
+- **权限注解** - 声明式权限控制（@RequireLogin、@RequirePermission、@RequireRole）
 
 ### Cache 模块
 - **缓存管理** - 统一的缓存接口
@@ -33,6 +34,11 @@
 - **事务事件** - 事务相关事件管理
 - **事件监听器** - 事件响应处理
 
+### I18n 模块
+- **消息解析** - 国际化消息解析
+- **多语言支持** - 动态语言切换
+- **错误消息国际化** - 异常消息多语言
+
 ## 🗄️ Databases 模块 API
 
 ### BaseRepository 接口
@@ -42,20 +48,20 @@
 ```java
 public interface BaseRepository<T, M extends BaseMapper<T>> extends IService<T> {
     
-    // 分页查询 - 支持条件查询
-    PageResult<T> pageWithCondition(PageDTO pageDTO);
+    // 分页查询 - 支持条件查询，自动映射到 VO
+    <V extends BaseVO> PageResult<V> pageWithDTO(PageDTO pageDTO, Class<V> voClass);
     
-    // 列表查询 - 支持条件查询
-    List<T> listWithDTO(PageDTO pageDTO);
+    // 列表查询 - 支持条件查询，自动映射到 VO
+    <V extends BaseVO> List<V> listWithDTO(QueryDTO queryDTO, Class<V> voClass);
     
-    // 单条查询 - 支持条件查询
-    T getOneWithDTO(PageDTO pageDTO);
+    // 单条查询 - 支持条件查询，自动映射到 VO
+    <V extends BaseVO> V getOneWithDTO(QueryDTO queryDTO, Class<V> voClass);
     
     // 多表关联分页查询
-    PageResult<T> pageWithJoin(JoinPageDTO joinPageDTO);
+    <V extends BaseVO> PageResult<V> pageWithJoin(JoinPageDTO joinPageDTO, Class<V> voClass);
     
     // 多表关联列表查询
-    List<T> listWithJoin(JoinPageDTO joinPageDTO);
+    <V extends BaseVO> List<V> listWithJoin(JoinPageDTO joinPageDTO, Class<V> voClass);
 }
 ```
 
@@ -63,11 +69,13 @@ public interface BaseRepository<T, M extends BaseMapper<T>> extends IService<T> 
 
 | 方法 | 参数 | 返回值 | 说明 |
 |------|------|--------|------|
-| `pageWithCondition` | `PageDTO` | `PageResult<T>` | 单表条件分页查询 |
-| `listWithDTO` | `PageDTO` | `List<T>` | 单表条件列表查询 |
-| `getOneWithDTO` | `PageDTO` | `T` | 单表条件单条查询 |
-| `pageWithJoin` | `JoinPageDTO` | `PageResult<T>` | 多表关联分页查询 |
-| `listWithJoin` | `JoinPageDTO` | `List<T>` | 多表关联列表查询 |
+| `pageWithDTO` | `PageDTO`, `Class<V>` | `PageResult<V>` | 单表条件分页查询，自动映射到 VO |
+| `listWithDTO` | `QueryDTO`, `Class<V>` | `List<V>` | 单表条件列表查询，自动映射到 VO |
+| `getOneWithDTO` | `QueryDTO`, `Class<V>` | `V` | 单表条件单条查询，自动映射到 VO |
+| `pageWithJoin` | `JoinPageDTO`, `Class<V>` | `PageResult<V>` | 多表关联分页查询，自动映射到 VO |
+| `listWithJoin` | `JoinPageDTO`, `Class<V>` | `List<V>` | 多表关联列表查询，自动映射到 VO |
+
+**注意**：`BaseRepository` 是一个接口，需要使用 `@Repository` 注解标记，框架会自动生成代理实现。
 
 ### DTO 体系
 
@@ -149,53 +157,122 @@ public class DynamicDataSourceProperties {
 
 ## 🔐 Security 模块 API
 
-### 认证接口
+### AuthenticationService 接口
 
 ```java
 public interface AuthenticationService {
-    // 用户登录
-    LoginResult login(LoginRequest request);
+    // 认证（支持多种认证方式）
+    AuthResponse authenticate(AuthRequest request);
     
-    // 用户登出
-    void logout(String token);
+    // Token 续期
+    AuthResponse renewToken(String token);
     
-    // 刷新令牌
-    String refreshToken(String token);
+    // 获取当前用户
+    UserContext getCurrentUser();
     
-    // 验证令牌
-    boolean validateToken(String token);
+    // 登出
+    Result<Void> logout();
 }
 ```
 
-### 权限接口
+### TokenService 接口
+
+```java
+public interface TokenService {
+    // 生成 Token
+    String generateToken(String userId, UserContext userContext, long expiration);
+    
+    // 验证 Token
+    boolean validateToken(String token);
+    
+    // 续期 Token
+    boolean renewToken(String token, long duration);
+    
+    // 撤销 Token
+    void revokeToken(String token);
+    
+    // 获取用户上下文
+    UserContext getUserContext(String token);
+    
+    // 获取 Token 剩余时间
+    long getTokenRemainingTime(String token);
+}
+```
+
+### PermissionService 接口
 
 ```java
 public interface PermissionService {
-    // 检查用户权限
-    boolean hasPermission(String userId, String permission);
+    // 检查登录
+    void checkLogin();
     
-    // 获取用户角色
-    List<String> getUserRoles(String userId);
+    // 检查权限
+    void checkPermission(String permission);
+    void checkPermission(String[] permissions, Logical logical);
     
-    // 获取角色权限
-    List<String> getRolePermissions(String roleId);
+    // 检查角色
+    void checkRole(String role);
+    void checkRole(String[] roles, Logical logical);
+    
+    // 判断是否有权限
+    boolean hasPermission(String permission);
+    boolean hasRole(String role);
+}
+```
+
+### UserContext 工具类
+
+```java
+public class UserContext {
+    // 获取当前用户
+    static UserContext getCurrentUser();
+    
+    // 获取用户信息
+    static String getCurrentUserId();
+    static String getCurrentAccount();
+    static String getCurrentRealName();
+    static String getCurrentEmail();
+    static String getCurrentMobile();
+    static String getCurrentAvatar();
+    
+    // 获取角色和权限
+    static List<String> getCurrentRoles();
+    static List<String> getCurrentPermissions();
+    
+    // 权限和角色检查
+    static boolean hasRole(String role);
+    static boolean hasPermission(String permission);
 }
 ```
 
 ### 安全注解
 
 ```java
-// 需要认证
-@RequiresAuthentication
+// 需要登录
+@RequireLogin
 
 // 需要角色
-@RequiresRoles("admin")
+@RequireRole("admin")
+@RequireRole(value = {"admin", "super_admin"}, logical = Logical.OR)
 
 // 需要权限
-@RequiresPermissions("user:read")
+@RequirePermission("user:read")
+@RequirePermission(value = {"user:read", "user:write"}, logical = Logical.AND)
+```
 
-// 需要登录
-@RequiresLogin
+### Ex 异常工具类
+
+```java
+public class Ex {
+    // 抛出异常
+    static void throwEx(ErrorCode errorCode);
+    static void throwEx(ErrorCode errorCode, Object... args);
+    static void throwEx(ErrorCode errorCode, Throwable cause);
+    static void throwEx(ErrorCode errorCode, Throwable cause, Object... args);
+    
+    // 创建异常（不抛出）
+    static SynapseException of(ErrorCode errorCode);
+}
 ```
 
 ## 🗃️ Cache 模块 API
@@ -333,20 +410,31 @@ public class JsonUtils
 ### 基础查询示例
 
 ```java
+@Repository
+public interface UserRepository extends BaseRepository<User> {
+    
+    // 使用 @QueryCondition 自动构建查询条件
+    @QueryCondition
+    List<UserVO> findByUsername(String username);
+    
+    // 分页查询，自动映射到 VO
+    PageResult<UserVO> pageUsers(UserPageDTO pageDTO);
+}
+
 @Service
 public class UserService {
     
     @Autowired
     private UserRepository userRepository;
     
-    // 分页查询用户
-    public PageResult<User> pageUsers(UserQueryDTO queryDTO) {
-        return userRepository.pageWithCondition(queryDTO);
+    // 分页查询用户（自动映射到 VO）
+    public PageResult<UserVO> pageUsers(UserPageDTO pageDTO) {
+        return userRepository.pageWithDTO(pageDTO, UserVO.class);
     }
     
-    // 多表关联查询
-    public PageResult<User> pageUsersWithJoin(UserJoinQueryDTO queryDTO) {
-        return userRepository.pageWithJoin(queryDTO);
+    // 条件查询（自动映射到 VO）
+    public List<UserVO> findUsers(UserQueryDTO queryDTO) {
+        return userRepository.listWithDTO(queryDTO, UserVO.class);
     }
 }
 ```
@@ -369,6 +457,27 @@ public class UserService {
 }
 ```
 
+### 异常处理示例
+
+```java
+@Service
+public class UserService {
+    
+    public UserVO getUser(String id) {
+        if (id == null || id.isEmpty()) {
+            Ex.throwEx(StandardErrorCode.USER_ID_REQUIRED, "用户ID不能为空");
+        }
+        
+        User user = userRepository.getById(id);
+        if (user == null) {
+            Ex.throwEx(StandardErrorCode.USER_NOT_FOUND, id);
+        }
+        
+        return VoMapper.toVO(user, UserVO.class);
+    }
+}
+```
+
 ### 安全使用示例
 
 ```java
@@ -376,16 +485,50 @@ public class UserService {
 @RequestMapping("/api/users")
 public class UserController {
     
-    @RequiresAuthentication
-    @GetMapping("/{id}")
-    public User getUser(@PathVariable Long id) {
-        return userService.getUserById(id);
+    @Autowired
+    private AuthenticationService authenticationService;
+    
+    @PostMapping("/login")
+    public Result<AuthResponse> login(@RequestBody LoginRequest request) {
+        // 构建认证请求
+        AuthRequest authRequest = AuthRequest.builder()
+            .authType(AuthRequest.AuthType.USERNAME_PASSWORD)
+            .usernamePasswordAuth(UsernamePasswordAuth.builder()
+                .username(request.getUsername())
+                .password(request.getPassword())
+                .build())
+            .userId(user.getId().toString())
+            .realName(user.getRealName())
+            .email(user.getEmail())
+            .mobile(user.getMobile())
+            .avatar(user.getAvatar())
+            .roles(roles)
+            .permissions(permissions)
+            .build();
+        
+        AuthResponse response = authenticationService.authenticate(authRequest);
+        return Result.success(response);
     }
     
-    @RequiresPermissions("user:write")
-    @PostMapping
-    public User createUser(@RequestBody User user) {
-        return userService.saveUser(user);
+    @RequireLogin
+    @GetMapping("/{id}")
+    public Result<UserVO> getUser(@PathVariable String id) {
+        UserVO user = userService.getUser(id);
+        return Result.success(user);
+    }
+    
+    @RequirePermission("user:read")
+    @GetMapping
+    public Result<List<UserVO>> getUsers() {
+        List<UserVO> users = userService.getUsers();
+        return Result.success(users);
+    }
+    
+    @RequireRole("admin")
+    @DeleteMapping("/{id}")
+    public Result<Void> deleteUser(@PathVariable String id) {
+        userService.deleteUser(id);
+        return Result.success();
     }
 }
 ```

@@ -57,19 +57,39 @@
 详细配置请参考 [配置指南](CONFIGURATION.md)，这里提供基础配置：
 
 ```yaml
-spring:
+# 数据源配置
+synapse:
   datasource:
-    url: jdbc:mysql://localhost:3306/test_db
-    username: root
-    password: your_password
-    
-  redis:
-    host: localhost
-    port: 6379
+    dynamic-data-source:
+      primary: master
+      datasource:
+        master:
+          type: MYSQL
+          host: localhost
+          port: 3306
+          database: test_db
+          username: root
+          password: your_password
+          pool-type: HIKARI
 
-sa-token:
-  token-name: Authorization
-  timeout: 2592000
+# Redis 配置
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: your_password
+
+# 安全配置
+synapse:
+  security:
+    enabled: true
+    mode: STRICT
+    token:
+      timeout: 7200
+      enable-sliding-expiration: true
+      refresh-threshold: 600
+      renewal-duration: 7200
 ```
 
 ### 4. 创建实体
@@ -89,11 +109,15 @@ public class User extends AuditEntity<Long> {
 ### 5. 创建 Repository
 
 ```java
-@AutoRepository
+@Repository
 public interface UserRepository extends BaseRepository<User> {
     
+    // 使用 @QueryCondition 自动构建查询条件
     @QueryCondition
-    List<User> findByUsername(String username);
+    List<UserVO> findByUsername(String username);
+    
+    // 分页查询，自动映射到 VO
+    PageResult<UserVO> pageUsers(UserPageDTO pageDTO);
 }
 ```
 
@@ -105,16 +129,21 @@ public class UserService {
     @Autowired
     private UserRepository userRepository;
     
-    public User createUser(User user) {
-        return userRepository.save(user);
+    public UserVO createUser(CreateUserDTO dto) {
+        User user = new User();
+        user.setUsername(dto.getUsername());
+        user.setEmail(dto.getEmail());
+        userRepository.save(user);
+        return VoMapper.toVO(user, UserVO.class);
     }
     
-    public User getUserById(Long id) {
-        return userRepository.findById(id);
+    public UserVO getUserById(Long id) {
+        User user = userRepository.getById(id);
+        return VoMapper.toVO(user, UserVO.class);
     }
     
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
+    public PageResult<UserVO> getAllUsers(UserPageDTO pageDTO) {
+        return userRepository.pageUsers(pageDTO);
     }
 }
 ```
@@ -129,18 +158,24 @@ public class UserController {
     private UserService userService;
     
     @PostMapping
-    public Result<User> createUser(@RequestBody User user) {
-        return Result.success(userService.createUser(user));
+    @RequirePermission("user:create")
+    public Result<UserVO> createUser(@RequestBody @Valid CreateUserDTO dto) {
+        UserVO user = userService.createUser(dto);
+        return Result.success(user);
     }
     
     @GetMapping("/{id}")
-    public Result<User> getUserById(@PathVariable Long id) {
-        return Result.success(userService.getUserById(id));
+    @RequireLogin
+    public Result<UserVO> getUserById(@PathVariable Long id) {
+        UserVO user = userService.getUserById(id);
+        return Result.success(user);
     }
     
-    @GetMapping
-    public Result<List<User>> getAllUsers() {
-        return Result.success(userService.getAllUsers());
+    @GetMapping("/page")
+    @RequireLogin
+    public Result<PageResult<UserVO>> getAllUsers(UserPageDTO pageDTO) {
+        PageResult<UserVO> result = userService.getAllUsers(pageDTO);
+        return Result.success(result);
     }
 }
 ```
@@ -149,9 +184,12 @@ public class UserController {
 
 - **注解驱动** - 通过注解简化开发，减少样板代码
 - **智能数据源** - 自动读写分离，支持多数据库
-- **统一响应** - 标准化的 API 响应格式
-- **权限控制** - Sa-Token 认证，细粒度权限管理
-- **缓存支持** - Redis 缓存，分布式锁，会话管理
+- **统一响应** - 标准化的 API 响应格式 `Result<T>`
+- **异常处理** - 统一的异常处理机制 `Ex.throwEx()`
+- **权限控制** - 基于注解的权限验证（@RequireLogin、@RequirePermission、@RequireRole）
+- **Token 认证** - 自研 TokenService，支持滑动过期、自动续期
+- **缓存支持** - 二级缓存（Caffeine + Redis），分布式锁，会话管理
+- **VO 映射** - 自动字段映射，支持数据库字段到 VO 的转换
 
 ## 🔧 高级功能
 
@@ -171,13 +209,36 @@ public class UserService {
 ```java
 @RestController
 @RequestMapping("/api/admin")
-@SaCheckLogin
+@RequireLogin
 public class AdminController {
     
     @GetMapping("/users")
-    @SaCheckPermission("user:list")
-    public Result<List<User>> getUsers() {
-        return Result.success(userService.getAllUsers());
+    @RequirePermission("user:list")
+    public Result<PageResult<UserVO>> getUsers(UserPageDTO pageDTO) {
+        PageResult<UserVO> result = userService.getAllUsers(pageDTO);
+        return Result.success(result);
+    }
+    
+    @GetMapping("/admin-only")
+    @RequireRole("admin")
+    public Result<String> adminOnly() {
+        return Result.success("管理员专用接口");
+    }
+}
+```
+
+### 异常处理
+```java
+@Service
+public class UserService {
+    
+    public UserVO getUserById(Long id) {
+        User user = userRepository.getById(id);
+        if (user == null) {
+            // 使用 Ex.throwEx() 统一异常处理
+            Ex.throwEx(StandardErrorCode.USER_NOT_FOUND, "用户不存在");
+        }
+        return VoMapper.toVO(user, UserVO.class);
     }
 }
 ```

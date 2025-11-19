@@ -78,6 +78,34 @@
       "sourceType": "com.indigo.security.config.SecurityProperties"
     },
     {
+      "name": "synapse.security.token.timeout",
+      "type": "java.lang.Long",
+      "description": "Token 过期时间（秒），登录时生成的 token 的过期时间",
+      "defaultValue": 7200,
+      "sourceType": "com.indigo.security.config.SecurityProperties"
+    },
+    {
+      "name": "synapse.security.token.enable-sliding-expiration",
+      "type": "java.lang.Boolean",
+      "description": "是否启用滑动过期（自动刷新），启用后每次用户请求时如果 token 剩余时间少于刷新阈值会自动刷新 token 过期时间",
+      "defaultValue": true,
+      "sourceType": "com.indigo.security.config.SecurityProperties"
+    },
+    {
+      "name": "synapse.security.token.refresh-threshold",
+      "type": "java.lang.Long",
+      "description": "刷新阈值（秒），当 token 剩余时间少于此值时自动刷新 token",
+      "defaultValue": 1800,
+      "sourceType": "com.indigo.security.config.SecurityProperties"
+    },
+    {
+      "name": "synapse.security.token.renewal-duration",
+      "type": "java.lang.Long",
+      "description": "续期时长（秒），刷新 token 时将过期时间延长到此值",
+      "defaultValue": 7200,
+      "sourceType": "com.indigo.security.config.SecurityProperties"
+    },
+    {
       "name": "synapse.security.gateway-signature.enabled",
       "type": "java.lang.Boolean",
       "description": "是否启用 Gateway 签名验证",

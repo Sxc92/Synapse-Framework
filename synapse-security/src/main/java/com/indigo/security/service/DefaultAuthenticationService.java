@@ -4,6 +4,7 @@ import com.indigo.cache.session.UserSessionService;
 import com.indigo.core.context.UserContext;
 import com.indigo.core.entity.Result;
 import com.indigo.core.exception.Ex;
+import com.indigo.security.config.SecurityProperties;
 import com.indigo.security.core.AuthenticationService;
 import com.indigo.security.core.TokenService;
 import com.indigo.security.model.AuthRequest;
@@ -28,15 +29,20 @@ public class DefaultAuthenticationService implements AuthenticationService {
 
     private final UserSessionService userSessionService;
     private final TokenService tokenService;
+    private final SecurityProperties securityProperties;
 
     public DefaultAuthenticationService() {
         this.userSessionService = null;
         this.tokenService = null;
+        this.securityProperties = null;
     }
 
-    public DefaultAuthenticationService(UserSessionService userSessionService, TokenService tokenService) {
+    public DefaultAuthenticationService(UserSessionService userSessionService, 
+                                      TokenService tokenService,
+                                      SecurityProperties securityProperties) {
         this.userSessionService = userSessionService;
         this.tokenService = tokenService;
+        this.securityProperties = securityProperties;
     }
 
     @Override
@@ -54,7 +60,9 @@ public class DefaultAuthenticationService implements AuthenticationService {
         // 存储用户会话信息
         storeUserSession(token, request);
 
-        return AuthResponse.of(token, null, 7200L);
+        // 获取配置的 token 过期时间
+        long expiration = getTokenTimeout();
+        return AuthResponse.of(token, null, expiration);
     }
 
     @Override
@@ -130,7 +138,8 @@ public class DefaultAuthenticationService implements AuthenticationService {
                         .avatar(request.getAvatar())
                         .permissions(request.getPermissions())
                         .build();
-                yield tokenService.generateToken(request.getUserId(), userContext, 7200L);
+                long expiration = getTokenTimeout();
+                yield tokenService.generateToken(request.getUserId(), userContext, expiration);
             }
             case OAUTH2_AUTHORIZATION_CODE, OAUTH2_CLIENT_CREDENTIALS -> {
                 // OAuth2.0登录，生成 token
@@ -140,7 +149,8 @@ public class DefaultAuthenticationService implements AuthenticationService {
                         .roles(request.getRoles())
                         .permissions(request.getPermissions())
                         .build();
-                yield tokenService.generateToken(request.getUserId(), userContext, 7200L);
+                long expiration = getTokenTimeout();
+                yield tokenService.generateToken(request.getUserId(), userContext, expiration);
             }
             case TOKEN_VALIDATION -> {
                 // Token验证
@@ -176,14 +186,20 @@ public class DefaultAuthenticationService implements AuthenticationService {
             return;
         }
 
+        // 构建完整的 UserContext（包含所有字段）
         UserContext userContext = UserContext.builder()
                 .userId(request.getUserId())
                 .account(request.getUsername())
+                .realName(request.getRealName())
+                .email(request.getEmail())
+                .mobile(request.getMobile())
+                .avatar(request.getAvatar())
                 .roles(request.getRoles())
                 .permissions(request.getPermissions())
                 .build();
 
-        long tokenTimeout = 7200L;
+        // 获取配置的 token 过期时间
+        long tokenTimeout = getTokenTimeout();
 
         // 1. 存储用户会话（包含完整用户信息）
         userSessionService.storeUserSession(token, userContext, tokenTimeout);
@@ -291,5 +307,20 @@ public class DefaultAuthenticationService implements AuthenticationService {
             log.error("获取用户系统列表失败: token={}, clazz={}", token, clazz.getName(), e);
             return Result.error("获取用户系统列表失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 获取配置的 token 过期时间
+     * 
+     * @return token 过期时间（秒），如果未配置则返回默认值 7200 秒（2 小时）
+     */
+    private long getTokenTimeout() {
+        if (securityProperties != null 
+                && securityProperties.getToken() != null 
+                && securityProperties.getToken().getTimeout() > 0) {
+            return securityProperties.getToken().getTimeout();
+        }
+        // 默认值：2 小时（7200 秒）
+        return 2 * 60 * 60L;
     }
 } 

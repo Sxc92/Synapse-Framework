@@ -69,15 +69,16 @@ public class SecurityAutoConfiguration {
     }
 
     /**
-     * 权限检查切面（依赖 PermissionService）
+     * 权限检查切面（依赖 PermissionService 和 SecurityProperties）
      * 通过 AOP 拦截自定义权限注解
      */
     @Bean
     @ConditionalOnMissingBean
     @ConditionalOnBean(PermissionService.class)
-    public PermissionAspect permissionAspect(PermissionService permissionService) {
+    public PermissionAspect permissionAspect(PermissionService permissionService, 
+                                             SecurityProperties securityProperties) {
         log.debug("初始化权限检查切面");
-        return new PermissionAspect(permissionService);
+        return new PermissionAspect(permissionService, securityProperties);
     }
 
     /**
@@ -101,10 +102,11 @@ public class SecurityAutoConfiguration {
     @ConditionalOnMissingBean(AuthenticationService.class)
     public AuthenticationService authenticationService(
             @Autowired(required = false) UserSessionService userSessionService,
-            @Autowired(required = false) TokenService tokenService) {
+            @Autowired(required = false) TokenService tokenService,
+            SecurityProperties securityProperties) {
         if (userSessionService != null && tokenService != null) {
             log.debug("初始化认证服务（默认版本），UserSessionService: 已注入, TokenService: 已注入");
-            return new DefaultAuthenticationService(userSessionService, tokenService);
+            return new DefaultAuthenticationService(userSessionService, tokenService, securityProperties);
         } else {
             log.warn("初始化认证服务（默认版本），UserSessionService: {}, TokenService: {}",
                     userSessionService != null ? "已注入" : "未配置",

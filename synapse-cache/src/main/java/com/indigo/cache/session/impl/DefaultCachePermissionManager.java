@@ -412,9 +412,13 @@ public class DefaultCachePermissionManager implements CachePermissionManager {
         String menusKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "menus", token);
         String resourcesKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "resources", token);
         String systemsKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "systems", token);
+        
+        // 延长 Redis 中的过期时间
         cacheService.resetExpiry(menusKey, expiration);
         cacheService.resetExpiry(resourcesKey, expiration);
         cacheService.resetExpiry(systemsKey, expiration);
-        log.debug("Extended user menus, resources and systems for token: {}", token);
+        
+        log.info("Extended user menus, resources and systems for token: {}, expiration: {}s", 
+                token, expiration);
     }
 } 

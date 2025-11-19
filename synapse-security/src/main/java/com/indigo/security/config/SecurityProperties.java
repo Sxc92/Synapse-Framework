@@ -4,7 +4,9 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 安全模块配置属性
@@ -180,6 +182,13 @@ public class SecurityProperties {
         private long renewalDuration = 2 * 60 * 60L;
 
         /**
+         * Token 过期时间（秒）
+         * 登录时生成的 token 的过期时间
+         * 默认 2 小时（7200 秒）
+         */
+        private long timeout = 2 * 60 * 60L;
+
+        /**
          * 获取 Token 前缀长度
          * 
          * @return 前缀长度
@@ -221,7 +230,7 @@ public class SecurityProperties {
          * key: 服务名称, value: 服务密钥
          * 如果为空，则允许所有服务调用（不推荐）
          */
-        private java.util.Map<String, String> allowedServices = new java.util.HashMap<>();
+        private Map<String, String> allowedServices = new HashMap<>();
     }
 
     /**

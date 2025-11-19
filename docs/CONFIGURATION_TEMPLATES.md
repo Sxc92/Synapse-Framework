@@ -2,80 +2,76 @@
 
 本文档提供了 Synapse Framework 在不同场景下的配置模板，您可以直接复制使用。
 
+> ⚠️ **注意**：本文档中的部分配置模板可能使用了旧格式。请优先使用最新的配置格式（见下方"快速开始配置"部分）。旧格式的模板仅供参考，建议迁移到新格式。
+
 ## 🚀 快速开始配置
 
 ### **基础配置模板**
 
 ```yaml
+# 数据源配置
 synapse:
   datasource:
-    primary: master
-    
-    # 读写分离配置
-    read-write:
-      enabled: true
-      read-sources: [slave1, slave2]
-      write-sources: [master]
-    
-    # 负载均衡配置
-    load-balance:
-      strategy: ROUND_ROBIN
-    
-    # 故障转移配置
-    failover:
-      enabled: true
-      timeout: 5000
-      max-retries: 3
-      strategy: PRIMARY_FIRST
-    
-    # 数据源配置
-    datasources:
-      master:
-        type: MYSQL
-        host: localhost
-        port: 3306
-        database: synapse_demo
-        username: root
-        password: 123456
-        role: WRITE
-        
-        pool:
-          type: HIKARI
-          min-idle: 5
-          max-size: 20
-          connection-timeout: 30000
-          idle-timeout: 600000
-          max-lifetime: 1800000
-          connection-test-query: SELECT 1
-          leak-detection-threshold: 60000
+    dynamic-data-source:
+      primary: master
+      datasource:
+        master:
+          type: MYSQL
+          host: localhost
+          port: 3306
+          database: synapse_demo
+          username: root
+          password: 123456
+          pool-type: HIKARI
           
-      slave1:
-        type: MYSQL
-        host: localhost
-        port: 3307
-        database: synapse_demo
-        username: root
-        password: 123456
-        role: READ
-        
-        pool:
-          type: HIKARI
-          min-idle: 5
-          max-size: 15
-          
-      slave2:
-        type: MYSQL
-        host: localhost
-        port: 3308
-        database: synapse_demo
-        username: root
-        password: 123456
-        role: READ
-        
-        pool:
-          type: HIKARI
-          min-idle: 5
-          max-size: 15
+        # 从库配置（可选）
+        slave1:
+          type: MYSQL
+          host: localhost
+          port: 3307
+          database: synapse_demo
+          username: root
+          password: 123456
+          pool-type: HIKARI
+
+# Redis 配置
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: your_password
+      database: 0
+
+# 安全配置
+synapse:
+  security:
+    enabled: true
+    mode: STRICT
+    token:
+      timeout: 7200
+      enable-sliding-expiration: true
+      refresh-threshold: 600
+      renewal-duration: 7200
+    white-list:
+      enabled: true
+      paths:
+        - /api/auth/login
+        - /actuator/**
+
+# 缓存配置
+synapse:
+  cache:
+    enabled: true
+    default-strategy: "LOCAL_AND_REDIS"
+    two-level:
+      enabled: true
+      local:
+        enabled: true
+        maximum-size: 1000
+      redis:
+        enabled: true
+        default-ttl: 3600
 ```
 
 ## 🏭 生产环境配置

@@ -380,7 +380,7 @@ public class SqlMethodInterceptor implements InvocationHandler {
                         // IService 方法处理
                         case "save", "getById", "updateById", "removeById", "list", "page", "count", "getOne",
                              "saveBatch", "saveOrUpdateBatch", "updateBatchById", "removeBatchByIds", 
-                             "listByIds", "remove", "removeByMap", "update", "updateByMap" ->
+                             "listByIds", "remove", "removeByMap", "update", "updateByMap", "exists" ->
                                 callIServiceMethod(proxy, methodName, args);
 
                         // BaseRepository default 方法处理

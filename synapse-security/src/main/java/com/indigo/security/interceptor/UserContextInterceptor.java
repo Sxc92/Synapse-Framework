@@ -512,24 +512,30 @@ public class UserContextInterceptor implements HandlerInterceptor {
         }
 
         try {
-            // 3. 获取 token 剩余时间
+            // 3. 获取 token 剩余时间（单位：秒）
             long remainingTime = userSessionService.getTokenRemainingTime(token);
             
             // 4. 如果剩余时间小于 0（token 不存在或已过期），不进行刷新
             if (remainingTime < 0) {
-                log.debug("Token 不存在或已过期，跳过滑动过期刷新: token={}, remainingTime={}", token, remainingTime);
+                log.debug("Token 不存在或已过期，跳过滑动过期刷新: token={}, remainingTime={}s", token, remainingTime);
                 return;
             }
 
             // 5. 检查是否需要刷新（剩余时间少于刷新阈值）
             long refreshThreshold = tokenConfig.getRefreshThreshold();
+            log.debug("检查 Token 是否需要刷新: token={}, remainingTime={}s, refreshThreshold={}s", 
+                    token, remainingTime, refreshThreshold);
+            
             if (remainingTime < refreshThreshold) {
                 // 6. 刷新 token（延长到续期时长）
                 long renewalDuration = tokenConfig.getRenewalDuration();
+                log.info("Token 剩余时间少于阈值，开始刷新: token={}, remainingTime={}s, renewalDuration={}s", 
+                        token, remainingTime, renewalDuration);
+                
                 boolean success = userSessionService.renewToken(token, renewalDuration);
                 
                 if (success) {
-                    log.debug("Token 滑动过期刷新成功: token={}, remainingTime={}s, renewedTo={}s", 
+                    log.info("Token 滑动过期刷新成功: token={}, remainingTime={}s, renewedTo={}s", 
                             token, remainingTime, renewalDuration);
                 } else {
                     log.warn("Token 滑动过期刷新失败: token={}, remainingTime={}s", token, remainingTime);
@@ -539,7 +545,7 @@ public class UserContextInterceptor implements HandlerInterceptor {
                         token, remainingTime, refreshThreshold);
             }
         } catch (Exception e) {
-            log.warn("滑动过期刷新 token 时发生异常: token={}", token, e);
+            log.error("滑动过期刷新 token 时发生异常: token={}", token, e);
         }
     }
 } 

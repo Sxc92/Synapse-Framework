@@ -107,7 +107,11 @@ public class UserSessionService {
     public boolean renewToken(String token, long duration) {
         boolean sessionRenewed = sessionManager.renewToken(token, duration);
         if (sessionRenewed) {
+            // 同时续期权限、菜单、资源、系统
             permissionManager.extendUserPermissions(token, duration);
+            permissionManager.extendUserMenusAndResources(token, duration);
+            log.debug("Extended user permissions, menus, resources and systems for token: {}, duration: {}s", 
+                    token, duration);
         }
         return sessionRenewed;
     }
