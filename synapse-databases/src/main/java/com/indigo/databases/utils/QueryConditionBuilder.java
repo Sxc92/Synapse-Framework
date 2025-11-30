@@ -49,7 +49,8 @@ public class QueryConditionBuilder {
 
         if (queryDTO != null) {
             addEntityConditions(wrapper, queryDTO);
-            addOrderByConditions(wrapper, queryDTO);
+            // PageDTO 继承自 QueryDTO，所以可以转换为 QueryDTO 调用排序方法
+            addOrderByConditions(wrapper, (QueryDTO) queryDTO);
         }
 
         return wrapper;
@@ -57,6 +58,7 @@ public class QueryConditionBuilder {
 
     /**
      * 根据实体对象构建查询条件
+     * 如果实体对象是 QueryDTO 或 PageDTO 的实例，也会应用排序条件
      */
     public static <T> QueryWrapper<T> buildQueryWrapper(T entity) {
         return buildQueryWrapper(entity, null);
@@ -64,12 +66,18 @@ public class QueryConditionBuilder {
 
     /**
      * 根据实体对象和额外条件构建查询条件
+     * 如果实体对象是 QueryDTO 或 PageDTO 的实例，也会应用排序条件
      */
     public static <T> QueryWrapper<T> buildQueryWrapper(T entity, Map<String, Object> extraConditions) {
         QueryWrapper<T> wrapper = new QueryWrapper<>();
         
         if (entity != null) {
             addEntityConditions(wrapper, entity);
+            
+            // 如果实体对象是 QueryDTO 或 PageDTO 的实例，也要应用排序条件
+            if (entity instanceof QueryDTO) {
+                addOrderByConditions(wrapper, (QueryDTO) entity);
+            }
         }
         
         if (extraConditions != null && !extraConditions.isEmpty()) {
@@ -162,19 +170,40 @@ public class QueryConditionBuilder {
 
     /**
      * 添加排序条件
+     * 如果 orderByList 不为空，则在 SQL 上添加 ORDER BY 子句
      */
-    private static <T> void addOrderByConditions(QueryWrapper<T> wrapper, QueryDTO<T> queryDTO) {
-        if (queryDTO.getOrderByList() != null && !queryDTO.getOrderByList().isEmpty()) {
-            for (QueryDTO.OrderBy orderBy : queryDTO.getOrderByList()) {
-                if (StringUtils.isNotBlank(orderBy.getField())) {
-                    String columnName = convertFieldToColumn(orderBy.getField());
-                    if ("DESC".equalsIgnoreCase(orderBy.getDirection())) {
+    private static <T> void addOrderByConditions(QueryWrapper<T> wrapper, QueryDTO queryDTO) {
+        if (queryDTO == null) {
+            log.debug("queryDTO 为 null，跳过排序条件");
+            return;
+        }
+        
+        List<QueryDTO.OrderBy> orderByList = queryDTO.getOrderByList();
+        log.debug("orderByList: {}", orderByList);
+        
+        if (orderByList != null && !orderByList.isEmpty()) {
+            log.debug("开始添加排序条件，共 {} 个", orderByList.size());
+            for (QueryDTO.OrderBy orderBy : orderByList) {
+                if (orderBy == null) {
+                    log.warn("orderBy 为 null，跳过");
+                    continue;
+                }
+                String field = orderBy.getField();
+                if (StringUtils.isNotBlank(field)) {
+                    String columnName = convertFieldToColumn(field);
+                    String direction = orderBy.getDirection();
+                    log.debug("添加排序条件: field={}, columnName={}, direction={}", field, columnName, direction);
+                    if ("DESC".equalsIgnoreCase(direction)) {
                         wrapper.orderByDesc(columnName);
                     } else {
                         wrapper.orderByAsc(columnName);
                     }
+                } else {
+                    log.warn("orderBy.field 为空，跳过排序条件");
                 }
             }
+        } else {
+            log.debug("orderByList 为空或 null，不添加排序条件");
         }
     }
 

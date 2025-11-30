@@ -58,14 +58,14 @@ public class SecurityAutoConfiguration {
      * 权限检查服务
      * 提供权限和角色的检查方法
      * 
-     * <p><b>注意：</b>此服务不依赖任何 Bean，只使用 ThreadLocal 中的 UserContext。
-     * 因此不需要 {@code @ConditionalOnBean} 条件。
+     * <p><b>注意：</b>此服务现在需要 UserSessionService 来获取权限信息。
+     * 如果 UserSessionService 不存在，则创建时传入 null，权限检查功能将受限。
      */
     @Bean
     @ConditionalOnMissingBean
-    public PermissionService permissionService() {
-        log.debug("初始化权限检查服务");
-        return new PermissionService();
+    public PermissionService permissionService(@Autowired(required = false) UserSessionService userSessionService) {
+        log.debug("初始化权限检查服务: userSessionService={}", userSessionService != null ? "已注入" : "未注入");
+        return new PermissionService(userSessionService);
     }
 
     /**

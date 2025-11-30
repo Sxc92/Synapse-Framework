@@ -14,11 +14,13 @@ Synapse Framework 数据库模块是一个集成了 MyBatis-Plus 和动态数据
 - 🏊 **连接池支持**: HikariCP, Druid
 - ⚙️ **灵活配置**: 支持自定义配置和默认值
 - 🔌 **Spring Boot 兼容**: 兼容标准 Spring Boot 配置格式
-- 🎯 **BaseRepository**: 强大的Repository接口，支持VO映射、多表关联查询
+- 🎯 **BaseRepository**: 强大的Repository接口，支持VO映射、单表查询
 - 🔍 **EnhancedQueryBuilder**: 增强查询构建器，支持聚合查询、性能监控
 - 🤖 **@AutoRepository**: 自动Repository注解，无需手动实现
 - 🔒 **自动字段填充**: 支持审计字段自动填充（创建时间、修改时间、用户信息、乐观锁、逻辑删除）
 - ✅ **配置验证**: 启动时自动验证数据源配置和连接性
+
+> ⚠️ **注意**: 多表联查功能已暂停使用，建议使用 MyBatis-Plus 的方式，在 Mapper 中手写 SQL 进行多表查询。详见 [MULTI_TABLE_QUERY_STATUS.md](./MULTI_TABLE_QUERY_STATUS.md)
 
 ## 🚀 **快速开始**
 
@@ -59,7 +61,8 @@ public interface ProductRepository extends BaseRepository<Product, ProductMapper
     PageResult<ProductVO> pageProducts(ProductPageQueryDTO queryDTO);
     
     /**
-     * 多表关联查询 - 基于@VoMapping注解
+     * 多表关联查询 - 使用 MyBatis-Plus 手写 SQL（推荐）
+     * ⚠️ 注意：@VoMapping 注解的多表查询功能已暂停使用
      */
     PageResult<ProductMultiTableVO> pageProductsWithBrand(ProductPageQueryDTO queryDTO);
 }
@@ -128,10 +131,12 @@ logging:
 ## 📚 **更多信息**
 
 - **完整文档**: [COMPLETE_DOCUMENTATION.md](./COMPLETE_DOCUMENTATION.md)
-- **BaseRepository**: 强大的Repository接口，支持VO映射、多表关联查询
+- **多表查询状态**: [MULTI_TABLE_QUERY_STATUS.md](./MULTI_TABLE_QUERY_STATUS.md) - 多表联查功能状态文档
+- **BaseRepository**: 强大的Repository接口，支持VO映射、单表查询
 - **EnhancedQueryBuilder**: 增强查询构建器，支持聚合查询、性能监控
 - **@AutoRepository**: 自动Repository注解，无需手动实现
-- **多表查询**: 支持@VoMapping注解配置的多表关联查询
+
+> ⚠️ **多表查询**: 基于 @VoMapping 注解的多表关联查询功能已暂停使用，建议使用 MyBatis-Plus 手写 SQL
 
 ## 🤝 **贡献**
 

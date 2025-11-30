@@ -44,9 +44,19 @@ public class WebMvcGlobalExceptionHandler {
     public Result<?> handleSynapseException(SynapseException e) {
         log.error("SynapseException: code={}, message={}", e.getCode(), e.getMessage(), e);
         
-        Locale locale = getCurrentLocale();
-        String messageKey = getMessageKey(e.getCode());
-        String message = resolveMessage(messageKey, locale, e.getArgs());
+        String message;
+        String customMessage = e.getMessage();
+        String errorCode = e.getCode();
+        
+        // 如果异常消息不等于错误码，说明有自定义消息，优先使用自定义消息
+        if (customMessage != null && !customMessage.equals(errorCode)) {
+            message = customMessage;
+        } else {
+            // 否则使用国际化消息
+            Locale locale = getCurrentLocale();
+            String messageKey = getMessageKey(errorCode);
+            message = resolveMessage(messageKey, locale, e.getArgs());
+        }
         
         return Result.error(e.getCode(), message);
     }

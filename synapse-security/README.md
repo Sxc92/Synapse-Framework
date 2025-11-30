@@ -134,11 +134,20 @@ Token管理服务，提供：
 
 **注意：** `PermissionManager` 已删除，请使用 `PermissionService` 替代。
 
-### 6. DataPermissionService
+### 6. DataPermissionService（已暂时注释）
 数据权限服务，支持：
 - 数据范围控制
 - 自定义权限规则
 - 多维度权限控制
+
+**注意：** 数据权限功能已暂时注释，待业务完整后扩展。相关文件已注释保留，包括：
+- `DataPermissionService` 接口
+- `DefaultDataPermissionService` 实现
+- `PermissionValidationService` 权限校验服务
+- `DataPermissionAspect` 数据权限切面
+- `DataPermission` 注解
+- `DataPermissionContext` 上下文
+- `DataPermissionRule` 规则模型
 
 ## 认证服务使用
 
@@ -447,8 +456,11 @@ public class UserController {
 }
 ```
 
-## 数据权限使用
+## 数据权限使用（已暂时注释）
 
+**注意：** 数据权限功能已暂时注释，待业务完整后扩展。以下使用说明仅供参考。
+
+<!--
 ### 1. 数据权限规则配置
 
 ```java
@@ -747,6 +759,7 @@ public class CustomDataPermissionHandler {
     }
 }
 ```
+-->
 
 ## 故障排除
 

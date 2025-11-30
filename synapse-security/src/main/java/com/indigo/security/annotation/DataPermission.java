@@ -1,33 +1,28 @@
 package com.indigo.security.annotation;
 
-import com.indigo.security.model.DataPermissionRule;
-
-import java.lang.annotation.*;
-
 /**
  * 数据权限注解
- * 用于标记需要进行数据权限检查的方法
+ * 
+ * <p><b>注意：</b>此功能已暂时注释，待业务完整后扩展
  *
  * @author 史偕成
  * @date 2025/01/09
  */
+// TODO: 待业务完整后恢复数据权限注解
+/*
+import com.indigo.security.model.DataPermissionRule;
+
+import java.lang.annotation.*;
+
 @Target({ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 public @interface DataPermission {
 
-    /**
-     * 资源类型
-     */
     String resourceType();
 
-    /**
-     * 权限类型
-     */
     DataPermissionRule.PermissionType permissionType() default DataPermissionRule.PermissionType.READ;
 
-    /**
-     * 是否启用数据范围过滤
-     */
     boolean enableDataScope() default true;
 } 
+*/

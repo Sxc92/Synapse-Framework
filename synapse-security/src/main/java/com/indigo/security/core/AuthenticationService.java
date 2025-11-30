@@ -100,4 +100,59 @@ public interface AuthenticationService {
      * @return 系统列表
      */
     <T> Result<List<T>> getUserSystems(String token, Class<T> clazz);
+
+    /**
+     * 存储用户系统菜单树列表
+     * 业务端在登录后调用此方法存储系统菜单树数据
+     *
+     * @param token      访问令牌
+     * @param systemMenuTree 系统菜单树列表
+     * @param expiration 过期时间（秒）
+     * @param <T>        系统菜单树类型
+     */
+    <T> void storeUserSystemMenuTree(
+            String token,
+            List<T> systemMenuTree,
+            long expiration
+    );
+
+    /**
+     * 获取用户系统菜单树列表
+     *
+     * @param token 访问令牌
+     * @param clazz 系统菜单树类型
+     * @param <T>   系统菜单树类型
+     * @return 系统菜单树列表
+     */
+    <T> Result<List<T>> getUserSystemMenuTree(String token, Class<T> clazz);
+
+    /**
+     * 获取用户信息（包含用户基本信息和权限数据）
+     * 从 UserContext 获取用户基本信息，从缓存获取权限和系统菜单树
+     *
+     * @param token 访问令牌
+     * @param builder 用户信息构建器，用于将 UserContext、权限列表和系统菜单树组装成目标类型
+     * @param <T> 用户信息类型
+     * @return 用户信息
+     */
+    <T> Result<T> getUserInfo(String token, UserInfoBuilder<T> builder);
+
+    /**
+     * 用户信息构建器接口
+     * 用于将 UserContext、权限列表和系统菜单树组装成目标类型
+     *
+     * @param <T> 目标类型
+     */
+    @FunctionalInterface
+    interface UserInfoBuilder<T> {
+        /**
+         * 构建用户信息
+         *
+         * @param userContext 用户上下文
+         * @param permissions 权限列表
+         * @param systemMenuTree 系统菜单树列表
+         * @return 用户信息对象
+         */
+        T build(UserContext userContext, List<String> permissions, List<?> systemMenuTree);
+    }
 } 

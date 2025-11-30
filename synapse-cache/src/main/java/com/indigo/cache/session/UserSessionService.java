@@ -353,6 +353,30 @@ public class UserSessionService {
     }
 
     /**
+     * 存储用户系统菜单树列表
+     *
+     * @param token      访问令牌
+     * @param systemMenuTree 系统菜单树列表（泛型，支持任意类型）
+     * @param expiration 过期时间（秒）
+     * @param <T>        系统菜单树类型
+     */
+    public <T> void storeUserSystemMenuTree(String token, List<T> systemMenuTree, long expiration) {
+        permissionManager.storeUserSystemMenuTree(token, systemMenuTree, expiration);
+    }
+
+    /**
+     * 获取用户系统菜单树列表
+     *
+     * @param token 访问令牌
+     * @param clazz 系统菜单树类型
+     * @param <T>   系统菜单树类型
+     * @return 系统菜单树列表
+     */
+    public <T> List<T> getUserSystemMenuTree(String token, Class<T> clazz) {
+        return permissionManager.getUserSystemMenuTree(token, clazz);
+    }
+
+    /**
      * 删除用户菜单、资源、系统信息
      *
      * @param token 访问令牌

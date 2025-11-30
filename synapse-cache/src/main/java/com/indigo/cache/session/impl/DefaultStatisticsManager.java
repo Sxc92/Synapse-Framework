@@ -79,21 +79,42 @@ public class DefaultStatisticsManager implements StatisticsManager {
 
     @Override
     public List<UserContext> getOnlineUsersByRole(String role) {
-        String pattern = keyGenerator.generate(CacheKeyGenerator.Module.USER, "session", "*");
-        List<UserContext> allUsers = getUsersByPattern(pattern);
+        if (role == null || role.isEmpty()) {
+            return List.of();
+        }
         
-        // 从 session key 中提取 token，然后查询角色
-        return allUsers.stream()
-                .filter(user -> {
-                    // 通过扫描所有 session key 来匹配用户
-                    // 由于 UserContext 中没有 token 字段，我们需要通过其他方式获取
-                    // 这里通过用户的角色列表来判断
-                    if (user.getRoles() != null) {
-                        return user.getRoles().contains(role);
+        String pattern = keyGenerator.generate(CacheKeyGenerator.Module.USER, "session", "*");
+        
+        // 通过扫描 session keys 来查找具有指定角色的用户
+        try {
+            Set<String> keys = redisService.scan(pattern);
+            return keys.stream()
+                    .map(key -> {
+                        try {
+                            // 从 key 中提取 token
+                            String token = extractTokenFromKey(key);
+                            if (token == null) {
+                                return null;
+                            }
+                            
+                            // 从缓存中获取用户角色列表
+                            List<String> userRoles = permissionManager.getUserRoles(token);
+                            if (userRoles != null && userRoles.contains(role)) {
+                                // 如果用户有该角色，返回用户上下文
+                                return cacheService.getObject(key, UserContext.class);
                     }
-                    return false;
-                })
+                            return null;
+                        } catch (Exception e) {
+                            log.debug("查询用户角色失败: key={}", key, e);
+                            return null;
+                        }
+                    })
+                    .filter(Objects::nonNull)
                 .toList();
+        } catch (Exception e) {
+            log.error("按角色查询在线用户失败: role={}", role, e);
+            return List.of();
+        }
     }
 
     @Override
@@ -221,50 +242,168 @@ public class DefaultStatisticsManager implements StatisticsManager {
         return new LoginStats(hourlyLogins, dailyLogins, totalOnlineUsers);
     }
 
+    /**
+     * 默认 token 过期时间（秒），用于估算在线时长
+     * 如果 token 被续期，实际在线时长可能更长
+     */
+    private static final long DEFAULT_TOKEN_TIMEOUT = 7200L; // 2 小时
+
     @Override
     public Long getUserOnlineDuration(Long userId) {
         if (userId == null) {
             return 0L;
         }
+        
         String pattern = keyGenerator.generate(CacheKeyGenerator.Module.USER, "session", "*");
-        List<UserContext> allUsers = getUsersByPattern(pattern);
         String userIdStr = String.valueOf(userId);
 
-        // 注意：UserContext 中没有 loginTime 字段
-        // 这里无法准确计算在线时长，返回 0
-        // 如果需要精确的在线时长，请在 UserContext 中添加 loginTime 字段
-        // 或者通过 session 的创建时间来计算
-        return allUsers.stream()
-                .filter(user -> userIdStr.equals(user.getUserId()))
-                .findFirst()
-                .map(user -> {
-                    // 由于没有登录时间，无法计算准确的在线时长
-                    // 可以尝试通过 session 的剩余过期时间来估算，但不够准确
-                    log.debug("无法计算用户在线时长: userId={}, UserContext 中没有 loginTime 字段", userId);
+        try {
+            Set<String> keys = redisService.scan(pattern);
+            for (String key : keys) {
+                Long duration = calculateDurationForSession(key, userIdStr, userId);
+                if (duration != null) {
+                    return duration;
+                }
+            }
+        } catch (Exception e) {
+            log.error("查询用户在线时长失败: userId={}", userId, e);
+        }
+        
                     return 0L;
-                })
-                .orElse(0L);
+    }
+
+    /**
+     * 计算指定 session 的在线时长
+     *
+     * @param key      session key
+     * @param userIdStr 用户ID字符串
+     * @param userId   用户ID（用于日志）
+     * @return 在线时长（秒），如果无法计算则返回 null
+     */
+    private Long calculateDurationForSession(String key, String userIdStr, Long userId) {
+        try {
+            UserContext user = cacheService.getObject(key, UserContext.class);
+            if (user == null || !userIdStr.equals(user.getUserId())) {
+                return null;
+            }
+
+            String token = extractTokenFromKey(key);
+            if (token == null) {
+                return null;
+            }
+
+            return calculateDurationByToken(token, userId);
+        } catch (Exception e) {
+            log.debug("处理 session key 失败: key={}, userId={}", key, userId, e);
+            return null;
+        }
+    }
+
+    /**
+     * 根据 token 计算在线时长
+     *
+     * @param token 访问令牌
+     * @param userId 用户ID（用于日志）
+     * @return 在线时长（秒），如果无法计算则返回 null
+     */
+    private Long calculateDurationByToken(String token, Long userId) {
+        long remainingTime = sessionManager.getTokenRemainingTime(token);
+        if (remainingTime <= 0) {
+            log.debug("Token 已过期或不存在: userId={}, token={}", userId, token);
+            return null;
+        }
+
+        long estimatedDuration = estimateOnlineDuration(remainingTime);
+        log.debug("计算用户在线时长: userId={}, 剩余时间={}秒, 估算在线时长={}秒",
+                userId, remainingTime, estimatedDuration);
+        return estimatedDuration;
+    }
+
+    /**
+     * 估算在线时长
+     *
+     * @param remainingTime token 剩余时间（秒）
+     * @return 估算的在线时长（秒）
+     */
+    private long estimateOnlineDuration(long remainingTime) {
+        // 如果剩余时间大于默认过期时间，说明 token 被续期过
+        // 此时返回剩余时间作为最小在线时长
+        if (remainingTime > DEFAULT_TOKEN_TIMEOUT) {
+            return remainingTime;
+        }
+        // 正常情况：默认过期时间 - 剩余时间
+        return DEFAULT_TOKEN_TIMEOUT - remainingTime;
     }
 
     @Override
     public Map<String, Long> getAllUsersOnlineDuration() {
         String pattern = keyGenerator.generate(CacheKeyGenerator.Module.USER, "session", "*");
-        List<UserContext> allUsers = getUsersByPattern(pattern);
-
-        // 注意：UserContext 中没有 loginTime 字段
-        // 这里无法准确计算在线时长，返回所有用户的在线时长为 0
-        // 如果需要精确的在线时长，请在 UserContext 中添加 loginTime 字段
-        return allUsers.stream()
-                .filter(user -> user.getUserId() != null)
+        
+        try {
+            Set<String> keys = redisService.scan(pattern);
+            return keys.stream()
+                    .map(this::extractUserDurationInfo)
+                    .filter(Objects::nonNull)
                 .collect(Collectors.toMap(
-                        UserContext::getUserId,
-                        user -> {
-                            // 由于没有登录时间，无法计算准确的在线时长
-                            log.debug("无法计算用户在线时长: userId={}, UserContext 中没有 loginTime 字段", 
-                                    user.getUserId());
-                            return 0L;
+                            UserDurationInfo::getUserId,
+                            UserDurationInfo::getDuration,
+                            (existing, replacement) -> existing // 如果有重复的 userId，保留第一个
+                    ));
+        } catch (Exception e) {
+            log.error("查询所有用户在线时长失败", e);
+            return Map.of();
+        }
+    }
+
+    /**
+     * 从 session key 中提取用户在线时长信息
+     *
+     * @param key session key
+     * @return 用户在线时长信息，如果无法提取则返回 null
+     */
+    private UserDurationInfo extractUserDurationInfo(String key) {
+        try {
+            UserContext user = cacheService.getObject(key, UserContext.class);
+            if (user == null || user.getUserId() == null) {
+                return null;
+            }
+
+            String token = extractTokenFromKey(key);
+            if (token == null) {
+                return null;
+            }
+
+            Long duration = calculateDurationByToken(token, Long.parseLong(user.getUserId()));
+            if (duration == null) {
+                return null;
+            }
+
+            return new UserDurationInfo(user.getUserId(), duration);
+        } catch (Exception e) {
+            log.debug("处理 session key 失败: key={}", key, e);
+            return null;
+        }
+    }
+
+    /**
+     * 用户在线时长信息
+     */
+    private static class UserDurationInfo {
+        private final String userId;
+        private final Long duration;
+
+        public UserDurationInfo(String userId, Long duration) {
+            this.userId = userId;
+            this.duration = duration;
                         }
-                ));
+
+        public String getUserId() {
+            return userId;
+        }
+
+        public Long getDuration() {
+            return duration;
+        }
     }
 
     @Override

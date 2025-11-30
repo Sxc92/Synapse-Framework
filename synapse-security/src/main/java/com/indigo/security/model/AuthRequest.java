@@ -1,6 +1,5 @@
 package com.indigo.security.model;
 
-import cn.hutool.core.collection.CollUtil;
 import com.indigo.core.exception.Ex;
 import com.indigo.security.model.auth.OAuth2Auth;
 import com.indigo.security.model.auth.RefreshTokenAuth;
@@ -14,7 +13,8 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-import static com.indigo.security.constants.SecurityError.*;
+import static com.indigo.security.constants.SecurityError.AUTH_REQUEST_INCOMPLETE;
+import static com.indigo.security.constants.SecurityError.AUTH_REQUEST_INVALID;
 
 /**
  * 认证请求模型
@@ -79,6 +79,12 @@ public class AuthRequest {
      * 用户部门职级信息（由业务模块传入）
      */
     private List<UserDeptPositionInfo> deptPositions;
+
+    /**
+     * 用户权限数据（由业务模块传入，框架层自动存储到缓存）
+     * 包含菜单、资源、系统和系统菜单树等业务权限数据
+     */
+    private PermissionData permissionData;
 
     /**
      * 认证类型枚举
@@ -190,13 +196,11 @@ public class AuthRequest {
         if (!authInfoValid) {
             Ex.throwEx(AUTH_REQUEST_INCOMPLETE);
         }
-        if (CollUtil.isEmpty(authRequest.roles)) {
-            Ex.throwEx(AUTH_USER_HAS_NO_ROLE);
-        }
-        // 验证用户信息完整性（角色和权限由业务模块传入）
-        if (CollUtil.isEmpty(authRequest.permissions)) {
-            Ex.throwEx(AUTH_USER_HAS_NO_RESOURCE);
-        }
+        // 注意：roles 字段已废弃，不再强制要求（已改为 systemMenuTree）
+        // 验证用户信息完整性（权限由业务模块传入）
+//        if (CollUtil.isEmpty(authRequest.permissions)) {
+//            Ex.throwEx(AUTH_USER_HAS_NO_RESOURCE);
+//        }
     }
 
     /**
@@ -256,5 +260,41 @@ public class AuthRequest {
          * 状态
          */
         private Integer status;
+    }
+
+    /**
+     * 权限数据包装类
+     * 用于在认证请求中传递业务权限数据，框架层会自动存储到缓存
+     *
+     * @author 史偕成
+     * @date 2025/11/21
+     */
+    @Data
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class PermissionData {
+        /**
+         * 资源列表（泛型，支持任意类型）
+         */
+        private List<?> resources;
+
+        /**
+         * 系统列表（泛型，支持任意类型）
+         */
+        private List<?> systems;
+
+        /**
+         * 系统菜单树列表（泛型，支持任意类型）
+         * 以 System 为根节点，Menu 为子节点的树结构，已包含菜单信息
+         */
+        private List<?> systemMenuTree;
+
+        /**
+         * 权限树列表（泛型，支持任意类型）
+         * 以 System 为根节点，Menu 为中间节点，Resource 为叶子节点的完整权限树结构
+         * 用于展示用户完整的权限层级关系
+         */
+        private List<?> permissionTree;
     }
 } 

@@ -61,16 +61,6 @@ public class UserContext implements Serializable {
     private String avatar;
 
     /**
-     * 角色列表
-     */
-    private List<String> roles;
-
-    /**
-     * 权限Id
-     */
-    private List<String> permissions;
-
-    /**
      * 获取当前用户上下文
      *
      * @return 当前用户上下文
@@ -156,41 +146,57 @@ public class UserContext implements Serializable {
     }
 
     /**
-     * 获取当前用户角色列表
+     * 获取当前用户系统菜单树列表
      *
-     * @return 用户角色列表，如果没有当前用户或没有角色则返回空列表
+     * <p><b>注意：</b>systemMenuTree 不再存储在 UserContext 中，而是单独存储在缓存中。
+     * 如需获取系统菜单树，请使用 {@link com.indigo.security.core.AuthenticationService#getUserSystemMenuTree(String, Class)}
+     * 或从 UserSessionService 获取。
+     *
+     * @return 空列表（systemMenuTree 已从 UserContext 中移除，请从缓存中获取）
      */
-    public static List<String> getCurrentRoles() {
-        UserContext userContext = getCurrentUser();
-        return userContext != null && userContext.getRoles() != null 
-                ? userContext.getRoles() 
-                : List.of();
+    public static <T> List<T> getCurrentSystemMenuTree() {
+        // systemMenuTree 已从 UserContext 中移除，单独存储在缓存中
+        return List.of();
     }
 
     /**
      * 获取当前用户权限列表
      *
-     * @return 用户权限列表，如果没有当前用户或没有权限则返回空列表
+     * <p><b>注意：</b>permissions 不再存储在 UserContext 中，而是单独存储在缓存中。
+     * 如需获取权限列表，请使用 {@link com.indigo.cache.session.UserSessionService#getUserPermissions(String)}
+     * 或从 UserSessionService 获取。
+     *
+     * @return 空列表（permissions 已从 UserContext 中移除，请从缓存中获取）
      */
     public static List<String> getCurrentPermissions() {
-        UserContext userContext = getCurrentUser();
-        return userContext != null && userContext.getPermissions() != null 
-                ? userContext.getPermissions() 
-                : List.of();
+        // permissions 已从 UserContext 中移除，单独存储在缓存中
+        return List.of();
     }
 
     /**
-     * 检查当前用户是否有指定角色
+     * 检查当前用户是否有指定系统
      *
-     * @param role 角色名称
-     * @return 如果有该角色返回true，否则返回false
+     * @param systemId 系统ID
+     * @return 如果有该系统返回true，否则返回false
      */
-    public static boolean hasRole(String role) {
-        if (role == null || role.isEmpty()) {
+    public static boolean hasSystem(String systemId) {
+        if (systemId == null || systemId.isEmpty()) {
             return false;
         }
-        List<String> roles = getCurrentRoles();
-        return roles.contains(role);
+        List<?> systemMenuTree = getCurrentSystemMenuTree();
+        if (systemMenuTree == null || systemMenuTree.isEmpty()) {
+            return false;
+        }
+        // 检查系统菜单树中是否包含该系统
+        return systemMenuTree.stream()
+                .anyMatch(item -> {
+                    try {
+                        Object id = item.getClass().getMethod("getId").invoke(item);
+                        return systemId.equals(id);
+                    } catch (Exception e) {
+                        return false;
+                    }
+                });
     }
 
     /**
@@ -208,17 +214,16 @@ public class UserContext implements Serializable {
     }
 
     /**
-     * 检查当前用户是否有任一指定角色
+     * 检查当前用户是否有任一指定系统
      *
-     * @param roles 角色名称数组
-     * @return 如果有任一角色返回true，否则返回false
+     * @param systemIds 系统ID数组
+     * @return 如果有任一系统返回true，否则返回false
      */
-    public static boolean hasAnyRole(String... roles) {
-        if (roles == null || roles.length == 0) {
+    public static boolean hasAnySystem(String... systemIds) {
+        if (systemIds == null || systemIds.length == 0) {
             return false;
         }
-        List<String> userRoles = getCurrentRoles();
-        return java.util.Arrays.stream(roles).anyMatch(userRoles::contains);
+        return java.util.Arrays.stream(systemIds).anyMatch(UserContext::hasSystem);
     }
 
     /**
@@ -236,17 +241,16 @@ public class UserContext implements Serializable {
     }
 
     /**
-     * 检查当前用户是否有所有指定角色
+     * 检查当前用户是否有所有指定系统
      *
-     * @param roles 角色名称数组
-     * @return 如果有所有角色返回true，否则返回false
+     * @param systemIds 系统ID数组
+     * @return 如果有所有系统返回true，否则返回false
      */
-    public static boolean hasAllRoles(String... roles) {
-        if (roles == null || roles.length == 0) {
+    public static boolean hasAllSystems(String... systemIds) {
+        if (systemIds == null || systemIds.length == 0) {
             return false;
         }
-        List<String> userRoles = getCurrentRoles();
-        return java.util.Arrays.stream(roles).allMatch(userRoles::contains);
+        return java.util.Arrays.stream(systemIds).allMatch(UserContext::hasSystem);
     }
 
     /**

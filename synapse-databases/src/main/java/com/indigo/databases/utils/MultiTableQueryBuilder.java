@@ -13,10 +13,17 @@ import java.util.Map;
 /**
  * 多表查询构建器
  * 支持复杂的多表关联查询
- *
+ * 
+ * ⚠️ 注意：此功能已暂停使用
+ * 原因：自动生成表别名、DTO查询条件、WHERE条件构建等功能不够成熟
+ * 建议：使用 MyBatis-Plus 的方式，在 Mapper 中手写 SQL 进行多表查询
+ * 文档：详见 MULTI_TABLE_QUERY_STATUS.md
+ * 
  * @author 史偕成
  * @date 2025/12/19
+ * @deprecated 此功能已暂停使用，请使用 MyBatis-Plus 手写 SQL
  */
+@Deprecated
 @Slf4j
 @SuppressWarnings("rawtypes")
 public class MultiTableQueryBuilder {
@@ -54,7 +61,7 @@ public class MultiTableQueryBuilder {
         }
         
         // 5. 构建ORDER BY
-        String orderByClause = buildOrderByClause(queryDTO);
+        String orderByClause = buildOrderByClause(queryDTO, voClass);
         if (StringUtils.isNotBlank(orderByClause)) {
             sql.append(" ORDER BY ").append(orderByClause);
         }
@@ -182,10 +189,17 @@ public class MultiTableQueryBuilder {
     
     /**
      * 构建ORDER BY子句
+     * 多表查询时，如果字段名不包含表别名，则自动添加主表别名
      */
-    private static String buildOrderByClause(QueryDTO queryDTO) {
+    private static <V extends BaseVO> String buildOrderByClause(QueryDTO queryDTO, Class<V> voClass) {
         if (queryDTO.getOrderByList() == null || queryDTO.getOrderByList().isEmpty()) {
             return "";
+        }
+        
+        // 获取主表别名（多表查询时需要）
+        String mainAlias = null;
+        if (voClass != null && EnhancedVoFieldSelector.hasJoinQuery(voClass)) {
+            mainAlias = EnhancedVoFieldSelector.getMainTableAlias(voClass);
         }
         
         List<String> orderByList = new ArrayList<>();
@@ -193,6 +207,12 @@ public class MultiTableQueryBuilder {
             QueryDTO.OrderBy orderBy = (QueryDTO.OrderBy) orderByObj;
             if (StringUtils.isNotBlank(orderBy.getField())) {
                 String columnName = convertFieldToColumn(orderBy.getField());
+                
+                // 多表查询时，如果字段名不包含表别名，则添加主表别名
+                if (mainAlias != null && !columnName.contains(".")) {
+                    columnName = mainAlias + "." + columnName;
+                }
+                
                 String direction = "DESC".equalsIgnoreCase(orderBy.getDirection()) ? "DESC" : "ASC";
                 orderByList.add(columnName + " " + direction);
             }

@@ -121,13 +121,20 @@ public class EnhancedQueryBuilder {
     /**
      * 基础分页查询 - 直接映射到VO
      * 通过字段选择避免内存转换，提升性能
-     * 支持多表关联查询
+     * 
+     * ⚠️ 注意：多表关联查询功能已暂停使用
+     * 原因：自动生成表别名、DTO查询条件、WHERE条件构建等功能不够成熟
+     * 建议：使用 MyBatis-Plus 的方式，在 Mapper 中手写 SQL 进行多表查询
+     * 文档：详见 MULTI_TABLE_QUERY_STATUS.md
      */
     public static <T, V extends BaseVO<?>> PageResult<V> pageWithCondition(IService<T> service, PageDTO pageDTO, Class<V> voClass) {
         try {
             // 检查是否需要多表查询
+            // ⚠️ 多表查询功能已暂停，暂时只支持单表查询
             if (EnhancedVoFieldSelector.hasJoinQuery(voClass)) {
-                return pageWithMultiTableQuery(service, pageDTO, voClass);
+                log.warn("多表查询功能已暂停使用，请使用 MyBatis-Plus 手写 SQL。VO: {}", voClass.getSimpleName());
+                throw new UnsupportedOperationException("多表查询功能已暂停使用，请使用 MyBatis-Plus 手写 SQL。详见 MULTI_TABLE_QUERY_STATUS.md");
+                // return pageWithMultiTableQuery(service, pageDTO, voClass);
             } else {
                 return pageWithSingleTableQuery(service, pageDTO, voClass);
             }
@@ -153,7 +160,15 @@ public class EnhancedQueryBuilder {
     
     /**
      * 多表查询
+     * 
+     * ⚠️ 注意：此功能已暂停使用
+     * 原因：自动生成表别名、DTO查询条件、WHERE条件构建等功能不够成熟
+     * 建议：使用 MyBatis-Plus 的方式，在 Mapper 中手写 SQL 进行多表查询
+     * 文档：详见 MULTI_TABLE_QUERY_STATUS.md
+     * 
+     * @deprecated 此方法已暂停使用，请使用 MyBatis-Plus 手写 SQL
      */
+    @Deprecated
     private static <T, V extends BaseVO<?>> PageResult<V> pageWithMultiTableQuery(IService<T> service, PageDTO pageDTO, Class<V> voClass) {
         // 构建多表查询SQL
         String sql = MultiTableQueryBuilder.buildMultiTableSql(pageDTO, voClass);
@@ -178,13 +193,20 @@ public class EnhancedQueryBuilder {
     /**
      * 列表查询 - 直接映射到VO
      * 通过字段选择避免内存转换，提升性能
-     * 支持多表关联查询
+     * 
+     * ⚠️ 注意：多表关联查询功能已暂停使用
+     * 原因：自动生成表别名、DTO查询条件、WHERE条件构建等功能不够成熟
+     * 建议：使用 MyBatis-Plus 的方式，在 Mapper 中手写 SQL 进行多表查询
+     * 文档：详见 MULTI_TABLE_QUERY_STATUS.md
      */
     public static <T, V extends BaseVO<?>> List<V> listWithCondition(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
         try {
             // 检查是否需要多表查询
+            // ⚠️ 多表查询功能已暂停，暂时只支持单表查询
             if (EnhancedVoFieldSelector.hasJoinQuery(voClass)) {
-                return listWithMultiTableQuery(service, queryDTO, voClass);
+                log.warn("多表查询功能已暂停使用，请使用 MyBatis-Plus 手写 SQL。VO: {}", voClass.getSimpleName());
+                throw new UnsupportedOperationException("多表查询功能已暂停使用，请使用 MyBatis-Plus 手写 SQL。详见 MULTI_TABLE_QUERY_STATUS.md");
+                // return listWithMultiTableQuery(service, queryDTO, voClass);
             } else {
                 return listWithSingleTableQuery(service, queryDTO, voClass);
             }
@@ -222,6 +244,17 @@ public class EnhancedQueryBuilder {
     /**
      * 多表列表查询
      */
+    /**
+     * 多表列表查询
+     * 
+     * ⚠️ 注意：此功能已暂停使用
+     * 原因：自动生成表别名、DTO查询条件、WHERE条件构建等功能不够成熟
+     * 建议：使用 MyBatis-Plus 的方式，在 Mapper 中手写 SQL 进行多表查询
+     * 文档：详见 MULTI_TABLE_QUERY_STATUS.md
+     * 
+     * @deprecated 此方法已暂停使用，请使用 MyBatis-Plus 手写 SQL
+     */
+    @Deprecated
     private static <T, V extends BaseVO<?>> List<V> listWithMultiTableQuery(IService<T> service, QueryDTO queryDTO, Class<V> voClass) {
         // 构建多表查询SQL
         String sql = MultiTableQueryBuilder.buildMultiTableSql(queryDTO, voClass);
@@ -357,8 +390,7 @@ public class EnhancedQueryBuilder {
                 wrapper.select(selectFields);
                 
                 // 构建SQL查询
-                String sql = wrapper.getSqlSegment();
-                String fullSql = "SELECT " + String.join(", ", selectFields) + " FROM " + getTableName(service) + " WHERE " + sql;
+                String fullSql = buildSelectSqlWithWhere(service, wrapper, selectFields);
                 
                 // 创建分页对象
                 Page<Map<String, Object>> page = createMapPage(pageDTO);
@@ -509,8 +541,8 @@ public class EnhancedQueryBuilder {
             String[] selectFields = VoFieldSelector.getSelectFields(voClass);
             wrapper.select(selectFields);
             
-            String sql = wrapper.getSqlSegment();
-            String fullSql = "SELECT " + String.join(", ", selectFields) + " FROM " + getTableName(service) + " WHERE " + sql;
+            // 构建SQL查询
+            String fullSql = buildSelectSqlWithWhere(service, wrapper, selectFields);
             
             // 创建分页对象
             Page<Map<String, Object>> page = createMapPage(pageDTO);
@@ -557,8 +589,8 @@ public class EnhancedQueryBuilder {
             String[] selectFields = VoFieldSelector.getSelectFields(voClass);
             wrapper.select(selectFields);
             
-            String sql = wrapper.getSqlSegment();
-            String fullSql = "SELECT " + String.join(", ", selectFields) + " FROM " + getTableName(service) + " WHERE " + sql;
+            // 构建SQL查询
+            String fullSql = buildSelectSqlWithWhere(service, wrapper, selectFields);
             
             // 创建分页对象
             Page<Map<String, Object>> page = createMapPage(pageDTO);
@@ -625,8 +657,8 @@ public class EnhancedQueryBuilder {
             }
             
             // 执行查询 - 使用智能映射
-            String sql = wrapper.getSqlSegment();
-            String fullSql = "SELECT * FROM " + getTableName(service) + " WHERE " + sql;
+            String[] selectFields = new String[]{"*"};
+            String fullSql = buildSelectSqlWithWhere(service, wrapper, selectFields);
             
             // 创建分页对象
             Page<Map<String, Object>> page = createMapPage(pageDTO);
@@ -1069,6 +1101,62 @@ public class EnhancedQueryBuilder {
      * 构建完整的SELECT SQL
      * 使用更简单的方法，直接使用MyBatis-Plus的内置方法
      */
+    /**
+     * 构建带 WHERE 条件的 SELECT SQL
+     * 统一处理 SQL 构建，避免 WHERE 后面没有条件或包含 ORDER BY 的问题
+     */
+    private static <T> String buildSelectSqlWithWhere(IService<T> service, QueryWrapper<T> wrapper, String[] selectFields) {
+        String tableName = getTableName(service);
+        StringBuilder sql = new StringBuilder();
+        sql.append("SELECT ").append(String.join(", ", selectFields));
+        sql.append(" FROM ").append(tableName);
+        
+        // 获取 WHERE 条件（不包含 ORDER BY）
+        String whereClause = getWhereClauseWithoutParams(wrapper);
+        if (whereClause != null && !whereClause.trim().isEmpty()) {
+            sql.append(" WHERE ").append(whereClause);
+        }
+        
+        // 获取 ORDER BY 子句
+        String orderByClause = getOrderByClause(wrapper);
+        if (orderByClause != null && !orderByClause.trim().isEmpty()) {
+            sql.append(" ").append(orderByClause);
+        }
+        
+        return sql.toString();
+    }
+    
+    /**
+     * 从 QueryWrapper 中提取 ORDER BY 子句
+     */
+    private static <T> String getOrderByClause(QueryWrapper<T> wrapper) {
+        String sqlSegment = wrapper.getSqlSegment();
+        if (sqlSegment == null || sqlSegment.trim().isEmpty()) {
+            return null;
+        }
+        
+        // 替换参数占位符为实际值
+        String result = replaceParameterPlaceholders(sqlSegment, wrapper);
+        
+        // 提取 ORDER BY 子句
+        if (result != null) {
+            int orderByIndex = result.toUpperCase().indexOf(" ORDER BY ");
+            if (orderByIndex >= 0) {
+                String orderByClause = result.substring(orderByIndex).trim();
+                // 移除可能存在的 WHERE 关键字（如果 ORDER BY 前面有 WHERE）
+                if (orderByClause.toUpperCase().startsWith("WHERE")) {
+                    int whereIndex = orderByClause.toUpperCase().indexOf(" ORDER BY ");
+                    if (whereIndex > 0) {
+                        orderByClause = orderByClause.substring(whereIndex).trim();
+                    }
+                }
+                return orderByClause;
+            }
+        }
+        
+        return null;
+    }
+    
     private static <T> String buildSelectSql(IService<T> service, QueryWrapper<T> wrapper, String[] selectFields) {
         // 获取实体类对应的表名
         String tableName = getTableNameFromEntity(service);
@@ -1082,7 +1170,21 @@ public class EnhancedQueryBuilder {
         // 注意：这里我们需要获取不带参数占位符的SQL片段
         String whereClause = getWhereClauseWithoutParams(wrapper);
         if (whereClause != null && !whereClause.trim().isEmpty()) {
-            sql.append(" WHERE ").append(whereClause);
+            // 移除可能存在的 WHERE 关键字（如果 sqlSegment 已经包含）
+            String normalizedWhere = whereClause.trim();
+            if (normalizedWhere.toUpperCase().startsWith("WHERE")) {
+                normalizedWhere = normalizedWhere.substring(5).trim();
+            }
+            // 只有当有实际条件时才添加 WHERE
+            if (!normalizedWhere.isEmpty()) {
+                sql.append(" WHERE ").append(normalizedWhere);
+            }
+        }
+        
+        // 获取 ORDER BY 子句
+        String orderByClause = getOrderByClause(wrapper);
+        if (orderByClause != null && !orderByClause.trim().isEmpty()) {
+            sql.append(" ").append(orderByClause);
         }
         
         return sql.toString();
@@ -1091,6 +1193,7 @@ public class EnhancedQueryBuilder {
     /**
      * 获取不带参数占位符的WHERE条件
      * 这是一个简化的实现，直接使用QueryWrapper的toString方法
+     * 注意：返回的SQL片段不包含 WHERE 关键字，也不包含 ORDER BY
      */
     private static <T> String getWhereClauseWithoutParams(QueryWrapper<T> wrapper) {
         // 获取QueryWrapper的SQL片段
@@ -1101,7 +1204,27 @@ public class EnhancedQueryBuilder {
         }
         
         // 替换参数占位符为实际值
-        return replaceParameterPlaceholders(sqlSegment, wrapper);
+        String result = replaceParameterPlaceholders(sqlSegment, wrapper);
+        
+        // 移除 ORDER BY 子句（在 WHERE 条件中不应该包含 ORDER BY）
+        if (result != null) {
+            int orderByIndex = result.toUpperCase().indexOf(" ORDER BY ");
+            if (orderByIndex >= 0) {
+                result = result.substring(0, orderByIndex).trim();
+            }
+        }
+        
+        // 移除可能存在的 WHERE 关键字
+        if (result != null && result.toUpperCase().startsWith("WHERE")) {
+            result = result.substring(5).trim();
+        }
+        
+        // 如果结果为空，返回 null
+        if (result == null || result.trim().isEmpty()) {
+            return null;
+        }
+        
+        return result;
     }
     
     /**

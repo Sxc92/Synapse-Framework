@@ -367,6 +367,20 @@ public class DefaultCachePermissionManager implements CachePermissionManager {
         return cacheService.getObject(systemsKey, List.class);
     }
 
+    @Override
+    public <T> void storeUserSystemMenuTree(String token, List<T> systemMenuTree, long expiration) {
+        String systemMenuTreeKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "systemMenuTree", token);
+        cacheService.setObject(systemMenuTreeKey, systemMenuTree, expiration);
+        log.debug("Stored user system menu tree for token: {}, count: {}", token, systemMenuTree != null ? systemMenuTree.size() : 0);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T> List<T> getUserSystemMenuTree(String token, Class<T> clazz) {
+        String systemMenuTreeKey = keyGenerator.generate(CacheKeyGenerator.Module.USER, "systemMenuTree", token);
+        return cacheService.getObject(systemMenuTreeKey, List.class);
+    }
+
     /**
      * 计算本地缓存过期时间
      * 本地缓存过期时间应该小于 Redis 过期时间，确保本地缓存先过期

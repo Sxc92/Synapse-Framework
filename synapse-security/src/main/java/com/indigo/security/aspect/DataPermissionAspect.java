@@ -1,5 +1,15 @@
 package com.indigo.security.aspect;
 
+/**
+ * 数据权限切面
+ * 
+ * <p><b>注意：</b>此功能已暂时注释，待业务完整后扩展
+ *
+ * @author 史偕成
+ * @date 2025/01/09
+ */
+// TODO: 待业务完整后恢复数据权限切面功能
+/*
 import com.indigo.core.context.UserContext;
 import com.indigo.security.annotation.DataPermission;
 import com.indigo.security.model.DataPermissionRule;
@@ -12,13 +22,6 @@ import org.aspectj.lang.annotation.Before;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.stereotype.Component;
 
-/**
- * 数据权限切面
- * 用于自动处理数据权限检查
- *
- * @author 史偕成
- * @date 2025/01/09
- */
 @Slf4j
 @Aspect
 @Component
@@ -27,51 +30,6 @@ public class DataPermissionAspect {
 
     private final DataPermissionService dataPermissionService;
 
-    /**
-     * 在方法执行前检查数据权限
-     */
-    @Before("@annotation(dataPermission)")
-    public void checkDataPermission(JoinPoint joinPoint, DataPermission dataPermission) {
-        try {
-            // 获取当前用户信息
-            UserContext userContext = UserContext.getCurrentUser();
-            if (userContext == null) {
-                throw new SecurityException("未获取到用户上下文");
-            }
-
-            // 获取方法签名
-            MethodSignature signature = (MethodSignature) joinPoint.getSignature();
-            String methodName = signature.getMethod().getName();
-            String className = signature.getDeclaringType().getSimpleName();
-
-            // 检查权限
-            String resourceType = dataPermission.resourceType();
-            DataPermissionRule.PermissionType permissionType = dataPermission.permissionType();
-
-            log.info("检查数据权限: user={}, resource={}, permission={}, method={}.{}",
-                userContext.getAccount(), resourceType, permissionType, className, methodName);
-
-            boolean hasPermission = dataPermissionService.hasPermission(userContext, resourceType, permissionType);
-            if (!hasPermission) {
-                throw new SecurityException("没有访问权限: " + resourceType);
-            }
-
-            // 获取数据范围条件
-            String dataScope = dataPermissionService.getDataScope(userContext, resourceType);
-            // 将数据范围条件设置到ThreadLocal中，供后续SQL拦截器使用
-            DataPermissionContext.setDataScope(dataScope);
-
-            log.info("数据权限检查通过: user={}, resource={}, dataScope={}",
-                userContext.getAccount(), resourceType, dataScope);
-
-        } catch (SecurityException e) {
-            log.error("数据权限检查失败", e);
-            throw e;
-        } catch (Exception e) {
-            log.error("数据权限检查异常", e);
-            throw new SecurityException("数据权限检查异常: " + e.getMessage());
-        }
-    }
-
-
-} 
+    // ... 所有方法实现已注释 ...
+}
+*/

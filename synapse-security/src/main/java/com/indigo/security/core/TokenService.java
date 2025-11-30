@@ -34,6 +34,11 @@ import java.util.UUID;
 @ConditionalOnBean(UserSessionService.class)
 public class TokenService {
 
+    /**
+     * 默认 Token 过期时间（秒）：2 小时
+     */
+    private static final long DEFAULT_TOKEN_EXPIRATION = 7200L;
+
     private final UserSessionService userSessionService;
 
     /**
@@ -45,6 +50,29 @@ public class TokenService {
      * @return 生成的 token
      */
     public String generateToken(String userId, UserContext userContext, long expiration) {
+        validateGenerateTokenParams(userId, userContext);
+        expiration = normalizeExpiration(expiration, userId);
+
+        try {
+            String token = createToken();
+            log.debug("生成Token: userId={}, token={}, expiration={}", userId, token, expiration);
+
+            storeTokenData(token, userId, userContext, expiration);
+
+            log.info("Token生成并存储成功: userId={}, token={}, expiration={}", userId, token, expiration);
+            return token;
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("生成Token失败: userId={}", userId, e);
+            throw new RuntimeException("Token生成失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 验证生成 Token 的参数
+     */
+    private void validateGenerateTokenParams(String userId, UserContext userContext) {
         if (userId == null || userId.trim().isEmpty()) {
             log.error("生成Token失败: userId为空");
             throw new IllegalArgumentException("用户ID不能为空");
@@ -54,40 +82,41 @@ public class TokenService {
             log.error("生成Token失败: userContext为空");
             throw new IllegalArgumentException("用户上下文不能为空");
         }
-
-        if (expiration <= 0) {
-            log.warn("Token过期时间异常，使用默认值7200秒: userId={}", userId);
-            expiration = 7200;
         }
 
-        try {
-            // 生成 UUID token
-            String token = UUID.randomUUID().toString().replace("-", "");
-            log.debug("生成Token: userId={}, token={}, expiration={}", userId, token, expiration);
+    /**
+     * 规范化过期时间
+     */
+    private long normalizeExpiration(long expiration, String userId) {
+        if (expiration <= 0) {
+            log.warn("Token过期时间异常，使用默认值{}秒: userId={}", DEFAULT_TOKEN_EXPIRATION, userId);
+            return DEFAULT_TOKEN_EXPIRATION;
+        }
+        return expiration;
+        }
 
-            // 存储用户会话到 Redis
+    /**
+     * 创建 Token（UUID）
+     */
+    private String createToken() {
+        return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    /**
+     * 存储 Token 相关数据到 Redis
+     * 
+     * <p><b>注意：</b>permissions 不再存储在 UserContext 中，而是单独存储。
+     * 权限数据应该通过 {@link com.indigo.security.service.DefaultAuthenticationService#storePermissionDataIfProvided}
+     * 方法单独存储。
+     */
+    private void storeTokenData(String token, String userId, UserContext userContext, long expiration) {
+            // 存储用户会话到 Redis（不包含 permissions 和 systemMenuTree，避免 session 过大）
             userSessionService.storeUserSession(token, userContext, expiration);
             
             // 存储 token 到 Redis（用于快速验证 token 是否存在）
             userSessionService.storeToken(token, userId, expiration);
             
-            // 存储用户权限到 Redis
-            if (userContext.getPermissions() != null && !userContext.getPermissions().isEmpty()) {
-                userSessionService.storeUserPermissions(token, userContext.getPermissions(), expiration);
-            }
-            
-            // 存储用户角色到 Redis
-            if (userContext.getRoles() != null && !userContext.getRoles().isEmpty()) {
-                userSessionService.storeUserRoles(token, userContext.getRoles(), expiration);
-            }
-
-            log.info("Token生成并存储成功: userId={}, token={}, expiration={}", userId, token, expiration);
-            return token;
-
-        } catch (Exception e) {
-            log.error("生成Token失败: userId={}", userId, e);
-            throw new RuntimeException("Token生成失败: " + e.getMessage(), e);
-        }
+            // 注意：permissions 不再从 UserContext 中获取，而是通过 DefaultAuthenticationService.storePermissionDataIfProvided 单独存储
     }
 
     /**
@@ -97,18 +126,13 @@ public class TokenService {
      * @return 是否有效
      */
     public boolean validateToken(String token) {
-        if (token == null || token.trim().isEmpty()) {
+        if (isTokenEmpty(token)) {
             return false;
         }
 
         try {
-            // 检查 token 是否存在
             boolean exists = userSessionService.hasUserSession(token);
-            if (exists) {
-                log.debug("Token验证成功: token={}", token);
-            } else {
-                log.debug("Token验证失败: token不存在, token={}", token);
-            }
+            log.debug("Token验证{}: token={}", exists ? "成功" : "失败", token);
             return exists;
         } catch (Exception e) {
             log.error("验证Token异常: token={}", token, e);
@@ -123,16 +147,13 @@ public class TokenService {
      * @return 用户ID，如果 token 无效则返回 null
      */
     public String getUserIdFromToken(String token) {
-        if (token == null || token.trim().isEmpty()) {
+        if (isTokenEmpty(token)) {
             return null;
         }
 
         try {
             UserContext userContext = userSessionService.getUserSession(token);
-            if (userContext != null && userContext.getUserId() != null) {
-                return userContext.getUserId();
-            }
-            return null;
+            return userContext != null ? userContext.getUserId() : null;
         } catch (Exception e) {
             log.debug("从Token获取用户ID异常: token={}", token, e);
             return null;
@@ -146,7 +167,7 @@ public class TokenService {
      * @return 用户上下文，如果 token 无效则返回 null
      */
     public UserContext getUserContext(String token) {
-        if (token == null || token.trim().isEmpty()) {
+        if (isTokenEmpty(token)) {
             return null;
         }
 
@@ -167,7 +188,7 @@ public class TokenService {
      * @return 是否续期成功
      */
     public boolean renewToken(String token, long duration) {
-        if (token == null || token.trim().isEmpty()) {
+        if (isTokenEmpty(token)) {
             return false;
         }
 
@@ -177,13 +198,11 @@ public class TokenService {
         }
 
         try {
-            // 验证 token 是否有效
             if (!validateToken(token)) {
                 log.warn("Token续期失败: token无效, token={}", token);
                 return false;
             }
 
-            // 延长 Redis 中的会话过期时间
             userSessionService.extendUserSession(token, duration);
             log.info("Token续期成功: token={}, duration={}", token, duration);
             return true;
@@ -200,16 +219,15 @@ public class TokenService {
      * @param token Token值
      */
     public void revokeToken(String token) {
-        if (token == null || token.trim().isEmpty()) {
+        if (isTokenEmpty(token)) {
             log.info("撤销Token失败: token为空");
             return;
         }
 
         try {
-            // 1. 清除 Redis 中的会话信息（包括会话、权限、角色、菜单、资源等）
+            // 清除 Redis 中的会话信息（包括会话、权限、菜单、资源等）
             userSessionService.removeUserSession(token);
-            
-            // 2. 清除 Redis 中的 token（synapse:user:token:xxx）
+            // 清除 Redis 中的 token
             userSessionService.removeToken(token);
             
             log.info("Token撤销成功: token={}", token);
@@ -225,7 +243,7 @@ public class TokenService {
      * @return 剩余时间（秒），如果 token 不存在返回 -1
      */
     public long getTokenRemainingTime(String token) {
-        if (token == null || token.trim().isEmpty()) {
+        if (isTokenEmpty(token)) {
             return -1;
         }
 
@@ -235,6 +253,16 @@ public class TokenService {
             log.error("获取Token剩余时间失败: token={}", token, e);
             return -1;
         }
+    }
+
+    /**
+     * 检查 Token 是否为空
+     *
+     * @param token Token值
+     * @return 是否为空
+     */
+    private boolean isTokenEmpty(String token) {
+        return token == null || token.trim().isEmpty();
     }
 }
 

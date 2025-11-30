@@ -33,14 +33,13 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
+ * 
  * 用户上下文拦截器
  * 负责从请求中的 token 获取用户信息，并设置到 ThreadLocal 中
- *
  * 工作流程：
  * 1. 从请求头或查询参数中提取 token（Authorization Bearer、X-Auth-Token 或查询参数）
  * 2. 使用 UserSessionService 从 Redis 获取用户上下文
  * 3. 将用户上下文设置到 ThreadLocal 中，供业务代码使用
- *
  * 注意：
  * - 此拦截器只负责设置用户上下文到ThreadLocal，不进行权限检查
  * - 权限检查请使用自定义注解：@RequireLogin、@RequirePermission、@RequireRole
@@ -113,8 +112,8 @@ public class UserContextInterceptor implements HandlerInterceptor {
                     // 2. 将 token 存储到请求属性中（供 PermissionService 等组件使用）
                     request.setAttribute(SecurityConstants.REQUEST_ATTR_TOKEN, token);
                     
-                    // 3. 更新权限列表（如果从 Header 获取）
-                    updatePermissionsFromHeader(request, userContext);
+                    // 3. 更新权限列表（如果从 Header 获取，直接存储到缓存）
+                    updatePermissionsFromHeader(request, token);
                     
                     // 4. 滑动过期：检查并刷新 token（如果启用）
                     refreshTokenIfNeeded(token);
@@ -289,18 +288,54 @@ public class UserContextInterceptor implements HandlerInterceptor {
     }
 
     /**
-     * 从请求头更新权限列表
+     * 从请求头更新权限列表并存储到缓存
+     * 
+     * <p><b>注意：</b>permissions 不再存储在 UserContext 中，而是直接存储到缓存中。
      * 
      * @param request HTTP 请求
-     * @param userContext 用户上下文
+     * @param token 用户 token
      */
-    private void updatePermissionsFromHeader(HttpServletRequest request, UserContext userContext) {
+    private void updatePermissionsFromHeader(HttpServletRequest request, String token) {
+        // 1. 检查 UserSessionService 是否可用
+        if (userSessionService == null) {
+            log.debug("UserSessionService 未注入，跳过从请求头更新权限列表");
+            return;
+        }
+
+        // 2. 从请求头获取权限列表
         String encodedPermissions = request.getHeader(SecurityConstants.X_USER_PERMISSIONS_HEADER);
-        if (StringUtils.hasText(encodedPermissions)) {
+        if (!StringUtils.hasText(encodedPermissions)) {
+            return;
+        }
+
+        // 3. 解析权限列表
             List<String> permissions = Arrays.asList(encodedPermissions.split(","));
-            userContext.setPermissions(permissions);
-            log.debug("从请求头更新权限列表: userId={}, permissions={}", 
-                    userContext.getUserId(), permissions);
+        
+        // 4. 获取 token 的剩余时间作为过期时间
+        long expiration = 7200L; // 默认 2 小时
+        try {
+            long remainingTime = userSessionService.getTokenRemainingTime(token);
+            if (remainingTime > 0) {
+                expiration = remainingTime;
+            } else {
+                // 如果获取不到剩余时间，使用配置的默认过期时间
+                SecurityProperties.TokenConfig tokenConfig = 
+                        securityProperties != null ? securityProperties.getToken() : null;
+                if (tokenConfig != null && tokenConfig.getTimeout() > 0) {
+                    expiration = tokenConfig.getTimeout();
+                }
+            }
+        } catch (Exception e) {
+            log.debug("获取 token 剩余时间失败，使用默认过期时间: token={}", token, e);
+        }
+
+        // 5. 存储权限到缓存
+        try {
+            userSessionService.storeUserPermissions(token, permissions, expiration);
+            log.debug("从请求头更新权限列表并存储到缓存: token={}, permissions={}, expiration={}s", 
+                    token, permissions, expiration);
+        } catch (Exception e) {
+            log.error("从请求头更新权限列表失败: token={}, permissions={}", token, permissions, e);
         }
     }
 
